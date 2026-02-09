@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-primary: #1AA19C;
+  --color-primary-dark: #158F8A;
+  --color-primary-light: #2EC4BE;
+  --color-accent: #1AA19C;
+  --color-surface: #1e2128;
+  --color-surface-light: #272b33;
+  --color-surface-lighter: #31363f;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: #1a1d23;
+  min-height: 100vh;
+  color: #e0e2e7;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3d4350;
+  border-radius: 3px;
+}
+
+.glass {
+  background: rgba(30, 33, 40, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(26, 161, 156, 0.12);
+}
+
+.glass-light {
+  background: rgba(39, 43, 51, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(26, 161, 156, 0.08);
+}
+
+.glow {
+  box-shadow: 0 0 30px rgba(26, 161, 156, 0.12), 0 0 60px rgba(26, 161, 156, 0.04);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px rgba(26, 161, 156, 0.15);
+}
+
+.btn-primary {
+  background: #1AA19C;
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  background: #158F8A;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(26, 161, 156, 0.35);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.input-field {
+  background: rgba(39, 43, 51, 0.7);
+  border: 1px solid rgba(26, 161, 156, 0.15);
+  transition: all 0.2s ease;
+  color: #e0e2e7;
+}
+.input-field:focus {
+  border-color: #1AA19C;
+  box-shadow: 0 0 0 3px rgba(26, 161, 156, 0.12);
+  outline: none;
+}
+.input-field::placeholder {
+  color: #5a6070;
+}
+
+.template-card {
+  background: rgba(39, 43, 51, 0.5);
+  border: 1px solid rgba(26, 161, 156, 0.08);
+  transition: all 0.3s ease;
+}
+.template-card:hover {
+  border-color: rgba(26, 161, 156, 0.35);
+  background: rgba(39, 43, 51, 0.8);
+  transform: translateY(-2px);
+}
+.template-card.selected {
+  border-color: #1AA19C;
+  background: rgba(26, 161, 156, 0.08);
+  box-shadow: 0 0 20px rgba(26, 161, 156, 0.12);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in {
+  animation: slideIn 0.4s ease-out;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
