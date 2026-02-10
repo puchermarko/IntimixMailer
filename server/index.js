@@ -1106,13 +1106,35 @@ function formatMoney(amount, currency = 'HUF') {
 function generateQuotePdf(quote, items, companyInfo, logoPath) {
   return new Promise((resolve, reject) => {
     const pdfPath = path.join(QUOTES_DIR, `${quote.id}.pdf`);
-    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
+
+    // Magyar ékezetes karakterekhez DejaVu font regisztrálása
+    const fontDir = path.join(import.meta.dirname, 'fonts');
+    const fontRegular = path.join(fontDir, 'DejaVuSans.ttf');
+    const fontBold = path.join(fontDir, 'DejaVuSans-Bold.ttf');
+    if (fs.existsSync(fontRegular)) {
+      doc.registerFont('HU', fontRegular);
+      doc.registerFont('HU-Bold', fs.existsSync(fontBold) ? fontBold : fontRegular);
+    }
+    const font = fs.existsSync(fontRegular) ? 'HU' : 'Helvetica';
+    const fontB = fs.existsSync(fontRegular) ? 'HU-Bold' : 'Helvetica-Bold';
 
     const M = 50;
     const pageW = doc.page.width - M * 2;
     const accent = '#1AA19C';
+    const pageH = doc.page.height;
+
+    // ─── Lábléc ELŐSZÖR rajzoljuk (nem mozgatja a cursort mert stroke + explicit pozíció) ───
+    const footerY = pageH - 55;
+    doc.save();
+    doc.moveTo(M, footerY).lineTo(M + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
+    doc.font(font).fontSize(7).fillColor('#999').text(
+      `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`,
+      M, footerY + 8, { width: pageW, align: 'center', lineBreak: false }
+    );
+    doc.restore();
 
     // ─── Logó (bal felső) ───
     if (logoPath && fs.existsSync(logoPath)) {
@@ -1120,10 +1142,10 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     }
 
     // ─── Fejléc jobb oldalon ───
-    doc.fontSize(22).fillColor(accent).text('ÁRAJÁNLAT', M, M, { width: pageW, align: 'right' });
-    doc.fontSize(9).fillColor('#666').text(quote.quote_number, M, M + 26, { width: pageW, align: 'right' });
+    doc.font(fontB).fontSize(22).fillColor(accent).text('\u00c1RAJ\u00c1NLAT', M, M, { width: pageW, align: 'right', lineBreak: false });
+    doc.font(font).fontSize(9).fillColor('#666').text(quote.quote_number, M, M + 26, { width: pageW, align: 'right', lineBreak: false });
     if (quote.title) {
-      doc.fontSize(10).fillColor('#444').text(quote.title, M, M + 40, { width: pageW, align: 'right' });
+      doc.font(font).fontSize(10).fillColor('#444').text(quote.title, M, M + 40, { width: pageW, align: 'right', lineBreak: false });
     }
 
     let y = 105;
@@ -1137,45 +1159,45 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     const headerY = y;
 
     // Kiállító (bal)
-    doc.fontSize(7).fillColor(accent).text('KIÁLLÍTÓ', leftX, y, { width: colW });
+    doc.font(fontB).fontSize(7).fillColor(accent).text('KI\u00c1LL\u00cdT\u00d3', leftX, y, { width: colW, lineBreak: false });
     y += 13;
-    doc.fontSize(10).fillColor('#333').text(companyInfo.company_name || companyInfo.app_name || 'Cég neve', leftX, y, { width: colW });
+    doc.font(fontB).fontSize(10).fillColor('#333').text(companyInfo.company_name || companyInfo.app_name || 'C\u00e9g neve', leftX, y, { width: colW, lineBreak: false });
     y += 14;
     const companyDetails = [
       companyInfo.company_street,
       [companyInfo.company_zip, companyInfo.company_city].filter(Boolean).join(' '),
       companyInfo.company_country,
-      companyInfo.company_vat ? `Adószám: ${companyInfo.company_vat}` : '',
+      companyInfo.company_vat ? `Ad\u00f3sz\u00e1m: ${companyInfo.company_vat}` : '',
       companyInfo.company_email,
       companyInfo.company_phone,
       companyInfo.company_bank_name ? `Bank: ${companyInfo.company_bank_name}` : '',
       companyInfo.company_bank_iban ? `IBAN: ${companyInfo.company_bank_iban}` : '',
     ].filter(Boolean);
-    doc.fontSize(8).fillColor('#666');
-    for (const line of companyDetails) { doc.text(line, leftX, y, { width: colW }); y += 11; }
+    doc.font(font).fontSize(8).fillColor('#666');
+    for (const line of companyDetails) { doc.text(line, leftX, y, { width: colW, lineBreak: false }); y += 11; }
 
     // Vevő (jobb)
     let yR = headerY;
-    doc.fontSize(7).fillColor(accent).text('VEVŐ', rightX, yR, { width: colW });
+    doc.font(fontB).fontSize(7).fillColor(accent).text('VEV\u0150', rightX, yR, { width: colW, lineBreak: false });
     yR += 13;
-    doc.fontSize(10).fillColor('#333').text(quote.contact_name || 'Ügyfél neve', rightX, yR, { width: colW });
+    doc.font(fontB).fontSize(10).fillColor('#333').text(quote.contact_name || '\u00dcgyf\u00e9l neve', rightX, yR, { width: colW, lineBreak: false });
     yR += 14;
     const clientDetails = [
       quote.contact_address,
-      quote.contact_vat ? `Adószám: ${quote.contact_vat}` : '',
+      quote.contact_vat ? `Ad\u00f3sz\u00e1m: ${quote.contact_vat}` : '',
       quote.contact_email,
       quote.contact_phone,
     ].filter(Boolean);
-    doc.fontSize(8).fillColor('#666');
-    for (const line of clientDetails) { doc.text(line, rightX, yR, { width: colW }); yR += 11; }
+    doc.font(font).fontSize(8).fillColor('#666');
+    for (const line of clientDetails) { doc.text(line, rightX, yR, { width: colW, lineBreak: false }); yR += 11; }
 
     y = Math.max(y, yR) + 12;
 
     // ─── Dátum sor ───
-    doc.fontSize(8).fillColor('#666');
-    doc.text(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, M, y, { width: 150, continued: false });
-    if (quote.valid_until) doc.text(`Érvényes: ${quote.valid_until}`, M + 180, y, { width: 150 });
-    doc.text(`Pénznem: ${quote.currency}`, M + 360, y, { width: 100 });
+    doc.font(font).fontSize(8).fillColor('#666');
+    doc.text(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, M, y, { width: 150, lineBreak: false });
+    if (quote.valid_until) doc.text(`\u00c9rv\u00e9nyes: ${quote.valid_until}`, M + 180, y, { width: 150, lineBreak: false });
+    doc.text(`P\u00e9nznem: ${quote.currency}`, M + 360, y, { width: 100, lineBreak: false });
     y += 18;
 
     doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
@@ -1184,15 +1206,15 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     // ─── Táblázat fejléc ───
     const cols = [
       { label: '#', x: M, w: 25, align: 'right' },
-      { label: 'Megnevezés', x: M + 25, w: 220, align: 'left' },
+      { label: 'Megnevez\u00e9s', x: M + 25, w: 220, align: 'left' },
       { label: 'Menny.', x: M + 245, w: 45, align: 'right' },
-      { label: 'Egység', x: M + 290, w: 45, align: 'right' },
-      { label: 'Egységár', x: M + 335, w: 75, align: 'right' },
-      { label: 'Összeg', x: M + 410, w: 85, align: 'right' },
+      { label: 'Egys\u00e9g', x: M + 290, w: 45, align: 'right' },
+      { label: 'Egys\u00e9g\u00e1r', x: M + 335, w: 75, align: 'right' },
+      { label: '\u00d6sszeg', x: M + 410, w: 85, align: 'right' },
     ];
 
-    doc.fontSize(7).fillColor(accent);
-    for (const col of cols) doc.text(col.label, col.x, y, { width: col.w, align: col.align });
+    doc.font(fontB).fontSize(7).fillColor(accent);
+    for (const col of cols) doc.text(col.label, col.x, y, { width: col.w, align: col.align, lineBreak: false });
     y += 13;
     doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#eee').lineWidth(0.5).stroke();
     y += 5;
@@ -1201,16 +1223,16 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     items.forEach((item, i) => {
       if (y > 700) { doc.addPage(); y = M; }
       if (i % 2 === 0) doc.save().rect(M, y - 2, pageW, 16).fillColor('#f8f9fa').fill().restore();
-      doc.fontSize(9).fillColor('#333');
+      doc.font(font).fontSize(9).fillColor('#333');
       for (const col of cols) {
         let val = '';
         if (col.label === '#') val = String(i + 1);
-        else if (col.label === 'Megnevezés') val = item.description || '';
+        else if (col.label === 'Megnevez\u00e9s') val = item.description || '';
         else if (col.label === 'Menny.') val = String(item.quantity);
-        else if (col.label === 'Egység') val = item.unit;
-        else if (col.label === 'Egységár') val = formatMoney(item.unit_price, quote.currency);
-        else if (col.label === 'Összeg') val = formatMoney(item.total, quote.currency);
-        doc.text(val, col.x, y, { width: col.w, align: col.align });
+        else if (col.label === 'Egys\u00e9g') val = item.unit;
+        else if (col.label === 'Egys\u00e9g\u00e1r') val = formatMoney(item.unit_price, quote.currency);
+        else if (col.label === '\u00d6sszeg') val = formatMoney(item.total, quote.currency);
+        doc.text(val, col.x, y, { width: col.w, align: col.align, lineBreak: false });
       }
       y += 17;
     });
@@ -1222,37 +1244,27 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     // ─── Összesítés ───
     const sumX = M + 310;
     const sumW = pageW - 310;
-    doc.fontSize(9).fillColor('#666');
-    doc.text('Nettó összeg:', sumX, y, { width: 80 });
-    doc.text(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    doc.font(font).fontSize(9).fillColor('#666');
+    doc.text('Nett\u00f3 \u00f6sszeg:', sumX, y, { width: 80, lineBreak: false });
+    doc.text(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right', lineBreak: false });
     y += 15;
-    doc.text(`ÁFA (${quote.vat_rate}%):`, sumX, y, { width: 80 });
-    doc.text(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    doc.text(`\u00c1FA (${quote.vat_rate}%):`, sumX, y, { width: 80, lineBreak: false });
+    doc.text(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right', lineBreak: false });
     y += 15;
     doc.moveTo(sumX, y).lineTo(sumX + sumW, y).strokeColor(accent).lineWidth(1).stroke();
     y += 8;
-    doc.fontSize(12).fillColor(accent);
-    doc.text('Összesen:', sumX, y, { width: 80 });
-    doc.text(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    doc.font(fontB).fontSize(12).fillColor(accent);
+    doc.text('\u00d6sszesen:', sumX, y, { width: 80, lineBreak: false });
+    doc.text(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right', lineBreak: false });
     y += 22;
 
     // ─── Megjegyzések ───
     if (quote.notes) {
-      doc.fontSize(7).fillColor(accent).text('MEGJEGYZÉSEK', M, y, { width: pageW });
+      doc.font(fontB).fontSize(7).fillColor(accent).text('MEGJEGYZ\u00c9SEK', M, y, { width: pageW, lineBreak: false });
       y += 11;
-      doc.fontSize(8).fillColor('#666').text(quote.notes, M, y, { width: pageW });
+      doc.font(font).fontSize(8).fillColor('#666').text(quote.notes, M, y, { width: pageW });
     }
 
-    // ─── Lábléc (csak az első oldalon, alulra) ───
-    const footerY = doc.page.height - 55;
-    doc.moveTo(M, footerY).lineTo(M + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
-    doc.fontSize(7).fillColor('#999').text(
-      `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`,
-      M, footerY + 8, { width: pageW, align: 'center' }
-    );
-
-    // Töröljük az üres oldalakat ha vannak
-    const pages = doc.bufferedPageRange();
     doc.end();
     stream.on('finish', () => resolve(pdfPath));
     stream.on('error', reject);
