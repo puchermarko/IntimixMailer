@@ -10,6 +10,7 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
+import PDFDocument from 'pdfkit';
 import db from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -175,15 +176,15 @@ app.get('/api/contacts/:id', authenticate, (req, res) => {
 
 // Új kapcsolat létrehozása
 app.post('/api/contacts', authenticate, (req, res) => {
-  const { name, email, phone, notes } = req.body;
+  const { name, email, phone, notes, company, vat_id, street, city, zip, country } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
 
   const existing = db.prepare('SELECT id FROM contacts WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'A contact with this email already exists' });
 
   const id = randomUUID();
-  db.prepare('INSERT INTO contacts (id, name, email, phone, notes) VALUES (?, ?, ?, ?, ?)').run(
-    id, name, email, phone || '', notes || ''
+  db.prepare('INSERT INTO contacts (id, name, email, phone, notes, company, vat_id, street, city, zip, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, email, phone || '', notes || '', company || '', vat_id || '', street || '', city || '', zip || '', country || ''
   );
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   res.status(201).json(contact);
@@ -200,9 +201,10 @@ app.put('/api/contacts/:id', authenticate, (req, res) => {
     if (dup) return res.status(409).json({ error: 'Another contact with this email already exists' });
   }
 
+  const { company, vat_id, street, city, zip, country } = req.body;
   db.prepare(
-    "UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(name || existing.name, email || existing.email, phone ?? existing.phone, notes ?? existing.notes, req.params.id);
+    "UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ?, company = ?, vat_id = ?, street = ?, city = ?, zip = ?, country = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(name || existing.name, email || existing.email, phone ?? existing.phone, notes ?? existing.notes, company ?? existing.company ?? '', vat_id ?? existing.vat_id ?? '', street ?? existing.street ?? '', city ?? existing.city ?? '', zip ?? existing.zip ?? '', country ?? existing.country ?? '', req.params.id);
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   res.json(contact);
@@ -970,6 +972,374 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
   });
 });
 
+// ─── ÁRAJÁNLATOK - CRUD, PDF generálás, email küldés ────
+
+const QUOTES_DIR = path.join(__dirname, 'quotes');
+if (!fs.existsSync(QUOTES_DIR)) fs.mkdirSync(QUOTES_DIR, { recursive: true });
+
+// Segédfüggvény: cég adatok lekérdezése az app_settings-ből
+function getCompanyInfo() {
+  const rows = db.prepare('SELECT key, value FROM app_settings').all();
+  const info = {};
+  for (const r of rows) info[r.key] = r.value;
+  return info;
+}
+
+// Következő árajánlat szám generálása
+function nextQuoteNumber() {
+  const year = new Date().getFullYear();
+  const last = db.prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? ORDER BY created_at DESC LIMIT 1").get(`AJ-${year}-%`);
+  let seq = 1;
+  if (last) {
+    const parts = last.quote_number.split('-');
+    seq = parseInt(parts[2] || '0', 10) + 1;
+  }
+  return `AJ-${year}-${String(seq).padStart(4, '0')}`;
+}
+
+// Összes árajánlat listázása
+app.get('/api/quotes', authenticate, (req, res) => {
+  try {
+    const quotes = db.prepare('SELECT * FROM quotes ORDER BY created_at DESC').all();
+    res.json({ quotes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Egy árajánlat lekérdezése tételekkel
+app.get('/api/quotes/:id', authenticate, (req, res) => {
+  try {
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
+    res.json({ ...quote, items });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Új árajánlat létrehozása
+app.post('/api/quotes', authenticate, (req, res) => {
+  try {
+    const { contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, items } = req.body;
+    const id = randomUUID();
+    const quote_number = nextQuoteNumber();
+
+    let subtotal = 0;
+    const parsedItems = (items || []).map((item, i) => {
+      const itemTotal = (item.quantity || 1) * (item.unit_price || 0);
+      subtotal += itemTotal;
+      return { ...item, total: itemTotal, sort_order: i };
+    });
+    const vatR = vat_rate ?? 27;
+    const vat_amount = Math.round(subtotal * vatR / 100);
+    const total = subtotal + vat_amount;
+
+    db.prepare(`INSERT INTO quotes (id, quote_number, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, subtotal, vat_amount, total, notes, status, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`).run(
+      id, quote_number, contact_id || null, contact_name || '', contact_email || '', contact_phone || '', contact_address || '', contact_vat || '', currency || 'HUF', vatR, subtotal, vat_amount, total, notes || '', valid_until || ''
+    );
+
+    const insertItem = db.prepare('INSERT INTO quote_items (id, quote_id, description, quantity, unit, unit_price, total, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const item of parsedItems) {
+      insertItem.run(randomUUID(), id, item.description || '', item.quantity || 1, item.unit || 'db', item.unit_price || 0, item.total, item.sort_order);
+    }
+
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(id);
+    const savedItems = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(id);
+    res.status(201).json({ ...quote, items: savedItems });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Árajánlat módosítása
+app.put('/api/quotes/:id', authenticate, (req, res) => {
+  try {
+    const existing = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Quote not found' });
+
+    const { contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, status, items } = req.body;
+
+    let subtotal = 0;
+    const parsedItems = (items || []).map((item, i) => {
+      const itemTotal = (item.quantity || 1) * (item.unit_price || 0);
+      subtotal += itemTotal;
+      return { ...item, total: itemTotal, sort_order: i };
+    });
+    const vatR = vat_rate ?? existing.vat_rate ?? 27;
+    const vat_amount = Math.round(subtotal * vatR / 100);
+    const total = subtotal + vat_amount;
+
+    db.prepare(`UPDATE quotes SET contact_id = ?, contact_name = ?, contact_email = ?, contact_phone = ?, contact_address = ?, contact_vat = ?, currency = ?, vat_rate = ?, subtotal = ?, vat_amount = ?, total = ?, notes = ?, status = ?, valid_until = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      contact_id ?? existing.contact_id, contact_name ?? existing.contact_name, contact_email ?? existing.contact_email, contact_phone ?? existing.contact_phone, contact_address ?? existing.contact_address, contact_vat ?? existing.contact_vat, currency ?? existing.currency, vatR, subtotal, vat_amount, total, notes ?? existing.notes, status ?? existing.status, valid_until ?? existing.valid_until, req.params.id
+    );
+
+    // Tételek újraírása
+    db.prepare('DELETE FROM quote_items WHERE quote_id = ?').run(req.params.id);
+    const insertItem = db.prepare('INSERT INTO quote_items (id, quote_id, description, quantity, unit, unit_price, total, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const item of parsedItems) {
+      insertItem.run(randomUUID(), req.params.id, item.description || '', item.quantity || 1, item.unit || 'db', item.unit_price || 0, item.total, item.sort_order);
+    }
+
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const savedItems = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
+    res.json({ ...quote, items: savedItems });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Árajánlat törlése
+app.delete('/api/quotes/:id', authenticate, (req, res) => {
+  try {
+    const existing = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Quote not found' });
+    db.prepare('DELETE FROM quote_items WHERE quote_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM quotes WHERE id = ?').run(req.params.id);
+    // Töröljük a PDF-et is ha van
+    const pdfPath = path.join(QUOTES_DIR, `${req.params.id}.pdf`);
+    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── PDF GENERÁLÁS ────
+
+function formatMoney(amount, currency = 'HUF') {
+  if (currency === 'HUF') return Math.round(amount).toLocaleString('hu-HU') + ' Ft';
+  return amount.toLocaleString('hu-HU', { minimumFractionDigits: 2 }) + ' €';
+}
+
+function generateQuotePdf(quote, items, companyInfo, logoPath) {
+  return new Promise((resolve, reject) => {
+    const pdfPath = path.join(QUOTES_DIR, `${quote.id}.pdf`);
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const stream = fs.createWriteStream(pdfPath);
+    doc.pipe(stream);
+
+    const pageW = doc.page.width - 100;
+    const accentColor = '#1AA19C';
+
+    // Logó
+    if (logoPath && fs.existsSync(logoPath)) {
+      try { doc.image(logoPath, 50, 40, { height: 50 }); } catch {}
+    }
+
+    // Fejléc - Árajánlat felirat
+    doc.fontSize(24).fillColor(accentColor).text('ÁRAJÁNLAT', 50, 50, { align: 'right' });
+    doc.fontSize(10).fillColor('#666').text(quote.quote_number, 50, 78, { align: 'right' });
+
+    doc.moveDown(0.5);
+    let y = 110;
+
+    // Vízszintes vonal
+    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor(accentColor).lineWidth(2).stroke();
+    y += 15;
+
+    // Két oszlop: Kiállító | Vevő
+    const colW = pageW / 2 - 10;
+
+    // Kiállító (bal)
+    doc.fontSize(8).fillColor(accentColor).text('KIÁLLÍTÓ', 50, y);
+    y += 14;
+    doc.fontSize(10).fillColor('#333').text(companyInfo.company_name || companyInfo.app_name || 'Cég neve', 50, y);
+    y += 14;
+    const companyDetails = [
+      companyInfo.company_street, 
+      [companyInfo.company_zip, companyInfo.company_city].filter(Boolean).join(' '),
+      companyInfo.company_country,
+      companyInfo.company_vat ? `Adószám: ${companyInfo.company_vat}` : '',
+      companyInfo.company_email,
+      companyInfo.company_phone,
+      companyInfo.company_bank_name ? `Bank: ${companyInfo.company_bank_name}` : '',
+      companyInfo.company_bank_iban ? `IBAN: ${companyInfo.company_bank_iban}` : '',
+    ].filter(Boolean);
+    doc.fontSize(8).fillColor('#666');
+    for (const line of companyDetails) { doc.text(line, 50, y); y += 12; }
+
+    // Vevő (jobb)
+    let yRight = 125;
+    doc.fontSize(8).fillColor(accentColor).text('VEVŐ', 50 + colW + 20, yRight);
+    yRight += 14;
+    doc.fontSize(10).fillColor('#333').text(quote.contact_name || 'Ügyfél neve', 50 + colW + 20, yRight);
+    yRight += 14;
+    const clientDetails = [
+      quote.contact_address,
+      quote.contact_vat ? `Adószám: ${quote.contact_vat}` : '',
+      quote.contact_email,
+      quote.contact_phone,
+    ].filter(Boolean);
+    doc.fontSize(8).fillColor('#666');
+    for (const line of clientDetails) { doc.text(line, 50 + colW + 20, yRight); yRight += 12; }
+
+    y = Math.max(y, yRight) + 15;
+
+    // Dátum sor
+    doc.fontSize(8).fillColor('#666');
+    doc.text(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, 50, y);
+    if (quote.valid_until) doc.text(`Érvényes: ${quote.valid_until}`, 250, y);
+    doc.text(`Pénznem: ${quote.currency}`, 400, y);
+    y += 20;
+
+    // Vízszintes vonal
+    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
+    y += 5;
+
+    // Táblázat fejléc
+    const cols = [
+      { label: '#', x: 50, w: 25 },
+      { label: 'Megnevezés', x: 75, w: 220 },
+      { label: 'Menny.', x: 295, w: 45 },
+      { label: 'Egység', x: 340, w: 45 },
+      { label: 'Egységár', x: 385, w: 75 },
+      { label: 'Összeg', x: 460, w: 85 },
+    ];
+
+    doc.fontSize(7).fillColor(accentColor);
+    for (const col of cols) { doc.text(col.label, col.x, y, { width: col.w, align: col.label === 'Megnevezés' ? 'left' : 'right' }); }
+    y += 14;
+    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#eee').lineWidth(0.5).stroke();
+    y += 5;
+
+    // Tételek
+    doc.fontSize(9).fillColor('#333');
+    items.forEach((item, i) => {
+      if (y > 720) { doc.addPage(); y = 50; }
+      const rowY = y;
+      // Zebra háttér
+      if (i % 2 === 0) { doc.rect(50, rowY - 2, pageW, 16).fillColor('#f8f9fa').fill(); }
+      doc.fillColor('#333');
+      doc.text(String(i + 1), cols[0].x, rowY, { width: cols[0].w, align: 'right' });
+      doc.text(item.description, cols[1].x, rowY, { width: cols[1].w });
+      doc.text(String(item.quantity), cols[2].x, rowY, { width: cols[2].w, align: 'right' });
+      doc.text(item.unit, cols[3].x, rowY, { width: cols[3].w, align: 'right' });
+      doc.text(formatMoney(item.unit_price, quote.currency), cols[4].x, rowY, { width: cols[4].w, align: 'right' });
+      doc.text(formatMoney(item.total, quote.currency), cols[5].x, rowY, { width: cols[5].w, align: 'right' });
+      y += 18;
+    });
+
+    y += 10;
+    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
+    y += 10;
+
+    // Összesítés - jobb oldalon
+    const sumX = 380;
+    const sumW = 165;
+    doc.fontSize(9).fillColor('#666');
+    doc.text('Nettó összeg:', sumX, y, { width: 80 }); doc.text(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 16;
+    doc.text(`ÁFA (${quote.vat_rate}%):`, sumX, y, { width: 80 }); doc.text(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 16;
+    doc.moveTo(sumX, y).lineTo(sumX + sumW, y).strokeColor(accentColor).lineWidth(1).stroke(); y += 8;
+    doc.fontSize(12).fillColor(accentColor).text('Összesen:', sumX, y, { width: 80 }); doc.text(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 25;
+
+    // Megjegyzések
+    if (quote.notes) {
+      doc.fontSize(8).fillColor(accentColor).text('MEGJEGYZÉSEK', 50, y); y += 12;
+      doc.fontSize(8).fillColor('#666').text(quote.notes, 50, y, { width: pageW }); y += 20;
+    }
+
+    // Lábléc
+    const footerY = doc.page.height - 60;
+    doc.moveTo(50, footerY).lineTo(50 + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
+    doc.fontSize(7).fillColor('#999').text(
+      `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`,
+      50, footerY + 8, { width: pageW, align: 'center' }
+    );
+
+    doc.end();
+    stream.on('finish', () => resolve(pdfPath));
+    stream.on('error', reject);
+  });
+}
+
+// PDF letöltés
+app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
+  try {
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
+    const companyInfo = getCompanyInfo();
+
+    // Logó fájl keresése
+    let logoPath = null;
+    if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
+      const logoFilename = companyInfo.app_logo.split('/').pop();
+      const lp = path.join(BRANDING_DIR, logoFilename);
+      if (fs.existsSync(lp)) logoPath = lp;
+    }
+
+    const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${quote.quote_number}.pdf"`);
+    const fileStream = fs.createReadStream(pdfPath);
+    fileStream.pipe(res);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Árajánlat küldése emailben
+app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
+  try {
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    if (!quote) return res.status(404).json({ error: 'Quote not found' });
+    if (!quote.contact_email) return res.status(400).json({ error: 'Nincs email cím megadva a vevőnél' });
+
+    const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
+    const companyInfo = getCompanyInfo();
+
+    let logoPath = null;
+    if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
+      const logoFilename = companyInfo.app_logo.split('/').pop();
+      const lp = path.join(BRANDING_DIR, logoFilename);
+      if (fs.existsSync(lp)) logoPath = lp;
+    }
+
+    const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
+
+    // Email sablon - testreszabható a body-ban
+    const { subject: customSubject, html: customHtml } = req.body || {};
+    const companyName = companyInfo.company_name || companyInfo.app_name || 'Cég';
+    const defaultSubject = `Árajánlat - ${quote.quote_number} | ${companyName}`;
+    const defaultHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #1AA19C; margin-bottom: 5px;">Árajánlat</h2>
+        <p style="color: #666; font-size: 14px; margin-top: 0;">${quote.quote_number}</p>
+        <p>Tisztelt <strong>${quote.contact_name || 'Ügyfelünk'}</strong>,</p>
+        <p>Mellékelten küldjük árajánlatunkat az alábbi összesítéssel:</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="background: #f8f9fa;">
+            <td style="padding: 8px 12px; font-size: 13px; color: #666;">Nettó összeg</td>
+            <td style="padding: 8px 12px; font-size: 13px; text-align: right;">${formatMoney(quote.subtotal, quote.currency)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 12px; font-size: 13px; color: #666;">ÁFA (${quote.vat_rate}%)</td>
+            <td style="padding: 8px 12px; font-size: 13px; text-align: right;">${formatMoney(quote.vat_amount, quote.currency)}</td>
+          </tr>
+          <tr style="background: #1AA19C; color: white;">
+            <td style="padding: 10px 12px; font-size: 14px; font-weight: bold;">Összesen</td>
+            <td style="padding: 10px 12px; font-size: 14px; font-weight: bold; text-align: right;">${formatMoney(quote.total, quote.currency)}</td>
+          </tr>
+        </table>
+        ${quote.valid_until ? `<p style="font-size: 13px; color: #666;">Az árajánlat érvényessége: <strong>${quote.valid_until}</strong></p>` : ''}
+        ${quote.notes ? `<p style="font-size: 13px; color: #666;">Megjegyzés: ${quote.notes}</p>` : ''}
+        <p style="font-size: 13px; color: #666;">A részletes árajánlatot PDF formátumban mellékeltük.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 11px; color: #999;">
+          ${companyName}<br/>
+          ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}<br/>
+          ${[companyInfo.company_zip, companyInfo.company_city, companyInfo.company_street].filter(Boolean).join(', ')}
+        </p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `"${companyName}" <${process.env.SMTP_USER}>`,
+      to: quote.contact_email,
+      subject: customSubject || defaultSubject,
+      html: customHtml || defaultHtml,
+      attachments: [{ filename: `${quote.quote_number}.pdf`, path: pdfPath }]
+    };
+
+    transporter.sendMail(mailOptions, (err, info) => {
+      if (err) return res.status(500).json({ error: err.message });
+      // Státusz frissítése
+      db.prepare("UPDATE quotes SET status = 'sent', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+      res.json({ success: true, messageId: info.messageId });
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ─── BRANDING - alkalmazás neve és logó testreszabása ────
 
 const BRANDING_DIR = path.join(__dirname, 'branding');
@@ -977,7 +1347,7 @@ if (!fs.existsSync(BRANDING_DIR)) fs.mkdirSync(BRANDING_DIR, { recursive: true }
 
 app.get('/api/branding', (req, res) => {
   try {
-    const rows = db.prepare('SELECT key, value FROM app_settings WHERE key IN (?, ?, ?)').all('app_name', 'app_subtitle', 'app_logo');
+    const rows = db.prepare('SELECT key, value FROM app_settings').all();
     const result = { app_name: 'Intimix', app_subtitle: 'Mailer', app_logo: '/logo-header.png' };
     for (const row of rows) {
       if (row.value) result[row.key] = row.value;
@@ -990,10 +1360,11 @@ app.get('/api/branding', (req, res) => {
 
 app.put('/api/branding', authenticate, (req, res) => {
   try {
-    const { app_name, app_subtitle } = req.body;
+    const allowed = ['app_name', 'app_subtitle', 'company_name', 'company_vat', 'company_email', 'company_phone', 'company_street', 'company_city', 'company_zip', 'company_country', 'company_bank_name', 'company_bank_iban'];
     const upsert = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-    if (app_name !== undefined) upsert.run('app_name', app_name);
-    if (app_subtitle !== undefined) upsert.run('app_subtitle', app_subtitle);
+    for (const [key, val] of Object.entries(req.body)) {
+      if (allowed.includes(key) && val !== undefined) upsert.run(key, val);
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

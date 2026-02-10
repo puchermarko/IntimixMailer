@@ -110,6 +110,69 @@ export async function updateEnvConfig(config) {
   return data
 }
 
+// ─── ÁRAJÁNLATOK ─────────────────────────────────────────────
+
+export async function getQuotes() {
+  const res = await fetch(`${API_BASE}/quotes`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch quotes')
+  return data
+}
+
+export async function getQuote(id) {
+  const res = await fetch(`${API_BASE}/quotes/${id}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch quote')
+  return data
+}
+
+export async function createQuote(quote) {
+  const res = await fetch(`${API_BASE}/quotes`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(quote)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create quote')
+  return data
+}
+
+export async function updateQuote(id, quote) {
+  const res = await fetch(`${API_BASE}/quotes/${id}`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(quote)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update quote')
+  return data
+}
+
+export async function deleteQuote(id) {
+  const res = await fetch(`${API_BASE}/quotes/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete quote')
+  return data
+}
+
+export function getQuotePdfUrl(id) {
+  return `${API_BASE}/quotes/${id}/pdf`
+}
+
+export async function sendQuoteEmail(id, options = {}) {
+  const res = await fetch(`${API_BASE}/quotes/${id}/send`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(options)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to send quote')
+  return data
+}
+
 // ─── KAPCSOLATOK ─────────────────────────────────────────────
 
 export async function getContacts() {

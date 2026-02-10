@@ -142,6 +142,59 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT DEFAULT ''
   );
+
+  CREATE TABLE IF NOT EXISTS quotes (
+    id TEXT PRIMARY KEY,
+    quote_number TEXT NOT NULL,
+    contact_id TEXT,
+    contact_name TEXT DEFAULT '',
+    contact_email TEXT DEFAULT '',
+    contact_phone TEXT DEFAULT '',
+    contact_address TEXT DEFAULT '',
+    contact_vat TEXT DEFAULT '',
+    currency TEXT DEFAULT 'HUF',
+    vat_rate REAL DEFAULT 27,
+    subtotal REAL DEFAULT 0,
+    vat_amount REAL DEFAULT 0,
+    total REAL DEFAULT 0,
+    notes TEXT DEFAULT '',
+    status TEXT DEFAULT 'draft',
+    valid_until TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS quote_items (
+    id TEXT PRIMARY KEY,
+    quote_id TEXT NOT NULL,
+    description TEXT NOT NULL,
+    quantity REAL DEFAULT 1,
+    unit TEXT DEFAULT 'db',
+    unit_price REAL DEFAULT 0,
+    total REAL DEFAULT 0,
+    sort_order INTEGER DEFAULT 0,
+    FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_quotes_contact ON quotes(contact_id);
+  CREATE INDEX IF NOT EXISTS idx_quote_items_quote ON quote_items(quote_id);
 `);
+
+// Migrációk - meglévő contacts táblához cím mezők hozzáadása
+const contactCols = db.prepare("PRAGMA table_info(contacts)").all().map(c => c.name);
+const newCols = [
+  ['company', 'TEXT DEFAULT \'\''],
+  ['vat_id', 'TEXT DEFAULT \'\''],
+  ['street', 'TEXT DEFAULT \'\''],
+  ['city', 'TEXT DEFAULT \'\''],
+  ['zip', 'TEXT DEFAULT \'\''],
+  ['country', 'TEXT DEFAULT \'\''],
+];
+for (const [col, def] of newCols) {
+  if (!contactCols.includes(col)) {
+    db.exec(`ALTER TABLE contacts ADD COLUMN ${col} ${def}`);
+  }
+}
 
 export default db;

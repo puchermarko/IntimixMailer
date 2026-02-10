@@ -1,12 +1,13 @@
 // Na ez itt az oldalsáv, innen navigálsz mindenhova
 import { useAuth, useBranding } from '../App'
 import {
-  Mail, LayoutGrid, Settings, LogOut, BookUser
+  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText
 } from 'lucide-react'
 
 const navItems = [
   { id: 'mail', label: 'Levelezés', icon: Mail },
   { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
+  { id: 'quotes', label: 'Árajánlatok', icon: FileText },
   { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
   { id: 'settings', label: 'Beállítások', icon: Settings },
 ]

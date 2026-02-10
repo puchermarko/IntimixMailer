@@ -33,6 +33,16 @@ export default function Settings() {
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
   const { refreshBranding } = useBranding()
+  const [companyName, setCompanyName] = useState('')
+  const [companyVat, setCompanyVat] = useState('')
+  const [companyEmail, setCompanyEmail] = useState('')
+  const [companyPhone, setCompanyPhone] = useState('')
+  const [companyStreet, setCompanyStreet] = useState('')
+  const [companyCity, setCompanyCity] = useState('')
+  const [companyZip, setCompanyZip] = useState('')
+  const [companyCountry, setCompanyCountry] = useState('')
+  const [companyBankName, setCompanyBankName] = useState('')
+  const [companyBankIban, setCompanyBankIban] = useState('')
 
   useEffect(() => {
     if (activeTab === 'api') loadKeys()
@@ -47,6 +57,16 @@ export default function Settings() {
       setBrandName(data.app_name || '')
       setBrandSubtitle(data.app_subtitle || '')
       setBrandLogo(data.app_logo || '')
+      setCompanyName(data.company_name || '')
+      setCompanyVat(data.company_vat || '')
+      setCompanyEmail(data.company_email || '')
+      setCompanyPhone(data.company_phone || '')
+      setCompanyStreet(data.company_street || '')
+      setCompanyCity(data.company_city || '')
+      setCompanyZip(data.company_zip || '')
+      setCompanyCountry(data.company_country || '')
+      setCompanyBankName(data.company_bank_name || '')
+      setCompanyBankIban(data.company_bank_iban || '')
       setBrandDirty(false)
     } catch (err) { toast.error(err.message) }
     finally { setBrandLoading(false) }
@@ -55,7 +75,7 @@ export default function Settings() {
   const handleBrandSave = async () => {
     setBrandSaving(true)
     try {
-      await updateBranding({ app_name: brandName, app_subtitle: brandSubtitle })
+      await updateBranding({ app_name: brandName, app_subtitle: brandSubtitle, company_name: companyName, company_vat: companyVat, company_email: companyEmail, company_phone: companyPhone, company_street: companyStreet, company_city: companyCity, company_zip: companyZip, company_country: companyCountry, company_bank_name: companyBankName, company_bank_iban: companyBankIban })
       toast.success('Márka beállítások mentve!')
       setBrandDirty(false)
       await refreshBranding()
@@ -277,6 +297,56 @@ export default function Settings() {
                     <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">{brandSubtitle || 'Mailer'}</p>
                   </div>
                   <p className="text-xs text-gray-400 mt-2">{brandName || 'Intimix'} — {brandSubtitle || 'Mailer'}</p>
+                </div>
+              </div>
+
+              {/* Cégadatok */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><Info className="w-5 h-5 text-blue-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Cégadatok</h3><p className="text-xs text-gray-500">Árajánlatokon és emailekben megjelenő adatok</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-400 mb-1">Cégnév</label>
+                    <input type="text" value={companyName} onChange={(e) => { setCompanyName(e.target.value); setBrandDirty(true) }}
+                      placeholder="Lakics Márk E.V." className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Adószám</label>
+                    <input type="text" value={companyVat} onChange={(e) => { setCompanyVat(e.target.value); setBrandDirty(true) }}
+                      placeholder="12345678-1-23" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Email</label>
+                    <input type="email" value={companyEmail} onChange={(e) => { setCompanyEmail(e.target.value); setBrandDirty(true) }}
+                      placeholder="info@ceg.hu" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Telefon</label>
+                    <input type="tel" value={companyPhone} onChange={(e) => { setCompanyPhone(e.target.value); setBrandDirty(true) }}
+                      placeholder="+3630..." className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div className="col-span-2"><label className="block text-xs text-gray-400 mb-1">Utca, házszám</label>
+                    <input type="text" value={companyStreet} onChange={(e) => { setCompanyStreet(e.target.value); setBrandDirty(true) }}
+                      placeholder="Példa utca 1." className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Irányítószám</label>
+                    <input type="text" value={companyZip} onChange={(e) => { setCompanyZip(e.target.value); setBrandDirty(true) }}
+                      placeholder="1234" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Város</label>
+                    <input type="text" value={companyCity} onChange={(e) => { setCompanyCity(e.target.value); setBrandDirty(true) }}
+                      placeholder="Budapest" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Ország</label>
+                    <input type="text" value={companyCountry} onChange={(e) => { setCompanyCountry(e.target.value); setBrandDirty(true) }}
+                      placeholder="Magyarország" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* Bankszámla */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><Shield className="w-5 h-5 text-green-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Bankszámla</h3><p className="text-xs text-gray-500">Árajánlatokon megjelenő bankadatok</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-400 mb-1">Bank neve</label>
+                    <input type="text" value={companyBankName} onChange={(e) => { setCompanyBankName(e.target.value); setBrandDirty(true) }}
+                      placeholder="OTP Bank" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">IBAN / Számlaszám</label>
+                    <input type="text" value={companyBankIban} onChange={(e) => { setCompanyBankIban(e.target.value); setBrandDirty(true) }}
+                      placeholder="HU12 1234 5678 9012 3456 7890 1234" className="input-field w-full px-3 py-2 text-sm" /></div>
                 </div>
               </div>
 

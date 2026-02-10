@@ -6,6 +6,7 @@ import MailView from '../components/MailView'
 import TemplateGallery from '../components/TemplateGallery'
 import Settings from '../components/Settings'
 import Contacts from '../components/Contacts'
+import Quotes from '../components/Quotes'
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState('mail')
@@ -13,6 +14,7 @@ export default function Dashboard() {
   const views = {
     mail: <MailView />,
     contacts: <Contacts />,
+    quotes: <Quotes />,
     templates: <TemplateGallery />,
     settings: <Settings />,
   }

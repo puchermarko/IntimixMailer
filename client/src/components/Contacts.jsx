@@ -5,7 +5,7 @@ import ContactDetail from './ContactDetail'
 import toast from 'react-hot-toast'
 import {
   Plus, Search, User, Mail, Phone, Trash2, Edit3, X,
-  Loader2, BookOpen, Paperclip, ChevronRight
+  Loader2, BookOpen, Paperclip, ChevronRight, MapPin, Building2
 } from 'lucide-react'
 
 export default function Contacts() {
@@ -15,7 +15,7 @@ export default function Contacts() {
   const [showForm, setShowForm] = useState(false)
   const [editingContact, setEditingContact] = useState(null)
   const [selectedContactId, setSelectedContactId] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
   const [saving, setSaving] = useState(false)
 
   const fetchContacts = async () => {
@@ -39,13 +39,13 @@ export default function Contacts() {
 
   const openCreate = () => {
     setEditingContact(null)
-    setForm({ name: '', email: '', phone: '', notes: '' })
+    setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
     setShowForm(true)
   }
 
   const openEdit = (contact) => {
     setEditingContact(contact)
-    setForm({ name: contact.name, email: contact.email, phone: contact.phone || '', notes: contact.notes || '' })
+    setForm({ name: contact.name, email: contact.email, phone: contact.phone || '', notes: contact.notes || '', company: contact.company || '', vat_id: contact.vat_id || '', street: contact.street || '', city: contact.city || '', zip: contact.zip || '', country: contact.country || '' })
     setShowForm(true)
   }
 
@@ -64,7 +64,7 @@ export default function Contacts() {
         toast.success('Kapcsolat létrehozva')
       }
       setShowForm(false)
-      setForm({ name: '', email: '', phone: '', notes: '' })
+      setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
       setEditingContact(null)
       await fetchContacts()
     } catch (err) {
@@ -251,6 +251,29 @@ export default function Contacts() {
                   placeholder="Opcionális megjegyzések a kapcsolatról..."
                   className="input-field w-full px-4 py-2.5 rounded-lg text-sm min-h-[80px] resize-y"
                 />
+              </div>
+
+              {/* Cím adatok */}
+              <div className="pt-3 border-t border-white/5">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1"><MapPin className="w-3 h-3" /> Cím és cégadatok (opcionális)</p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" value={form.company} onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+                      placeholder="Cégnév" className="input-field px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={form.vat_id} onChange={(e) => setForm(f => ({ ...f, vat_id: e.target.value }))}
+                      placeholder="Adószám" className="input-field px-3 py-2 rounded-lg text-sm" />
+                  </div>
+                  <input type="text" value={form.street} onChange={(e) => setForm(f => ({ ...f, street: e.target.value }))}
+                    placeholder="Utca, házszám" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                  <div className="grid grid-cols-3 gap-3">
+                    <input type="text" value={form.zip} onChange={(e) => setForm(f => ({ ...f, zip: e.target.value }))}
+                      placeholder="Ir.szám" className="input-field px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={form.city} onChange={(e) => setForm(f => ({ ...f, city: e.target.value }))}
+                      placeholder="Város" className="input-field px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))}
+                      placeholder="Ország" className="input-field px-3 py-2 rounded-lg text-sm" />
+                  </div>
+                </div>
               </div>
             </div>
 
