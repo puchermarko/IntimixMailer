@@ -149,7 +149,7 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
   const [items, setItems] = useState(quote?.items?.length ? quote.items.map(i => ({ ...i })) : [{ description: '', quantity: 1, unit: 'db', unit_price: 0 }])
 
   useEffect(() => {
-    getContacts().then(data => setContacts(data.contacts || [])).catch(() => {})
+    getContacts().then(data => setContacts(Array.isArray(data) ? data : data.contacts || [])).catch(() => {})
   }, [])
 
   const addItem = () => setItems([...items, { description: '', quantity: 1, unit: 'db', unit_price: 0 }])
