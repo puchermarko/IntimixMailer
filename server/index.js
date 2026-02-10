@@ -1531,7 +1531,13 @@ app.put('/api/env', authenticate, (req, res) => {
 // SMTP kapcsolat tesztelése - a beállításoknál használjuk
 app.get('/api/test-smtp', authenticate, async (req, res) => {
   try {
-    await transporter.verify();
+    const testTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 465,
+      secure: (Number(process.env.SMTP_PORT) || 465) === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    await testTransporter.verify();
     res.json({ success: true, message: 'SMTP connection is working' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
