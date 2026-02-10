@@ -46,7 +46,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (activeTab === 'api') loadKeys()
-    if (activeTab === 'config') loadEnv()
+    if (activeTab === 'config' || activeTab === 'general') loadEnv()
     if (activeTab === 'branding') loadBrand()
   }, [activeTab])
 
@@ -196,7 +196,7 @@ export default function Settings() {
               <div><h3 className="text-base font-semibold text-white">SMTP Szerver</h3><p className="text-xs text-gray-500">Levelezőszerver kapcsolat</p></div>
             </div>
             <div className="space-y-2">
-              {[['Hoszt','mail.intimix.hu'],['Port','465 (SSL)'],['Felhasználó','info@intimix.hu'],['Titkosítás','TLS/SSL'],['Feladó','Intimix Shop']].map(([l,v]) => (
+              {[['Hoszt', envConfig.SMTP_HOST || '—'],['Port', envConfig.SMTP_PORT ? `${envConfig.SMTP_PORT} (${envConfig.SMTP_PORT === '465' ? 'SSL' : 'TLS'})` : '—'],['Felhasználó', envConfig.SMTP_USER || '—'],['Titkosítás', envConfig.SMTP_PORT === '465' ? 'SSL' : 'TLS'],['Feladó', envConfig.SMTP_FROM_NAME || envConfig.SMTP_USER || '—']].map(([l,v]) => (
                 <div key={l} className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
                   <span className="text-xs text-gray-400">{l}</span><span className="text-sm text-gray-200 font-mono">{v}</span>
                 </div>
