@@ -1,5 +1,5 @@
 // Na ez itt az oldalsáv, innen navigálsz mindenhova
-import { useAuth } from '../App'
+import { useAuth, useBranding } from '../App'
 import {
   Mail, LayoutGrid, Settings, LogOut, BookUser
 } from 'lucide-react'
@@ -13,6 +13,7 @@ const navItems = [
 
 export default function Sidebar({ activeView, setActiveView }) {
   const { logout, email } = useAuth()
+  const { app_name, app_subtitle, app_logo } = useBranding()
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 glass flex flex-col z-20">
@@ -20,12 +21,12 @@ export default function Sidebar({ activeView, setActiveView }) {
       <div className="p-5 border-b border-white/5">
         <div className="flex items-center gap-3">
           <img
-            src="/logo-header.png"
-            alt="Intimix"
+            src={app_logo}
+            alt={app_name}
             className="h-8"
           />
           <div className="h-5 w-px bg-white/10" />
-          <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">Mailer</p>
+          <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">{app_subtitle}</p>
         </div>
       </div>
 

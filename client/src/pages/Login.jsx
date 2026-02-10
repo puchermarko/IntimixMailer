@@ -1,11 +1,12 @@
 // Bejelentkezés oldal - ide érkezel ha nincs token
 import { useState } from 'react'
-import { useAuth } from '../App'
+import { useAuth, useBranding } from '../App'
 import toast from 'react-hot-toast'
 import { Mail, Lock, Loader2 } from 'lucide-react'
 
 export default function Login() {
   const { login } = useAuth()
+  const { app_name, app_subtitle, app_logo } = useBranding()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -42,11 +43,11 @@ export default function Login() {
         {/* Logó */}
         <div className="text-center mb-8">
           <img
-            src="/logo-header.png"
-            alt="Intimix"
+            src={app_logo}
+            alt={app_name}
             className="h-12 mx-auto mb-4"
           />
-          <p className="text-sm text-gray-400 mt-2">Email kezelő platform</p>
+          <p className="text-sm text-gray-400 mt-2">{app_name} — {app_subtitle}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -97,7 +98,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-gray-500 mt-6">
-          Biztonságos email platform az Intimix Shop számára
+          Biztonságos email platform — {app_name}
         </p>
       </div>
     </div>

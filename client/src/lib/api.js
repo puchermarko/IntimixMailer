@@ -57,6 +57,39 @@ export async function testSmtp() {
   return data
 }
 
+// ─── BRANDING ────────────────────────────────────────────────
+
+export async function getBranding() {
+  const res = await fetch(`${API_BASE}/branding`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch branding')
+  return data
+}
+
+export async function updateBranding(config) {
+  const res = await fetch(`${API_BASE}/branding`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(config)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update branding')
+  return data
+}
+
+export async function uploadLogo(file) {
+  const formData = new FormData()
+  formData.append('logo', file)
+  const res = await fetch(`${API_BASE}/branding/logo`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: formData
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to upload logo')
+  return data
+}
+
 // ─── ENV KONFIGURÁCIÓ ────────────────────────────────────────
 
 export async function getEnvConfig() {

@@ -137,6 +137,11 @@ db.exec(`
     last_used_at TEXT,
     active INTEGER DEFAULT 1
   );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT DEFAULT ''
+  );
 `);
 
 export default db;

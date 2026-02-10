@@ -1,11 +1,13 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo } from '../lib/api'
+import { useBranding } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
-  Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle
+  Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette
 } from 'lucide-react'
+import { useRef } from 'react'
 
 export default function Settings() {
   const [testing, setTesting] = useState(false)
@@ -22,11 +24,57 @@ export default function Settings() {
   const [envLoading, setEnvLoading] = useState(false)
   const [envSaving, setEnvSaving] = useState(false)
   const [envDirty, setEnvDirty] = useState(false)
+  const [brandName, setBrandName] = useState('')
+  const [brandSubtitle, setBrandSubtitle] = useState('')
+  const [brandLogo, setBrandLogo] = useState('')
+  const [brandLoading, setBrandLoading] = useState(false)
+  const [brandSaving, setBrandSaving] = useState(false)
+  const [brandDirty, setBrandDirty] = useState(false)
+  const [logoUploading, setLogoUploading] = useState(false)
+  const logoInputRef = useRef(null)
+  const { refreshBranding } = useBranding()
 
   useEffect(() => {
     if (activeTab === 'api') loadKeys()
     if (activeTab === 'config') loadEnv()
+    if (activeTab === 'branding') loadBrand()
   }, [activeTab])
+
+  const loadBrand = async () => {
+    setBrandLoading(true)
+    try {
+      const data = await getBranding()
+      setBrandName(data.app_name || '')
+      setBrandSubtitle(data.app_subtitle || '')
+      setBrandLogo(data.app_logo || '')
+      setBrandDirty(false)
+    } catch (err) { toast.error(err.message) }
+    finally { setBrandLoading(false) }
+  }
+
+  const handleBrandSave = async () => {
+    setBrandSaving(true)
+    try {
+      await updateBranding({ app_name: brandName, app_subtitle: brandSubtitle })
+      toast.success('Márka beállítások mentve!')
+      setBrandDirty(false)
+      await refreshBranding()
+    } catch (err) { toast.error(err.message) }
+    finally { setBrandSaving(false) }
+  }
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoUploading(true)
+    try {
+      const result = await uploadLogo(file)
+      setBrandLogo(result.logo)
+      toast.success('Logó feltöltve!')
+      await refreshBranding()
+    } catch (err) { toast.error(err.message) }
+    finally { setLogoUploading(false) }
+  }
 
   const loadEnv = async () => {
     setEnvLoading(true)
@@ -94,6 +142,7 @@ export default function Settings() {
 
   const tabs = [
     { id: 'general', label: 'Általános' },
+    { id: 'branding', label: 'Márka' },
     { id: 'config', label: 'Konfiguráció' },
     { id: 'api', label: 'API Kulcsok' },
     { id: 'docs', label: 'API Dokumentáció' },
@@ -168,6 +217,80 @@ export default function Settings() {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ MÁRKA FÜL - logó és alkalmazás neve ═══ */}
+      {activeTab === 'branding' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          {brandLoading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" /></div>
+          ) : (
+            <>
+              {/* Logó feltöltés */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><Palette className="w-5 h-5 text-purple-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Logó</h3><p className="text-xs text-gray-500">Az alkalmazás logója (fejléc, bejelentkezés)</p></div>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="w-24 h-24 rounded-xl glass-light flex items-center justify-center overflow-hidden p-2">
+                    <img src={brandLogo} alt="Logo" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div className="space-y-3">
+                    <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" className="hidden" />
+                    <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-light hover:border-[#1AA19C]/20 text-sm text-gray-300 transition-all disabled:opacity-50">
+                      {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      Új logó feltöltése
+                    </button>
+                    <p className="text-[10px] text-gray-500">PNG, JPG, SVG, WebP vagy GIF (max 10MB)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alkalmazás neve */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Settings2 className="w-5 h-5 text-[#1AA19C]" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Alkalmazás neve</h3><p className="text-xs text-gray-500">Ez jelenik meg a fejlécben és a bejelentkezésnél</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Név (pl. cég neve)</label>
+                    <input type="text" value={brandName} onChange={(e) => { setBrandName(e.target.value); setBrandDirty(true) }}
+                      placeholder="Intimix" className="input-field w-full px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Alcím</label>
+                    <input type="text" value={brandSubtitle} onChange={(e) => { setBrandSubtitle(e.target.value); setBrandDirty(true) }}
+                      placeholder="Mailer" className="input-field w-full px-3 py-2 text-sm" />
+                  </div>
+                </div>
+
+                {/* Előnézet */}
+                <div className="mt-5 p-4 rounded-xl glass-light">
+                  <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Előnézet</p>
+                  <div className="flex items-center gap-3">
+                    <img src={brandLogo} alt="Preview" className="h-8 object-contain" />
+                    <div className="h-5 w-px bg-white/10" />
+                    <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">{brandSubtitle || 'Mailer'}</p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">{brandName || 'Intimix'} — {brandSubtitle || 'Mailer'}</p>
+                </div>
+              </div>
+
+              {/* Mentés gomb */}
+              <div className="flex items-center gap-3">
+                <button onClick={handleBrandSave} disabled={brandSaving || !brandDirty}
+                  className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  {brandSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Mentés
+                </button>
+                {brandDirty && <span className="text-xs text-amber-400 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />Mentetlen változások</span>}
+              </div>
+            </>
+          )}
         </div>
       )}
 

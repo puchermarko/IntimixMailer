@@ -970,6 +970,63 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
   });
 });
 
+// ─── BRANDING - alkalmazás neve és logó testreszabása ────
+
+const BRANDING_DIR = path.join(__dirname, 'branding');
+if (!fs.existsSync(BRANDING_DIR)) fs.mkdirSync(BRANDING_DIR, { recursive: true });
+
+app.get('/api/branding', (req, res) => {
+  try {
+    const rows = db.prepare('SELECT key, value FROM app_settings WHERE key IN (?, ?, ?)').all('app_name', 'app_subtitle', 'app_logo');
+    const result = { app_name: 'Intimix', app_subtitle: 'Mailer', app_logo: '/logo-header.png' };
+    for (const row of rows) {
+      if (row.value) result[row.key] = row.value;
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/branding', authenticate, (req, res) => {
+  try {
+    const { app_name, app_subtitle } = req.body;
+    const upsert = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    if (app_name !== undefined) upsert.run('app_name', app_name);
+    if (app_subtitle !== undefined) upsert.run('app_subtitle', app_subtitle);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/branding/logo', authenticate, upload.single('logo'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Nincs fájl feltöltve' });
+    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp', 'image/gif'];
+    if (!allowed.includes(req.file.mimetype)) return res.status(400).json({ error: 'Csak kép fájl engedélyezett (PNG, JPG, SVG, WebP, GIF)' });
+
+    const ext = path.extname(req.file.originalname) || '.png';
+    const filename = `logo${ext}`;
+    const filepath = path.join(BRANDING_DIR, filename);
+    fs.writeFileSync(filepath, req.file.buffer);
+
+    const logoUrl = `/api/branding/logo-file/${filename}`;
+    const upsert = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
+    upsert.run('app_logo', logoUrl);
+
+    res.json({ success: true, logo: logoUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/branding/logo-file/:filename', (req, res) => {
+  const fp = path.join(BRANDING_DIR, path.basename(req.params.filename));
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Logo not found' });
+  res.sendFile(fp);
+});
+
 // ─── ENV KONFIGURÁCIÓ - beállítások oldalról szerkeszthető ────
 
 const ENV_PATH = path.join(__dirname, '.env');
