@@ -10,6 +10,7 @@ import Quotes from '../components/Quotes'
 
 export default function Dashboard() {
   const [activeView, setActiveView] = useState('mail')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const views = {
     mail: <MailView />,
@@ -20,9 +21,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex">
-      <Sidebar activeView={activeView} setActiveView={setActiveView} />
-      <main className="flex-1 ml-64 p-8">
+    <div className="min-h-screen">
+      <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
+      <main className="lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen">
         <div className="max-w-5xl mx-auto fade-in" key={activeView}>
           {views[activeView]}
         </div>

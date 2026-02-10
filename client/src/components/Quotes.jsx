@@ -69,12 +69,12 @@ export default function Quotes() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">Árajánlatok</h2>
-          <p className="text-sm text-gray-400 mt-1">Árajánlatok kezelése, PDF generálás és küldés</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Árajánlatok</h2>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">Árajánlatok kezelése, PDF generálás és küldés</p>
         </div>
-        <button onClick={handleNew} className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2">
+        <button onClick={handleNew} className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus className="w-4 h-4" /> Új árajánlat
         </button>
       </div>
@@ -257,19 +257,19 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all">
-          <ChevronLeft className="w-5 h-5 text-gray-400" />
-        </button>
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-white">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
-          <p className="text-xs text-gray-500">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all shrink-0">
+            <ChevronLeft className="w-5 h-5 text-gray-400" />
+          </button>
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-white truncate">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
+            <p className="text-xs text-gray-500 hidden sm:block">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
+          </div>
         </div>
-        <div className="flex-1 max-w-xs">
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-            placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" />
-        </div>
-        <div className="flex items-center gap-2">
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+          placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full sm:max-w-xs px-3 py-1.5 text-sm rounded-lg" />
+        <div className="flex items-center gap-2 flex-wrap">
           {quote?.id && (
             <>
               <button onClick={handleDownload} disabled={downloading}
@@ -289,9 +289,9 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bal oldal: Vevő adatok */}
-        <div className="col-span-1 space-y-4">
+        <div className="lg:col-span-1 space-y-4">
           <div className="glass rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2"><User className="w-4 h-4 text-[#1AA19C]" /> Vevő adatok</h3>
@@ -381,7 +381,7 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
         </div>
 
         {/* Jobb oldal: Tételek */}
-        <div className="col-span-2">
+        <div className="lg:col-span-2">
           <div className="glass rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Tételek</h3>
@@ -391,7 +391,7 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
             </div>
 
             {/* Fejléc */}
-            <div className="grid grid-cols-12 gap-2 mb-2 px-1">
+            <div className="hidden sm:grid grid-cols-12 gap-2 mb-2 px-1">
               <span className="col-span-5 text-[10px] text-gray-500 uppercase">Megnevezés</span>
               <span className="col-span-1 text-[10px] text-gray-500 uppercase text-right">Menny.</span>
               <span className="col-span-1 text-[10px] text-gray-500 uppercase text-right">Egység</span>
@@ -400,26 +400,58 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
               <span className="col-span-1" />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3 sm:space-y-2">
               {items.map((item, i) => {
                 const lineTotal = (item.quantity || 0) * (item.unit_price || 0)
                 return (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                    <input type="text" value={item.description} onChange={(e) => updateItem(i, 'description', e.target.value)}
-                      placeholder="Tétel megnevezése" className="col-span-5 input-field px-2 py-1.5 rounded-lg text-xs" />
-                    <input type="number" value={item.quantity} onChange={(e) => updateItem(i, 'quantity', Number(e.target.value))}
-                      min="0" step="0.01" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
-                    <input type="text" value={item.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)}
-                      placeholder="db" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
-                    <input type="number" value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', Number(e.target.value))}
-                      min="0" step="1" className="col-span-2 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
-                    <div className="col-span-2 text-xs text-gray-300 text-right font-mono pr-1">
-                      {formatMoney(lineTotal, currency)}
+                  <div key={i}>
+                    {/* Desktop row */}
+                    <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
+                      <input type="text" value={item.description} onChange={(e) => updateItem(i, 'description', e.target.value)}
+                        placeholder="Tétel megnevezése" className="col-span-5 input-field px-2 py-1.5 rounded-lg text-xs" />
+                      <input type="number" value={item.quantity} onChange={(e) => updateItem(i, 'quantity', Number(e.target.value))}
+                        min="0" step="0.01" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
+                      <input type="text" value={item.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)}
+                        placeholder="db" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
+                      <input type="number" value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', Number(e.target.value))}
+                        min="0" step="1" className="col-span-2 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
+                      <div className="col-span-2 text-xs text-gray-300 text-right font-mono pr-1">
+                        {formatMoney(lineTotal, currency)}
+                      </div>
+                      <button onClick={() => removeItem(i)} disabled={items.length === 1}
+                        className="col-span-1 flex items-center justify-center text-gray-500 hover:text-red-400 disabled:opacity-30">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button onClick={() => removeItem(i)} disabled={items.length === 1}
-                      className="col-span-1 flex items-center justify-center text-gray-500 hover:text-red-400 disabled:opacity-30">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Mobile card */}
+                    <div className="sm:hidden glass-light rounded-xl p-3 space-y-2">
+                      <input type="text" value={item.description} onChange={(e) => updateItem(i, 'description', e.target.value)}
+                        placeholder="Tétel megnevezése" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[9px] text-gray-500">Menny.</label>
+                          <input type="number" value={item.quantity} onChange={(e) => updateItem(i, 'quantity', Number(e.target.value))}
+                            min="0" step="0.01" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-gray-500">Egység</label>
+                          <input type="text" value={item.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)}
+                            placeholder="db" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
+                        </div>
+                        <div>
+                          <label className="text-[9px] text-gray-500">Egységár</label>
+                          <input type="number" value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', Number(e.target.value))}
+                            min="0" step="1" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-300 font-mono">{formatMoney(lineTotal, currency)}</span>
+                        <button onClick={() => removeItem(i)} disabled={items.length === 1}
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 disabled:opacity-30">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )
               })}

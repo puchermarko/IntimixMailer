@@ -28,7 +28,7 @@ export default function MailView() {
   return (
     <div className="space-y-6 fade-in">
       {/* Fül sáv */}
-      <div className="flex items-center gap-1 border-b border-white/5 pb-0">
+      <div className="flex items-center gap-1 border-b border-white/5 pb-0 overflow-x-auto scrollbar-hide">
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -36,7 +36,7 @@ export default function MailView() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium transition-all border-b-2 -mb-px ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 -mb-px whitespace-nowrap ${
                 isActive
                   ? 'text-[#2EC4BE] border-[#1AA19C]'
                   : 'text-gray-400 border-transparent hover:text-gray-200 hover:border-white/10'
@@ -226,10 +226,10 @@ function InboxTab() {
           <ArrowLeft className="w-4 h-4" /> Vissza
         </button>
 
-        <div className="glass rounded-xl p-6 space-y-4">
-          <div className="flex items-start justify-between">
+        <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-white mb-2">{emailDetail.subject}</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-white mb-2">{emailDetail.subject}</h2>
               <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
                 <div className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" />
@@ -358,7 +358,7 @@ function InboxTab() {
   // ─── Email List ───
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <form onSubmit={handleSearch} className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input type="text" placeholder="Keresés a bejövőben..." value={searchInput}
@@ -369,9 +369,9 @@ function InboxTab() {
           )}
         </form>
         <button onClick={handleSync} disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0">
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0">
           <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Szinkronizálás...' : 'Szinkronizálás'}
+          <span className="sm:inline">{syncing ? 'Szinkronizálás...' : 'Szinkronizálás'}</span>
         </button>
       </div>
 
@@ -387,22 +387,22 @@ function InboxTab() {
           <div className="divide-y divide-white/5">
             {emails.map(email => (
               <button key={email.id} onClick={() => openEmail(email)}
-                className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-all text-left">
-                <div className="w-9 h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
+                className="w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-white/5 transition-all text-left">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
                   {(email.from_name || email.from_address)?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium text-gray-200 truncate">{email.from_name || email.from_address}</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-200 truncate">{email.from_name || email.from_address}</span>
                     {email.contact_name && (
-                      <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0">Kapcsolat</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0 hidden sm:inline">Kapcsolat</span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-400 truncate">{email.subject}</p>
+                  <p className="text-xs sm:text-sm text-gray-400 truncate">{email.subject}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {email.has_attachments === 1 && <Paperclip className="w-3.5 h-3.5 text-gray-500" />}
-                  <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
+                  <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
                 </div>
               </button>
             ))}

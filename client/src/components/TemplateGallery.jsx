@@ -175,13 +175,13 @@ export default function TemplateGallery() {
   // ─── Gallery View ───
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">Email sablonok</h2>
-          <p className="text-sm text-gray-400 mt-1">{allTemplates.length} sablon elérhető</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Email sablonok</h2>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">{allTemplates.length} sablon elérhető</p>
         </div>
         <button onClick={openNew}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all">
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all w-full sm:w-auto">
           <Plus className="w-4 h-4" /> Új sablon
         </button>
       </div>

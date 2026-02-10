@@ -173,15 +173,15 @@ export default function Settings() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white">Beállítások</h2>
-        <p className="text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-white">Beállítások</h2>
+        <p className="text-xs sm:text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
       </div>
 
       {/* Fülek */}
-      <div className="flex items-center gap-1 border-b border-white/5 mb-6">
+      <div className="flex items-center gap-1 border-b border-white/5 mb-6 overflow-x-auto scrollbar-hide">
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-all ${
+            className={`px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-all whitespace-nowrap ${
               activeTab === tab.id ? 'text-[#2EC4BE] border-[#1AA19C]' : 'text-gray-400 border-transparent hover:text-gray-200'
             }`}>{tab.label}</button>
         ))}

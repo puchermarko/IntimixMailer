@@ -99,12 +99,12 @@ export default function Contacts() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">Kapcsolatok</h2>
-          <p className="text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-white">Kapcsolatok</h2>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
         </div>
-        <button onClick={openCreate} className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2">
+        <button onClick={openCreate} className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus className="w-4 h-4" />
           Új kapcsolat
         </button>
@@ -144,26 +144,26 @@ export default function Contacts() {
               className="glass rounded-xl p-4 flex items-center justify-between hover:border-[#1AA19C]/20 transition-all cursor-pointer group"
               onClick={() => setSelectedContactId(contact.id)}
             >
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-sm font-bold shrink-0">
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs sm:text-sm font-bold shrink-0">
                   {contact.name?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-200 truncate">{contact.name}</p>
-                  <div className="flex items-center gap-3 mt-0.5">
+                  <div className="flex items-center gap-2 sm:gap-3 mt-0.5">
                     <span className="text-xs text-gray-500 flex items-center gap-1 truncate">
-                      <Mail className="w-3 h-3" />
-                      {contact.email}
+                      <Mail className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{contact.email}</span>
                     </span>
                     {contact.phone && (
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <span className="text-xs text-gray-500 items-center gap-1 hidden sm:flex">
                         <Phone className="w-3 h-3" />
                         {contact.phone}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="hidden md:flex items-center gap-4 shrink-0">
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
                     <BookOpen className="w-3 h-3" />
                     {contact.email_count} küldött
@@ -178,20 +178,20 @@ export default function Contacts() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 ml-3 shrink-0">
+              <div className="flex items-center gap-1 ml-2 sm:ml-3 shrink-0">
                 <button
                   onClick={(e) => { e.stopPropagation(); openEdit(contact) }}
-                  className="p-2 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all opacity-0 group-hover:opacity-100"
+                  className="p-2 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(contact.id, contact.name) }}
-                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
-                <ChevronRight className="w-4 h-4 text-gray-600 ml-1" />
+                <ChevronRight className="w-4 h-4 text-gray-600 ml-1 hidden sm:block" />
               </div>
             </div>
           ))}

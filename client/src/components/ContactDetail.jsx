@@ -155,25 +155,25 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   return (
     <div className="fade-in">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button onClick={onBack} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xl font-bold">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-base sm:text-xl font-bold shrink-0">
               {contact.name?.[0]?.toUpperCase() || '?'}
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">{contact.name}</h2>
-              <div className="flex items-center gap-4 mt-1">
-                <span className="text-sm text-gray-400 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5" />
-                  {contact.email}
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-2xl font-bold text-white truncate">{contact.name}</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-0.5 sm:mt-1">
+                <span className="text-xs sm:text-sm text-gray-400 flex items-center gap-1.5 truncate">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{contact.email}</span>
                 </span>
                 {contact.phone && (
-                  <span className="text-sm text-gray-400 flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" />
+                  <span className="text-xs sm:text-sm text-gray-400 flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 shrink-0" />
                     {contact.phone}
                   </span>
                 )}
@@ -183,7 +183,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
         </div>
         <button
           onClick={() => onEdit(contact)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all shrink-0"
         >
           <Edit3 className="w-4 h-4" />
           Szerkesztés
@@ -201,23 +201,23 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
       )}
 
       {/* Statisztikák */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{(contact.emails?.length || 0) + (contact.sentImap?.length || 0)}</p>
-          <p className="text-xs text-gray-500 mt-1">Küldött</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-white">{(contact.emails?.length || 0) + (contact.sentImap?.length || 0)}</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Küldött</p>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{contact.received?.length || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Fogadott</p>
+        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-white">{contact.received?.length || 0}</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Fogadott</p>
         </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{contact.attachments?.length || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Fájlok</p>
+        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+          <p className="text-lg sm:text-2xl font-bold text-white">{contact.attachments?.length || 0}</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Fájlok</p>
         </div>
       </div>
 
       {/* Fülek */}
-      <div className="flex gap-1 mb-4">
+      <div className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
         <button
           onClick={() => setActiveTab('emails')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
