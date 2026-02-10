@@ -1,157 +1,611 @@
-import { useState } from 'react'
-import { testSmtp } from '../lib/api'
+// Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
+import { useState, useEffect } from 'react'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig } from '../lib/api'
 import toast from 'react-hot-toast'
-import { Server, CheckCircle, XCircle, Loader2, Shield, Info } from 'lucide-react'
+import {
+  Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
+  Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle
+} from 'lucide-react'
 
 export default function Settings() {
   const [testing, setTesting] = useState(false)
   const [smtpStatus, setSmtpStatus] = useState(null)
+  const [activeTab, setActiveTab] = useState('general')
+  const [apiKeys, setApiKeys] = useState([])
+  const [newKeyName, setNewKeyName] = useState('')
+  const [creatingKey, setCreatingKey] = useState(false)
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState(null)
+  const [copiedKey, setCopiedKey] = useState(null)
+  const [visibleKeys, setVisibleKeys] = useState({})
+  const [docLang, setDocLang] = useState('hu')
+  const [envConfig, setEnvConfig] = useState({})
+  const [envLoading, setEnvLoading] = useState(false)
+  const [envSaving, setEnvSaving] = useState(false)
+  const [envDirty, setEnvDirty] = useState(false)
+
+  useEffect(() => {
+    if (activeTab === 'api') loadKeys()
+    if (activeTab === 'config') loadEnv()
+  }, [activeTab])
+
+  const loadEnv = async () => {
+    setEnvLoading(true)
+    try { setEnvConfig(await getEnvConfig()); setEnvDirty(false) } catch (err) { toast.error(err.message) }
+    finally { setEnvLoading(false) }
+  }
+
+  const handleEnvChange = (key, value) => {
+    setEnvConfig(prev => ({ ...prev, [key]: value }))
+    setEnvDirty(true)
+  }
+
+  const handleEnvSave = async () => {
+    setEnvSaving(true)
+    try {
+      const result = await updateEnvConfig(envConfig)
+      toast.success(result.message || 'Mentve!')
+      setEnvDirty(false)
+      await loadEnv()
+    } catch (err) { toast.error(err.message) }
+    finally { setEnvSaving(false) }
+  }
+
+  const loadKeys = async () => {
+    try { setApiKeys(await getApiKeys()) } catch {}
+  }
 
   const handleTestSmtp = async () => {
-    setTesting(true)
-    setSmtpStatus(null)
-    try {
-      await testSmtp()
-      setSmtpStatus('success')
-      toast.success('SMTP connection is working!')
-    } catch (err) {
-      setSmtpStatus('error')
-      toast.error(`SMTP test failed: ${err.message}`)
-    } finally {
-      setTesting(false)
-    }
+    setTesting(true); setSmtpStatus(null)
+    try { await testSmtp(); setSmtpStatus('success'); toast.success('SMTP kapcsolat rendben!') }
+    catch (err) { setSmtpStatus('error'); toast.error(err.message) }
+    finally { setTesting(false) }
   }
+
+  const handleCreateKey = async () => {
+    if (!newKeyName.trim()) return toast.error('Adj meg egy nevet a kulcsnak')
+    setCreatingKey(true)
+    try {
+      const result = await createApiKey(newKeyName.trim())
+      setNewlyCreatedKey(result.key)
+      setNewKeyName('')
+      await loadKeys()
+      toast.success('API kulcs létrehozva!')
+    } catch (err) { toast.error(err.message) }
+    finally { setCreatingKey(false) }
+  }
+
+  const handleDeleteKey = async (id) => {
+    if (!confirm('Törlöd ezt az API kulcsot? A külső appok amik használják le fognak állni.')) return
+    try { await deleteApiKey(id); await loadKeys(); toast.success('Kulcs törölve') } catch (err) { toast.error(err.message) }
+  }
+
+  const handleToggleKey = async (id) => {
+    try { await toggleApiKey(id); await loadKeys() } catch (err) { toast.error(err.message) }
+  }
+
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text)
+    setCopiedKey(id)
+    toast.success('Másolva!')
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
+
+  const maskKey = (key) => key.slice(0, 8) + '••••••••••••••••' + key.slice(-4)
+
+  const tabs = [
+    { id: 'general', label: 'Általános' },
+    { id: 'config', label: 'Konfiguráció' },
+    { id: 'api', label: 'API Kulcsok' },
+    { id: 'docs', label: 'API Dokumentáció' },
+  ]
+
+  const baseUrl = 'https://marketing.intimix.hu'
 
   return (
     <div>
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white">Settings</h2>
-        <p className="text-sm text-gray-400 mt-1">Manage your email server configuration</p>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white">Beállítások</h2>
+        <p className="text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
       </div>
 
-      <div className="space-y-6 max-w-2xl">
-        {/* SMTP Configuration */}
-        <div className="glass rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
-              <Server className="w-5 h-5 text-[#1AA19C]" />
+      {/* Fülek */}
+      <div className="flex items-center gap-1 border-b border-white/5 mb-6">
+        {tabs.map(tab => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+            className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px transition-all ${
+              activeTab === tab.id ? 'text-[#2EC4BE] border-[#1AA19C]' : 'text-gray-400 border-transparent hover:text-gray-200'
+            }`}>{tab.label}</button>
+        ))}
+      </div>
+
+      {/* ═══ ÁLTALÁNOS FÜL ═══ */}
+      {activeTab === 'general' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Server className="w-5 h-5 text-[#1AA19C]" /></div>
+              <div><h3 className="text-base font-semibold text-white">SMTP Szerver</h3><p className="text-xs text-gray-500">Levelezőszerver kapcsolat</p></div>
             </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">SMTP Server</h3>
-              <p className="text-xs text-gray-500">Mail server connection details</p>
+            <div className="space-y-2">
+              {[['Hoszt','mail.intimix.hu'],['Port','465 (SSL)'],['Felhasználó','info@intimix.hu'],['Titkosítás','TLS/SSL'],['Feladó','Intimix Shop']].map(([l,v]) => (
+                <div key={l} className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
+                  <span className="text-xs text-gray-400">{l}</span><span className="text-sm text-gray-200 font-mono">{v}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex items-center gap-3">
+              <button onClick={handleTestSmtp} disabled={testing}
+                className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                {testing ? <><Loader2 className="w-4 h-4 animate-spin" />Tesztelés...</> : 'Kapcsolat tesztelése'}
+              </button>
+              {smtpStatus === 'success' && <span className="flex items-center gap-1.5 text-green-400 text-sm"><CheckCircle className="w-4 h-4" />Kapcsolódva</span>}
+              {smtpStatus === 'error' && <span className="flex items-center gap-1.5 text-red-400 text-sm"><XCircle className="w-4 h-4" />Sikertelen</span>}
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
-              <span className="text-xs text-gray-400">Host</span>
-              <span className="text-sm text-gray-200 font-mono">mail.intimix.hu</span>
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><Shield className="w-5 h-5 text-green-400" /></div>
+              <div><h3 className="text-base font-semibold text-white">Biztonság</h3></div>
             </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
-              <span className="text-xs text-gray-400">Port</span>
-              <span className="text-sm text-gray-200 font-mono">465 (SSL)</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
-              <span className="text-xs text-gray-400">Username</span>
-              <span className="text-sm text-gray-200 font-mono">info@intimix.hu</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
-              <span className="text-xs text-gray-400">Encryption</span>
-              <span className="text-sm text-gray-200">TLS/SSL</span>
-            </div>
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
-              <span className="text-xs text-gray-400">From Name</span>
-              <span className="text-sm text-gray-200">Intimix Shop</span>
+            <div className="space-y-2 text-sm text-gray-400">
+              {['SMTP adatok szerver oldali környezeti változókban tárolva','JWT tokenek 24 órás lejárattal','Minden kapcsolat TLS/SSL titkosítással'].map(t => (
+                <div key={t} className="flex items-start gap-2"><CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" /><p>{t}</p></div>
+              ))}
             </div>
           </div>
 
-          <div className="mt-5 flex items-center gap-3">
-            <button
-              onClick={handleTestSmtp}
-              disabled={testing}
-              className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
-            >
-              {testing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Testing...
-                </>
-              ) : (
-                'Test Connection'
-              )}
-            </button>
-            {smtpStatus === 'success' && (
-              <div className="flex items-center gap-1.5 text-green-400 text-sm fade-in">
-                <CheckCircle className="w-4 h-4" />
-                Connected
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><Info className="w-5 h-5 text-blue-400" /></div>
+              <div><h3 className="text-base font-semibold text-white">Sablon változók</h3></div>
+            </div>
+            <div className="space-y-2">
+              {[['{{name}}','Címzett neve'],['{{email}}','Email cím'],['{{order_id}}','Rendelés azonosító'],['{{tracking_number}}','Nyomkövetési szám'],['{{tracking_url}}','Nyomkövetési link'],['{{delivery_time}}','Szállítási idő'],['{{delivery_phone}}','Futár telefonszáma']].map(([v,d]) => (
+                <div key={v} className="flex items-center justify-between px-4 py-2 rounded-lg glass-light">
+                  <code className="text-xs text-[#2EC4BE] font-mono">{v}</code><span className="text-xs text-gray-400">{d}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ KONFIGURÁCIÓ FÜL - .env szerkesztése ═══ */}
+      {activeTab === 'config' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          {envLoading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" /></div>
+          ) : (
+            <>
+              <div className="glass rounded-xl p-4 flex items-start gap-3 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-300 font-medium">SMTP/IMAP változások után szerver újraindítás szükséges</p>
+                  <p className="text-xs text-gray-500 mt-0.5">A jelszavak és a JWT titok maszkolt formában jelennek meg. Csak akkor írd felül, ha változtatni akarod.</p>
+                </div>
+              </div>
+
+              {/* SMTP */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Server className="w-5 h-5 text-[#1AA19C]" /></div>
+                  <div><h3 className="text-base font-semibold text-white">SMTP beállítások</h3><p className="text-xs text-gray-500">Kimenő levelezőszerver</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-400 mb-1">SMTP hoszt</label>
+                    <input type="text" value={envConfig.SMTP_HOST || ''} onChange={(e) => handleEnvChange('SMTP_HOST', e.target.value)}
+                      placeholder="mail.example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">SMTP port</label>
+                    <input type="text" value={envConfig.SMTP_PORT || ''} onChange={(e) => handleEnvChange('SMTP_PORT', e.target.value)}
+                      placeholder="465" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">SMTP felhasználó</label>
+                    <input type="text" value={envConfig.SMTP_USER || ''} onChange={(e) => handleEnvChange('SMTP_USER', e.target.value)}
+                      placeholder="info@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">SMTP jelszó</label>
+                    <input type="password" value={envConfig.SMTP_PASS || ''} onChange={(e) => handleEnvChange('SMTP_PASS', e.target.value)}
+                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div className="col-span-2"><label className="block text-xs text-gray-400 mb-1">Feladó neve</label>
+                    <input type="text" value={envConfig.SMTP_FROM_NAME || ''} onChange={(e) => handleEnvChange('SMTP_FROM_NAME', e.target.value)}
+                      placeholder="Intimix Shop" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* IMAP */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><Server className="w-5 h-5 text-blue-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">IMAP beállítások</h3><p className="text-xs text-gray-500">Bejövő levelezőszerver (szinkronizálás)</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-400 mb-1">IMAP hoszt</label>
+                    <input type="text" value={envConfig.IMAP_HOST || ''} onChange={(e) => handleEnvChange('IMAP_HOST', e.target.value)}
+                      placeholder="mail.example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">IMAP port</label>
+                    <input type="text" value={envConfig.IMAP_PORT || ''} onChange={(e) => handleEnvChange('IMAP_PORT', e.target.value)}
+                      placeholder="993" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">IMAP felhasználó</label>
+                    <input type="text" value={envConfig.IMAP_USER || ''} onChange={(e) => handleEnvChange('IMAP_USER', e.target.value)}
+                      placeholder="info@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">IMAP jelszó</label>
+                    <input type="password" value={envConfig.IMAP_PASS || ''} onChange={(e) => handleEnvChange('IMAP_PASS', e.target.value)}
+                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* Hitelesítés */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><Shield className="w-5 h-5 text-green-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Bejelentkezés & biztonság</h3><p className="text-xs text-gray-500">Admin fiók és JWT beállítások</p></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-xs text-gray-400 mb-1">Bejelentkezési email</label>
+                    <input type="email" value={envConfig.LOGIN_EMAIL || ''} onChange={(e) => handleEnvChange('LOGIN_EMAIL', e.target.value)}
+                      placeholder="admin@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Bejelentkezési jelszó</label>
+                    <input type="password" value={envConfig.LOGIN_PASSWORD || ''} onChange={(e) => handleEnvChange('LOGIN_PASSWORD', e.target.value)}
+                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">JWT titok</label>
+                    <input type="password" value={envConfig.JWT_SECRET || ''} onChange={(e) => handleEnvChange('JWT_SECRET', e.target.value)}
+                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs text-gray-400 mb-1">Szerver port</label>
+                    <input type="text" value={envConfig.PORT || ''} onChange={(e) => handleEnvChange('PORT', e.target.value)}
+                      placeholder="3001" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* Mentés gomb */}
+              <div className="flex items-center gap-3">
+                <button onClick={handleEnvSave} disabled={envSaving || !envDirty}
+                  className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  {envSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Mentés
+                </button>
+                {envDirty && <span className="text-xs text-amber-400 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />Mentetlen változások</span>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ═══ API KULCSOK FÜL ═══ */}
+      {activeTab === 'api' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center"><Key className="w-5 h-5 text-amber-400" /></div>
+              <div><h3 className="text-base font-semibold text-white">API Kulcsok</h3><p className="text-xs text-gray-500">Kulcsok kezelése külső alkalmazásokhoz (Laravel, Rust, stb.)</p></div>
+            </div>
+
+            {/* Új kulcs létrehozása */}
+            <div className="flex items-center gap-2 mb-4">
+              <input type="text" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)}
+                placeholder="Kulcs neve (pl. Laravel Webshop, Rust Backend)" className="input-field flex-1 px-3 py-2 text-sm"
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateKey()} />
+              <button onClick={handleCreateKey} disabled={creatingKey}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0">
+                {creatingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Generálás
+              </button>
+            </div>
+
+            {/* Frissen generált kulcs figyelmeztetés */}
+            {newlyCreatedKey && (
+              <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 fade-in">
+                <p className="text-xs text-amber-400 font-medium mb-2">⚠ Másold ki most ezt a kulcsot — többet nem fog teljes egészében megjelenni!</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-sm text-white font-mono bg-black/30 px-3 py-2 rounded-lg break-all">{newlyCreatedKey}</code>
+                  <button onClick={() => copyToClipboard(newlyCreatedKey, 'new')}
+                    className="p-2 rounded-lg text-amber-400 hover:bg-amber-500/20 transition-all shrink-0">
+                    {copiedKey === 'new' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
             )}
-            {smtpStatus === 'error' && (
-              <div className="flex items-center gap-1.5 text-red-400 text-sm fade-in">
-                <XCircle className="w-4 h-4" />
-                Connection failed
+
+            {/* Kulcs lista */}
+            {apiKeys.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">Még nincs API kulcs. Generálj egyet fent.</p>
+            ) : (
+              <div className="space-y-2">
+                {apiKeys.map(k => (
+                  <div key={k.id} className="flex items-center gap-3 px-4 py-3 rounded-lg glass-light">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-200">{k.name}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${k.active ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                          {k.active ? 'Aktív' : 'Letiltva'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="text-xs text-gray-400 font-mono">
+                          {visibleKeys[k.id] ? k.key : maskKey(k.key)}
+                        </code>
+                        <button onClick={() => setVisibleKeys(v => ({ ...v, [k.id]: !v[k.id] }))}
+                          className="text-gray-500 hover:text-gray-300"><Eye className="w-3 h-3" /></button>
+                        <button onClick={() => copyToClipboard(k.key, k.id)}
+                          className="text-gray-500 hover:text-[#2EC4BE]">
+                          {copiedKey === k.id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-600 mt-1">
+                        Létrehozva: {new Date(k.created_at + 'Z').toLocaleDateString('hu-HU')}
+                        {k.last_used_at && <> · Utoljára használva: {new Date(k.last_used_at + 'Z').toLocaleDateString('hu-HU')}</>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => handleToggleKey(k.id)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${k.active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-green-400 hover:bg-green-500/10'}`}>
+                        {k.active ? 'Letiltás' : 'Engedélyezés'}
+                      </button>
+                      <button onClick={() => handleDeleteKey(k.id)}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
         </div>
+      )}
 
-        {/* Security info */}
-        <div className="glass rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-green-400" />
+      {/* ═══ API DOKI FÜL - ez marad kétnyelvű mert a fejlesztők lehet nem beszélnek magyarul ═══ */}
+      {activeTab === 'docs' && (
+        <div className="space-y-6 fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <BookOpen className="w-5 h-5 text-[#1AA19C]" />
+              <h3 className="text-lg font-semibold text-white">API Dokumentáció</h3>
             </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">Security</h3>
-              <p className="text-xs text-gray-500">Your credentials are stored securely</p>
+            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+              <button onClick={() => setDocLang('en')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${docLang === 'en' ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                🇬🇧 English
+              </button>
+              <button onClick={() => setDocLang('hu')}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${docLang === 'hu' ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'}`}>
+                🇭🇺 Magyar
+              </button>
             </div>
           </div>
 
-          <div className="space-y-3 text-sm text-gray-400">
-            <div className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-              <p>SMTP credentials are stored in server-side environment variables only</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-              <p>Authentication uses JWT tokens with 24-hour expiry</p>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 shrink-0" />
-              <p>All SMTP connections use TLS/SSL encryption</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Template variables reference */}
-        <div className="glass rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-              <Info className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">Template Variables</h3>
-              <p className="text-xs text-gray-500">Available placeholders for email personalization</p>
+          <div className="glass rounded-xl p-6">
+            <h4 className="text-sm font-semibold text-white mb-2">
+              {docLang === 'en' ? 'Authentication' : 'Hitelesítés'}
+            </h4>
+            <p className="text-sm text-gray-400 mb-3">
+              {docLang === 'en'
+                ? 'All external API endpoints require an API key. Pass it via the X-Api-Key header or as a query parameter.'
+                : 'Minden külső API végpont API kulcsot igényel. Küldd el az X-Api-Key fejlécben vagy api_key query paraméterként.'}
+            </p>
+            <div className="space-y-2">
+              <CodeBlock label="Header" code={`X-Api-Key: imx_your_api_key_here`} onCopy={copyToClipboard} copiedKey={copiedKey} />
+              <CodeBlock label="Query" code={`${baseUrl}/api/v1/contacts?api_key=imx_your_api_key_here`} onCopy={copyToClipboard} copiedKey={copiedKey} />
             </div>
           </div>
 
-          <div className="space-y-2">
-            {[
-              { var: '{{name}}', desc: 'Recipient\'s full name' },
-              { var: '{{email}}', desc: 'Recipient\'s email address' },
-              { var: '{{order_id}}', desc: 'Order identification number' },
-              { var: '{{tracking_number}}', desc: 'Shipping tracking number' },
-              { var: '{{tracking_url}}', desc: 'Tracking page URL (e.g. FoxPost link)' },
-              { var: '{{delivery_time}}', desc: 'Delivery time window (e.g. 11:00-14:00)' },
-              { var: '{{delivery_phone}}', desc: 'Courier phone number' },
-            ].map(item => (
-              <div key={item.var} className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
-                <code className="text-xs text-[#2EC4BE] font-mono">{item.var}</code>
-                <span className="text-xs text-gray-400">{item.desc}</span>
+          <div className="glass rounded-xl p-6">
+            <h4 className="text-sm font-semibold text-white mb-1">{docLang === 'en' ? 'Base URL' : 'Alap URL'}</h4>
+            <CodeBlock code={`${baseUrl}/api/v1`} onCopy={copyToClipboard} copiedKey={copiedKey} />
+          </div>
+
+          {/* Sablonok */}
+          <ApiSection title={docLang === 'en' ? 'Templates' : 'Sablonok'}
+            desc={docLang === 'en' ? 'Read email templates.' : 'Email sablonok lekérdezése.'}>
+            <Endpoint method="GET" path="/api/v1/templates"
+              desc={docLang === 'en' ? 'List all custom templates' : 'Összes egyéni sablon listázása'}
+              response={`{\n  "templates": [\n    {\n      "id": "uuid",\n      "name": "Order Confirmation",\n      "description": "...",\n      "category": "Orders",\n      "subject": "Your order #{{order_id}}",\n      "html": "<html>...</html>",\n      "created_at": "2025-01-01T00:00:00",\n      "updated_at": "2025-01-01T00:00:00"\n    }\n  ]\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/templates/:id"
+              desc={docLang === 'en' ? 'Get a single template by ID' : 'Egy sablon lekérdezése ID alapján'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
+          {/* Kapcsolatok */}
+          <ApiSection title={docLang === 'en' ? 'Contacts' : 'Kapcsolatok'}
+            desc={docLang === 'en' ? 'Full CRUD for the contact manager.' : 'Teljes CRUD a kapcsolatkezelőhöz.'}>
+            <Endpoint method="GET" path="/api/v1/contacts"
+              desc={docLang === 'en' ? 'List contacts (paginated)' : 'Kapcsolatok listázása (lapozható)'}
+              params={docLang === 'en'
+                ? 'search (optional), page (default 1), limit (default 50)'
+                : 'search (opcionális), page (alapértelmezett 1), limit (alapértelmezett 50)'}
+              response={`{\n  "contacts": [\n    {\n      "id": "uuid",\n      "name": "Kiss Anna",\n      "email": "anna@example.com",\n      "phone": "+3630...",\n      "notes": "...",\n      "sent_count": 5,\n      "received_count": 3\n    }\n  ],\n  "total": 42,\n  "page": 1,\n  "limit": 50\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/contacts/:id"
+              desc={docLang === 'en' ? 'Get a single contact' : 'Egy kapcsolat lekérdezése'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="POST" path="/api/v1/contacts"
+              desc={docLang === 'en' ? 'Create a new contact' : 'Új kapcsolat létrehozása'}
+              body={`{\n  "name": "Kiss Anna",       // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "email": "anna@ex.com",   // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "phone": "+3630...",      // ${docLang === 'en' ? 'optional' : 'opcionális'}\n  "notes": "VIP customer"   // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="PUT" path="/api/v1/contacts/:id"
+              desc={docLang === 'en' ? 'Update a contact' : 'Kapcsolat módosítása'}
+              body={`{\n  "name": "Kiss Anna",\n  "email": "anna@ex.com",\n  "phone": "+3630...",\n  "notes": "Updated notes"\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="DELETE" path="/api/v1/contacts/:id"
+              desc={docLang === 'en' ? 'Delete a contact' : 'Kapcsolat törlése'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
+          {/* Email küldés */}
+          <ApiSection title={docLang === 'en' ? 'Send Email' : 'Email küldés'}
+            desc={docLang === 'en' ? 'Send emails programmatically, optionally using templates.' : 'Email küldés programozottan, opcionálisan sablonokkal.'}>
+            <Endpoint method="POST" path="/api/v1/send"
+              desc={docLang === 'en' ? 'Send an email' : 'Email küldése'}
+              body={`{\n  "to": "customer@example.com",  // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "subject": "Your order",       // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "html": "<h1>Hello</h1>",      // ${docLang === 'en' ? 'required if no template_id' : 'kötelező ha nincs template_id'}\n  "template_id": "uuid",         // ${docLang === 'en' ? 'optional, uses template HTML' : 'opcionális, sablon HTML-t használ'}\n  "variables": {                  // ${docLang === 'en' ? 'optional, replaces {{key}}' : 'opcionális, {{key}} cserélése'}\n    "name": "Kiss Anna",\n    "order_id": "10042"\n  },\n  "cc": "cc@ex.com",             // ${docLang === 'en' ? 'optional' : 'opcionális'}\n  "bcc": "bcc@ex.com"            // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
+              response={`{\n  "success": true,\n  "messageId": "<msg-id@mail.intimix.hu>"\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
+          {/* Kód példák */}
+          <div className="glass rounded-xl p-6">
+            <h4 className="text-sm font-semibold text-white mb-4">
+              {docLang === 'en' ? 'Code Examples' : 'Kód példák'}
+            </h4>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-amber-400 font-medium mb-2">Laravel (PHP)</p>
+                <CodeBlock code={`use Illuminate\\Support\\Facades\\Http;
+
+$response = Http::withHeaders([
+    'X-Api-Key' => 'imx_your_api_key_here',
+    'Content-Type' => 'application/json',
+])->post('${baseUrl}/api/v1/send', [
+    'to' => 'customer@example.com',
+    'subject' => 'Rendelés visszaigazolás',
+    'template_id' => 'your-template-uuid',
+    'variables' => [
+        'name' => 'Kiss Anna',
+        'order_id' => '10042',
+    ],
+]);
+
+// Kapcsolat létrehozása
+$contact = Http::withHeaders([
+    'X-Api-Key' => 'imx_your_api_key_here',
+    'Content-Type' => 'application/json',
+])->post('${baseUrl}/api/v1/contacts', [
+    'name' => 'Kiss Anna',
+    'email' => 'anna@example.com',
+    'phone' => '+36301234567',
+]);`} onCopy={copyToClipboard} copiedKey={copiedKey} />
               </div>
-            ))}
+
+              <div>
+                <p className="text-xs text-orange-400 font-medium mb-2">Rust (reqwest)</p>
+                <CodeBlock code={`use reqwest::Client;
+use serde_json::json;
+
+let client = Client::new();
+
+// Email küldés sablonnal
+let res = client.post("${baseUrl}/api/v1/send")
+    .header("X-Api-Key", "imx_your_api_key_here")
+    .json(&json!({
+        "to": "customer@example.com",
+        "subject": "Rendelés visszaigazolás",
+        "template_id": "your-template-uuid",
+        "variables": {
+            "name": "Kiss Anna",
+            "order_id": "10042"
+        }
+    }))
+    .send()
+    .await?;
+
+// Kapcsolatok listázása
+let contacts = client.get("${baseUrl}/api/v1/contacts")
+    .header("X-Api-Key", "imx_your_api_key_here")
+    .query(&[("search", "anna"), ("limit", "10")])
+    .send()
+    .await?;`} onCopy={copyToClipboard} copiedKey={copiedKey} />
+              </div>
+
+              <div>
+                <p className="text-xs text-yellow-400 font-medium mb-2">cURL</p>
+                <CodeBlock code={`# Sablonok listázása
+curl -H "X-Api-Key: imx_your_api_key_here" \\
+  ${baseUrl}/api/v1/templates
+
+# Kapcsolat létrehozása
+curl -X POST -H "X-Api-Key: imx_your_api_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name":"Kiss Anna","email":"anna@ex.com"}' \\
+  ${baseUrl}/api/v1/contacts
+
+# Email küldés
+curl -X POST -H "X-Api-Key: imx_your_api_key_here" \\
+  -H "Content-Type: application/json" \\
+  -d '{"to":"anna@ex.com","subject":"Hello","html":"<h1>Hi</h1>"}' \\
+  ${baseUrl}/api/v1/send`} onCopy={copyToClipboard} copiedKey={copiedKey} />
+              </div>
+            </div>
+          </div>
+
+          {/* Hibakódok */}
+          <div className="glass rounded-xl p-6">
+            <h4 className="text-sm font-semibold text-white mb-3">
+              {docLang === 'en' ? 'Error Codes' : 'Hibakódok'}
+            </h4>
+            <div className="space-y-1.5">
+              {[
+                ['400', docLang === 'en' ? 'Bad Request — missing or invalid parameters' : 'Hibás kérés — hiányzó vagy érvénytelen paraméterek'],
+                ['401', docLang === 'en' ? 'Unauthorized — missing or invalid API key' : 'Jogosulatlan — hiányzó vagy érvénytelen API kulcs'],
+                ['403', docLang === 'en' ? 'Forbidden — API key is disabled' : 'Tiltott — az API kulcs le van tiltva'],
+                ['404', docLang === 'en' ? 'Not Found — resource does not exist' : 'Nem található — az erőforrás nem létezik'],
+                ['409', docLang === 'en' ? 'Conflict — resource already exists (e.g. duplicate email)' : 'Ütközés — az erőforrás már létezik (pl. duplikált email)'],
+                ['500', docLang === 'en' ? 'Server Error — internal error, check logs' : 'Szerverhiba — belső hiba, ellenőrizd a logokat'],
+              ].map(([code, desc]) => (
+                <div key={code} className="flex items-center gap-3 px-4 py-2 rounded-lg glass-light">
+                  <span className={`text-xs font-mono font-bold ${code.startsWith('4') ? 'text-amber-400' : 'text-red-400'}`}>{code}</span>
+                  <span className="text-xs text-gray-400">{desc}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-3">
+              {docLang === 'en'
+                ? 'All error responses return JSON: { "error": "description" }'
+                : 'Minden hibaválasz JSON formátumú: { "error": "leírás" }'}
+            </p>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Na ezek itt a segéd komponensek a dokihoz, semmi extra
+
+function CodeBlock({ code, label, onCopy, copiedKey }) {
+  const id = code.slice(0, 30)
+  return (
+    <div className="relative group">
+      {label && <p className="text-[10px] text-gray-500 mb-1">{label}</p>}
+      <pre className="bg-black/40 rounded-lg p-3 text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre-wrap break-all">{code}</pre>
+      <button onClick={() => onCopy(code, id)}
+        className="absolute top-2 right-2 p-1.5 rounded-md bg-white/5 text-gray-500 hover:text-[#2EC4BE] opacity-0 group-hover:opacity-100 transition-all">
+        {copiedKey === id ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
+  )
+}
+
+function ApiSection({ title, desc, children }) {
+  return (
+    <div className="glass rounded-xl p-6">
+      <h4 className="text-sm font-semibold text-white mb-1">{title}</h4>
+      {desc && <p className="text-xs text-gray-500 mb-4">{desc}</p>}
+      <div className="space-y-4">{children}</div>
+    </div>
+  )
+}
+
+function Endpoint({ method, path, desc, params, body, response, copyToClipboard, copiedKey, docLang }) {
+  const methodColors = { GET: 'text-green-400 bg-green-500/10', POST: 'text-blue-400 bg-blue-500/10', PUT: 'text-amber-400 bg-amber-500/10', DELETE: 'text-red-400 bg-red-500/10' }
+  return (
+    <div className="border border-white/5 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-2.5 bg-white/[0.02]">
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${methodColors[method] || ''}`}>{method}</span>
+        <code className="text-sm text-gray-200 font-mono">{path}</code>
+      </div>
+      <div className="px-4 py-3 space-y-2">
+        <p className="text-xs text-gray-400">{desc}</p>
+        {params && <p className="text-[10px] text-gray-500">{docLang === 'en' ? 'Params' : 'Paraméterek'}: {params}</p>}
+        {body && (
+          <div>
+            <p className="text-[10px] text-gray-500 mb-1">Body:</p>
+            <CodeBlock code={body} onCopy={copyToClipboard} copiedKey={copiedKey} />
+          </div>
+        )}
+        {response && (
+          <div>
+            <p className="text-[10px] text-gray-500 mb-1">{docLang === 'en' ? 'Response' : 'Válasz'}:</p>
+            <CodeBlock code={response} onCopy={copyToClipboard} copiedKey={copiedKey} />
+          </div>
+        )}
       </div>
     </div>
   )

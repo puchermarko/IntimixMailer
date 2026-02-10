@@ -1,3 +1,4 @@
+// Kapcsolatok kezelése - itt hozol létre, szerkesztesz, törölsz kontaktokat
 import { useState, useEffect } from 'react'
 import { getContacts, createContact, updateContact, deleteContact } from '../lib/api'
 import ContactDetail from './ContactDetail'
@@ -50,17 +51,17 @@ export default function Contacts() {
 
   const handleSave = async () => {
     if (!form.name || !form.email) {
-      toast.error('Name and email are required')
+      toast.error('A név és email kötelező')
       return
     }
     setSaving(true)
     try {
       if (editingContact) {
         await updateContact(editingContact.id, form)
-        toast.success('Contact updated')
+        toast.success('Kapcsolat frissítve')
       } else {
         await createContact(form)
-        toast.success('Contact created')
+        toast.success('Kapcsolat létrehozva')
       }
       setShowForm(false)
       setForm({ name: '', email: '', phone: '', notes: '' })
@@ -74,18 +75,18 @@ export default function Contacts() {
   }
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Delete contact "${name}"? This will also remove their email history and attachments.`)) return
+    if (!confirm(`Törlöd "${name}" kapcsolatot? Az email előzményei és csatolmányai is törlődnek.`)) return
     try {
       await deleteContact(id)
-      toast.success('Contact deleted')
+      toast.success('Kapcsolat törölve')
       if (selectedContactId === id) setSelectedContactId(null)
       await fetchContacts()
     } catch (err) {
-      toast.error(err.message)
+      toast.error('Hiba történt a kapcsolat törlése közben')
     }
   }
 
-  // If a contact is selected, show the detail view
+  // Ha ki van választva egy kapcsolat, részletes nézet
   if (selectedContactId) {
     return (
       <ContactDetail
@@ -100,16 +101,16 @@ export default function Contacts() {
     <div>
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Contacts</h2>
-          <p className="text-sm text-gray-400 mt-1">Manage your customer contacts</p>
+          <h2 className="text-2xl font-bold text-white">Kapcsolatok</h2>
+          <p className="text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
         </div>
         <button onClick={openCreate} className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2">
           <Plus className="w-4 h-4" />
-          New Contact
+          Új kapcsolat
         </button>
       </div>
 
-      {/* Search */}
+      {/* Keresés */}
       <div className="glass rounded-xl p-4 mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
@@ -117,13 +118,13 @@ export default function Contacts() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or phone..."
+            placeholder="Keresés név, email vagy telefon alapján..."
             className="input-field w-full pl-10 pr-4 py-2.5 rounded-lg text-sm"
           />
         </div>
       </div>
 
-      {/* Contact list */}
+      {/* Kapcsolat lista */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" />
@@ -132,7 +133,7 @@ export default function Contacts() {
         <div className="glass rounded-xl p-12 text-center">
           <User className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400 text-sm">
-            {search ? 'No contacts match your search' : 'No contacts yet. Create your first contact!'}
+            {search ? 'Nincs találat a keresésre' : 'Még nincs kapcsolat. Hozd létre az elsőt!'}
           </p>
         </div>
       ) : (
@@ -165,11 +166,15 @@ export default function Contacts() {
                 <div className="flex items-center gap-4 shrink-0">
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
                     <BookOpen className="w-3 h-3" />
-                    {contact.email_count} emails
+                    {contact.email_count} küldött
+                  </span>
+                  <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                    <BookOpen className="w-3 h-3" />
+                    {contact.received_count || 0} fogadott
                   </span>
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
                     <Paperclip className="w-3 h-3" />
-                    {contact.attachment_count} files
+                    {contact.attachment_count} fájl
                   </span>
                 </div>
               </div>
@@ -193,13 +198,13 @@ export default function Contacts() {
         </div>
       )}
 
-      {/* Create/Edit Modal */}
+      {/* Létrehozás/Szerkesztés modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
           <div className="glass glow rounded-2xl p-6 w-full max-w-md fade-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-white">
-                {editingContact ? 'Edit Contact' : 'New Contact'}
+                {editingContact ? 'Kapcsolat szerkesztése' : 'Új kapcsolat'}
               </h3>
               <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
                 <X className="w-5 h-5" />
@@ -208,12 +213,12 @@ export default function Contacts() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Name *</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Név *</label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="John Doe"
+                  placeholder="Kiss Anna"
                   className="input-field w-full px-4 py-2.5 rounded-lg text-sm"
                   autoFocus
                 />
@@ -224,12 +229,12 @@ export default function Contacts() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="john@example.com"
+                  placeholder="anna@example.com"
                   className="input-field w-full px-4 py-2.5 rounded-lg text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Phone</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Telefon</label>
                 <input
                   type="tel"
                   value={form.phone}
@@ -239,11 +244,11 @@ export default function Contacts() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1.5">Notes</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1.5">Megjegyzések</label>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
-                  placeholder="Optional notes about this contact..."
+                  placeholder="Opcionális megjegyzések a kapcsolatról..."
                   className="input-field w-full px-4 py-2.5 rounded-lg text-sm min-h-[80px] resize-y"
                 />
               </div>
@@ -254,7 +259,7 @@ export default function Contacts() {
                 onClick={() => setShowForm(false)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 glass-light transition-all"
               >
-                Cancel
+                Mégse
               </button>
               <button
                 onClick={handleSave}
@@ -262,7 +267,7 @@ export default function Contacts() {
                 className="flex-1 btn-primary py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {editingContact ? 'Update' : 'Create'}
+                {editingContact ? 'Frissítés' : 'Létrehozás'}
               </button>
             </div>
           </div>

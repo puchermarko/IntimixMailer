@@ -1,3 +1,4 @@
+// API hívások - minden backend kommunikáció innen megy ki
 const API_BASE = '/api'
 
 function getHeaders() {
@@ -56,7 +57,27 @@ export async function testSmtp() {
   return data
 }
 
-// ─── CONTACTS ────────────────────────────────────────────────
+// ─── ENV KONFIGURÁCIÓ ────────────────────────────────────────
+
+export async function getEnvConfig() {
+  const res = await fetch(`${API_BASE}/env`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch env config')
+  return data
+}
+
+export async function updateEnvConfig(config) {
+  const res = await fetch(`${API_BASE}/env`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(config)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update env config')
+  return data
+}
+
+// ─── KAPCSOLATOK ─────────────────────────────────────────────
 
 export async function getContacts() {
   const res = await fetch(`${API_BASE}/contacts`, { headers: getHeaders() })
@@ -113,4 +134,179 @@ export async function getEmailDetail(id) {
 
 export function getAttachmentUrl(id) {
   return `${API_BASE}/attachments/${id}/download`
+}
+
+// ─── BEJÖVŐ LEVELEK ──────────────────────────────────────────
+
+export async function syncInbox() {
+  const res = await fetch(`${API_BASE}/inbox/sync`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to sync inbox')
+  return data
+}
+
+export async function getInbox({ page = 1, limit = 50, search = '' } = {}) {
+  const params = new URLSearchParams({ page, limit, search })
+  const res = await fetch(`${API_BASE}/inbox?${params}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch inbox')
+  return data
+}
+
+export async function getInboxEmail(id) {
+  const res = await fetch(`${API_BASE}/inbox/${id}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch email')
+  return data
+}
+
+export async function deleteInboxEmail(id) {
+  const res = await fetch(`${API_BASE}/inbox/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete email')
+  return data
+}
+
+export function getInboxAttachmentUrl(id) {
+  return `${API_BASE}/inbox-attachments/${id}/download`
+}
+
+// ─── ELKÜLDÖTT LEVELEK ───────────────────────────────────────
+
+export async function getSentEmails({ page = 1, limit = 50, search = '' } = {}) {
+  const params = new URLSearchParams({ page, limit, search })
+  const res = await fetch(`${API_BASE}/sent?${params}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch sent emails')
+  return data
+}
+
+export async function syncSent() {
+  const res = await fetch(`${API_BASE}/sent/sync`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to sync sent')
+  return data
+}
+
+export async function getSentImapEmail(id) {
+  const res = await fetch(`${API_BASE}/sent-imap/${id}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch email')
+  return data
+}
+
+export function getSentImapAttachmentUrl(id) {
+  return `${API_BASE}/sent-imap-attachments/${id}/download`
+}
+
+// ─── EGYÉNI SABLONOK ─────────────────────────────────────────
+
+export async function getCustomTemplates() {
+  const res = await fetch(`${API_BASE}/templates`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch templates')
+  return data
+}
+
+export async function createTemplate({ name, description, category, subject, html }) {
+  const res = await fetch(`${API_BASE}/templates`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, category, subject, html })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create template')
+  return data
+}
+
+export async function updateTemplate(id, { name, description, category, subject, html }) {
+  const res = await fetch(`${API_BASE}/templates/${id}`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description, category, subject, html })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update template')
+  return data
+}
+
+export async function deleteTemplate(id) {
+  const res = await fetch(`${API_BASE}/templates/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete template')
+  return data
+}
+
+// ─── API KULCSOK ─────────────────────────────────────────────
+
+export async function getApiKeys() {
+  const res = await fetch(`${API_BASE}/api-keys`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch API keys')
+  return data
+}
+
+export async function createApiKey(name) {
+  const res = await fetch(`${API_BASE}/api-keys`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create API key')
+  return data
+}
+
+export async function deleteApiKey(id) {
+  const res = await fetch(`${API_BASE}/api-keys/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete API key')
+  return data
+}
+
+export async function toggleApiKey(id) {
+  const res = await fetch(`${API_BASE}/api-keys/${id}/toggle`, {
+    method: 'PUT',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to toggle API key')
+  return data
+}
+
+export async function replyToEmail({ to, subject, html, cc, bcc, inReplyTo, attachments }) {
+  const formData = new FormData()
+  formData.append('to', to)
+  formData.append('subject', subject)
+  formData.append('html', html)
+  if (cc) formData.append('cc', cc)
+  if (bcc) formData.append('bcc', bcc)
+  if (inReplyTo) formData.append('inReplyTo', inReplyTo)
+  if (attachments) {
+    attachments.forEach(file => formData.append('attachments', file))
+  }
+
+  const res = await fetch(`${API_BASE}/send-email`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: formData
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to send reply')
+  return data
 }

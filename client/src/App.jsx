@@ -1,3 +1,4 @@
+// Fő app komponens - autentikáció kontextus és routing itt van
 import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login'

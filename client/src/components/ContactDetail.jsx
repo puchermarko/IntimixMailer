@@ -1,10 +1,11 @@
+// Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl } from '../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl } from '../lib/api'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
-  Clock, ChevronDown, ChevronUp
+  Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal
 } from 'lucide-react'
 
 function formatDate(dateStr) {
@@ -37,6 +38,12 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   const [emailDetail, setEmailDetail] = useState(null)
   const [loadingEmail, setLoadingEmail] = useState(false)
   const [previewAttachment, setPreviewAttachment] = useState(null)
+  const [expandedReceived, setExpandedReceived] = useState(null)
+  const [receivedDetail, setReceivedDetail] = useState(null)
+  const [loadingReceived, setLoadingReceived] = useState(false)
+  const [expandedSentImap, setExpandedSentImap] = useState(null)
+  const [sentImapDetail, setSentImapDetail] = useState(null)
+  const [loadingSentImap, setLoadingSentImap] = useState(false)
 
   const token = localStorage.getItem('intimix_token')
 
@@ -77,6 +84,57 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
     return `${getAttachmentUrl(id)}?token=${token}`
   }
 
+  const getInboxAuthUrl = (id) => {
+    return `${getInboxAttachmentUrl(id)}?token=${token}`
+  }
+
+  const handleExpandReceived = async (emailId) => {
+    if (expandedReceived === emailId) {
+      setExpandedReceived(null)
+      setReceivedDetail(null)
+      return
+    }
+    setExpandedReceived(emailId)
+    setLoadingReceived(true)
+    try {
+      const data = await getInboxEmail(emailId)
+      setReceivedDetail(data)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setLoadingReceived(false)
+    }
+  }
+
+  const handleExpandSentImap = async (emailId) => {
+    if (expandedSentImap === emailId) {
+      setExpandedSentImap(null)
+      setSentImapDetail(null)
+      return
+    }
+    setExpandedSentImap(emailId)
+    setLoadingSentImap(true)
+    try {
+      const data = await getSentImapEmail(emailId)
+      setSentImapDetail(data)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setLoadingSentImap(false)
+    }
+  }
+
+  const getSentImapAuthUrl = (id) => {
+    return `${getSentImapAttachmentUrl(id)}?token=${token}`
+  }
+
+  const getAttUrl = (att) => {
+    if (att._authUrl) return att._authUrl
+    if (att.source === 'inbox') return getInboxAuthUrl(att.id)
+    if (att.source === 'sent_imap') return getSentImapAuthUrl(att.id)
+    return getAuthUrl(att.id)
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -88,8 +146,8 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   if (!contact) {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-400">Contact not found</p>
-        <button onClick={onBack} className="text-[#2EC4BE] text-sm mt-2 hover:underline">Go back</button>
+        <p className="text-gray-400">Kapcsolat nem található</p>
+        <button onClick={onBack} className="text-[#2EC4BE] text-sm mt-2 hover:underline">Vissza</button>
       </div>
     )
   }
@@ -128,11 +186,11 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
         >
           <Edit3 className="w-4 h-4" />
-          Edit
+          Szerkesztés
         </button>
       </div>
 
-      {/* Notes */}
+      {/* Megjegyzések */}
       {contact.notes && (
         <div className="glass rounded-xl p-4 mb-4">
           <div className="flex items-start gap-2">
@@ -142,25 +200,23 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Statisztikák */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{contact.emails?.length || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Emails Sent</p>
+          <p className="text-2xl font-bold text-white">{(contact.emails?.length || 0) + (contact.sentImap?.length || 0)}</p>
+          <p className="text-xs text-gray-500 mt-1">Küldött</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-white">{contact.received?.length || 0}</p>
+          <p className="text-xs text-gray-500 mt-1">Fogadott</p>
         </div>
         <div className="glass rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-white">{contact.attachments?.length || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Files</p>
-        </div>
-        <div className="glass rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">
-            {contact.created_at ? new Date(contact.created_at + 'Z').toLocaleDateString('hu-HU') : '—'}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">Created</p>
+          <p className="text-xs text-gray-500 mt-1">Fájlok</p>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Fülek */}
       <div className="flex gap-1 mb-4">
         <button
           onClick={() => setActiveTab('emails')}
@@ -171,8 +227,21 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
           }`}
         >
           <span className="flex items-center gap-2">
-            <Mail className="w-4 h-4" />
-            Email History ({contact.emails?.length || 0})
+            <SendHorizontal className="w-4 h-4" />
+            Küldött ({(contact.emails?.length || 0) + (contact.sentImap?.length || 0)})
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('received')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'received'
+              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <Inbox className="w-4 h-4" />
+            Fogadott ({contact.received?.length || 0})
           </span>
         </button>
         <button
@@ -185,87 +254,195 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
         >
           <span className="flex items-center gap-2">
             <Paperclip className="w-4 h-4" />
-            File Manager ({contact.attachments?.length || 0})
+            Fájlok ({contact.attachments?.length || 0})
           </span>
         </button>
       </div>
 
-      {/* Email History Tab */}
-      {activeTab === 'emails' && (
+      {/* Küldött levelek fül (helyi + IMAP összefésülve) */}
+      {activeTab === 'emails' && (() => {
+        const localEmails = (contact.emails || []).map(e => ({ ...e, _source: 'local', _date: e.sent_at }))
+        const imapEmails = (contact.sentImap || []).map(e => ({ ...e, _source: 'imap', _date: e.date }))
+        const allSent = [...localEmails, ...imapEmails].sort((a, b) => new Date(b._date) - new Date(a._date))
+
+        return (
+          <div className="space-y-2">
+            {allSent.length === 0 ? (
+              <div className="glass rounded-xl p-10 text-center">
+                <SendHorizontal className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">Még nem küldtél emailt ennek a kapcsolatnak</p>
+              </div>
+            ) : (
+              allSent.map(email => {
+                const isLocal = email._source === 'local'
+                const isExpanded = isLocal ? expandedEmail === email.id : expandedSentImap === email.id
+                const isLoading = isLocal ? loadingEmail : loadingSentImap
+                const detail = isLocal ? emailDetail : sentImapDetail
+                const handleExpand = isLocal ? handleExpandEmail : handleExpandSentImap
+
+                return (
+                  <div key={`${email._source}-${email.id}`} className="glass rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => handleExpand(email.id)}
+                      className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-all"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${isLocal ? (email.status === 'sent' ? 'bg-green-400' : 'bg-red-400') : 'bg-green-400'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-200 truncate">{email.subject}</p>
+                          <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(email._date)}
+                            {!isLocal && email.has_attachments === 1 && <Paperclip className="w-3 h-3 ml-2" />}
+                          </p>
+                        </div>
+                      </div>
+                      {isExpanded
+                        ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+                        : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                      }
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-white/5 fade-in">
+                        {isLoading ? (
+                          <div className="p-6 flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 text-[#1AA19C] animate-spin" />
+                          </div>
+                        ) : detail ? (
+                          <div>
+                            <div className="p-4">
+                              {(isLocal ? detail.html : detail.html_body) ? (
+                                <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                                  <div
+                                    className="transform scale-[0.5] origin-top-left w-[200%]"
+                                    dangerouslySetInnerHTML={{ __html: (isLocal ? detail.html : detail.html_body)
+                                      .replace(/cid:intimix-logo-header/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/nyl/588/ikm/IntimiX2.svg')
+                                      .replace(/cid:intimix-logo-png/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/mwf/5mo/xol/IntimiX.png')
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono bg-white/5 rounded-lg p-4 max-h-[400px] overflow-auto">
+                                  {detail.text_body || '(Nincs tartalom)'}
+                                </pre>
+                              )}
+                            </div>
+                            {detail.attachments?.length > 0 && (
+                              <div className="px-4 pb-4">
+                                <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                                  <Paperclip className="w-3 h-3" />
+                                  {detail.attachments.length} csatolmány
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {detail.attachments.map(att => {
+                                    const Icon = getFileIcon(att.mimetype)
+                                    const attUrl = isLocal ? getAuthUrl(att.id) : getSentImapAuthUrl(att.id)
+                                    return (
+                                      <div key={att.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-light text-xs">
+                                        <Icon className="w-3.5 h-3.5 text-[#1AA19C]" />
+                                        <span className="text-gray-300">{att.filename}</span>
+                                        <span className="text-gray-600">({formatSize(att.size)})</span>
+                                        {isPreviewable(att.mimetype) && (
+                                          <button
+                                            onClick={() => setPreviewAttachment({ ...att, _authUrl: attUrl })}
+                                            className="text-[#2EC4BE] hover:text-[#1AA19C] transition-colors"
+                                          >
+                                            <Eye className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                        <a href={attUrl} target="_blank" rel="noopener noreferrer"
+                                          className="text-[#2EC4BE] hover:text-[#1AA19C] transition-colors">
+                                          <Download className="w-3.5 h-3.5" />
+                                        </a>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )
+      })()}
+
+      {/* Fogadott levelek fül */}
+      {activeTab === 'received' && (
         <div className="space-y-2">
-          {(!contact.emails || contact.emails.length === 0) ? (
+          {(!contact.received || contact.received.length === 0) ? (
             <div className="glass rounded-xl p-10 text-center">
-              <Mail className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">No emails sent to this contact yet</p>
+              <Inbox className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm">Még nem érkezett email ettől a kapcsolattól</p>
             </div>
           ) : (
-            contact.emails.map(email => (
+            contact.received.map(email => (
               <div key={email.id} className="glass rounded-xl overflow-hidden">
                 <button
-                  onClick={() => handleExpandEmail(email.id)}
+                  onClick={() => handleExpandReceived(email.id)}
                   className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-all"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${email.status === 'sent' ? 'bg-green-400' : 'bg-red-400'}`} />
+                    <div className="w-2 h-2 rounded-full shrink-0 bg-blue-400" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-200 truncate">{email.subject}</p>
                       <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {formatDate(email.sent_at)}
+                        {formatDate(email.date)}
+                        {email.has_attachments === 1 && <Paperclip className="w-3 h-3 ml-2" />}
                       </p>
                     </div>
                   </div>
-                  {expandedEmail === email.id
+                  {expandedReceived === email.id
                     ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
                     : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
                   }
                 </button>
 
-                {expandedEmail === email.id && (
+                {expandedReceived === email.id && (
                   <div className="border-t border-white/5 fade-in">
-                    {loadingEmail ? (
+                    {loadingReceived ? (
                       <div className="p-6 flex items-center justify-center">
                         <Loader2 className="w-5 h-5 text-[#1AA19C] animate-spin" />
                       </div>
-                    ) : emailDetail ? (
+                    ) : receivedDetail ? (
                       <div>
-                        {/* Email preview */}
                         <div className="p-4">
-                          <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                            <div
-                              className="transform scale-[0.5] origin-top-left w-[200%]"
-                              dangerouslySetInnerHTML={{ __html: emailDetail.html
-                                .replace(/cid:intimix-logo-header/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/nyl/588/ikm/IntimiX2.svg')
-                                .replace(/cid:intimix-logo-png/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/mwf/5mo/xol/IntimiX.png')
-                              }}
-                            />
-                          </div>
+                          {receivedDetail.html_body ? (
+                            <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                              <div
+                                className="transform scale-[0.5] origin-top-left w-[200%]"
+                                dangerouslySetInnerHTML={{ __html: receivedDetail.html_body }}
+                              />
+                            </div>
+                          ) : (
+                            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono bg-white/5 rounded-lg p-4 max-h-[400px] overflow-auto">
+                              {receivedDetail.text_body || '(Nincs tartalom)'}
+                            </pre>
+                          )}
                         </div>
-                        {/* Email attachments */}
-                        {emailDetail.attachments?.length > 0 && (
+                        {receivedDetail.attachments?.length > 0 && (
                           <div className="px-4 pb-4">
                             <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
                               <Paperclip className="w-3 h-3" />
-                              {emailDetail.attachments.length} attachment(s)
+                              {receivedDetail.attachments.length} csatolmány
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {emailDetail.attachments.map(att => {
+                              {receivedDetail.attachments.map(att => {
                                 const Icon = getFileIcon(att.mimetype)
                                 return (
                                   <div key={att.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg glass-light text-xs">
                                     <Icon className="w-3.5 h-3.5 text-[#1AA19C]" />
                                     <span className="text-gray-300">{att.filename}</span>
                                     <span className="text-gray-600">({formatSize(att.size)})</span>
-                                    {isPreviewable(att.mimetype) && (
-                                      <button
-                                        onClick={() => setPreviewAttachment(att)}
-                                        className="text-[#2EC4BE] hover:text-[#1AA19C] transition-colors"
-                                      >
-                                        <Eye className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
                                     <a
-                                      href={getAuthUrl(att.id)}
+                                      href={getInboxAuthUrl(att.id)}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-[#2EC4BE] hover:text-[#1AA19C] transition-colors"
@@ -288,13 +465,13 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
         </div>
       )}
 
-      {/* File Manager Tab */}
+      {/* Fájlkezelő fül */}
       {activeTab === 'files' && (
         <div>
           {(!contact.attachments || contact.attachments.length === 0) ? (
             <div className="glass rounded-xl p-10 text-center">
               <Paperclip className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">No files have been sent to this contact yet</p>
+              <p className="text-gray-400 text-sm">Még nincs fájl ehhez a kapcsolathoz</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -310,14 +487,14 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                     >
                       {att.mimetype?.startsWith('image/') ? (
                         <img
-                          src={getAuthUrl(att.id)}
+                          src={getAttUrl(att)}
                           alt={att.filename}
                           className="w-full h-full object-contain"
                         />
                       ) : att.mimetype?.includes('pdf') ? (
                         <div className="text-center">
                           <FileText className="w-10 h-10 text-red-400 mx-auto mb-1" />
-                          <p className="text-[10px] text-gray-500">PDF Document</p>
+                          <p className="text-[10px] text-gray-500">PDF dokumentum</p>
                         </div>
                       ) : (
                         <div className="text-center">
@@ -334,7 +511,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                         <p className="text-xs text-gray-500 mt-0.5">{formatSize(att.size)}</p>
                         {att.email_subject && (
                           <p className="text-[10px] text-gray-600 mt-1 truncate" title={att.email_subject}>
-                            From: {att.email_subject}
+                            {att.source === 'inbox' ? 'Fogadott:' : 'Küldött:'} {att.email_subject}
                           </p>
                         )}
                         <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(att.uploaded_at)}</p>
@@ -349,7 +526,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                           </button>
                         )}
                         <a
-                          href={getAuthUrl(att.id)}
+                          href={getAttUrl(att)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-1.5 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
@@ -366,7 +543,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
         </div>
       )}
 
-      {/* Attachment Preview Modal */}
+      {/* Csatolmány előnézet modal */}
       {previewAttachment && (
         <div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -380,13 +557,13 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={getAuthUrl(previewAttachment.id)}
+                  href={getAttUrl(previewAttachment)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Download
+                  Letöltés
                 </a>
                 <button
                   onClick={() => setPreviewAttachment(null)}
@@ -399,20 +576,20 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
             <div className="flex-1 bg-white rounded-xl overflow-hidden flex items-center justify-center">
               {previewAttachment.mimetype?.startsWith('image/') ? (
                 <img
-                  src={getAuthUrl(previewAttachment.id)}
+                  src={getAttUrl(previewAttachment)}
                   alt={previewAttachment.filename}
                   className="max-w-full max-h-[80vh] object-contain"
                 />
               ) : previewAttachment.mimetype?.includes('pdf') ? (
                 <iframe
-                  src={getAuthUrl(previewAttachment.id)}
+                  src={getAttUrl(previewAttachment)}
                   className="w-full h-[80vh]"
                   title={previewAttachment.filename}
                 />
               ) : (
                 <div className="p-10 text-center text-gray-500">
                   <File className="w-16 h-16 mx-auto mb-3 text-gray-400" />
-                  <p>Preview not available for this file type</p>
+                  <p>Előnézet nem elérhető ehhez a fájltípushoz</p>
                 </div>
               )}
             </div>
