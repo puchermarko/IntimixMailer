@@ -176,15 +176,15 @@ app.get('/api/contacts/:id', authenticate, (req, res) => {
 
 // Új kapcsolat létrehozása
 app.post('/api/contacts', authenticate, (req, res) => {
-  const { name, email, phone, notes, company, vat_id, street, city, zip, country } = req.body;
+  const { name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
 
   const existing = db.prepare('SELECT id FROM contacts WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'A contact with this email already exists' });
 
   const id = randomUUID();
-  db.prepare('INSERT INTO contacts (id, name, email, phone, notes, company, vat_id, street, city, zip, country) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-    id, name, email, phone || '', notes || '', company || '', vat_id || '', street || '', city || '', zip || '', country || ''
+  db.prepare('INSERT INTO contacts (id, name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, email, phone || '', notes || '', company || '', vat_id || '', street || '', street_number || '', city || '', zip || '', country || '', region || ''
   );
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   res.status(201).json(contact);
@@ -201,10 +201,10 @@ app.put('/api/contacts/:id', authenticate, (req, res) => {
     if (dup) return res.status(409).json({ error: 'Another contact with this email already exists' });
   }
 
-  const { company, vat_id, street, city, zip, country } = req.body;
+  const { company, vat_id, street, street_number, city, zip, country, region } = req.body;
   db.prepare(
-    "UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ?, company = ?, vat_id = ?, street = ?, city = ?, zip = ?, country = ?, updated_at = datetime('now') WHERE id = ?"
-  ).run(name || existing.name, email || existing.email, phone ?? existing.phone, notes ?? existing.notes, company ?? existing.company ?? '', vat_id ?? existing.vat_id ?? '', street ?? existing.street ?? '', city ?? existing.city ?? '', zip ?? existing.zip ?? '', country ?? existing.country ?? '', req.params.id);
+    "UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ?, company = ?, vat_id = ?, street = ?, street_number = ?, city = ?, zip = ?, country = ?, region = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(name || existing.name, email || existing.email, phone ?? existing.phone, notes ?? existing.notes, company ?? existing.company ?? '', vat_id ?? existing.vat_id ?? '', street ?? existing.street ?? '', street_number ?? existing.street_number ?? '', city ?? existing.city ?? '', zip ?? existing.zip ?? '', country ?? existing.country ?? '', region ?? existing.region ?? '', req.params.id);
 
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
   res.json(contact);
@@ -1018,7 +1018,7 @@ app.get('/api/quotes/:id', authenticate, (req, res) => {
 // Új árajánlat létrehozása
 app.post('/api/quotes', authenticate, (req, res) => {
   try {
-    const { contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, items } = req.body;
+    const { title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, items } = req.body;
     const id = randomUUID();
     const quote_number = nextQuoteNumber();
 
@@ -1032,8 +1032,8 @@ app.post('/api/quotes', authenticate, (req, res) => {
     const vat_amount = Math.round(subtotal * vatR / 100);
     const total = subtotal + vat_amount;
 
-    db.prepare(`INSERT INTO quotes (id, quote_number, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, subtotal, vat_amount, total, notes, status, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`).run(
-      id, quote_number, contact_id || null, contact_name || '', contact_email || '', contact_phone || '', contact_address || '', contact_vat || '', currency || 'HUF', vatR, subtotal, vat_amount, total, notes || '', valid_until || ''
+    db.prepare(`INSERT INTO quotes (id, quote_number, title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, subtotal, vat_amount, total, notes, status, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`).run(
+      id, quote_number, title || '', contact_id || null, contact_name || '', contact_email || '', contact_phone || '', contact_address || '', contact_vat || '', currency || 'HUF', vatR, subtotal, vat_amount, total, notes || '', valid_until || ''
     );
 
     const insertItem = db.prepare('INSERT INTO quote_items (id, quote_id, description, quantity, unit, unit_price, total, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -1053,7 +1053,7 @@ app.put('/api/quotes/:id', authenticate, (req, res) => {
     const existing = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
     if (!existing) return res.status(404).json({ error: 'Quote not found' });
 
-    const { contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, status, items } = req.body;
+    const { title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, status, items } = req.body;
 
     let subtotal = 0;
     const parsedItems = (items || []).map((item, i) => {
@@ -1065,8 +1065,8 @@ app.put('/api/quotes/:id', authenticate, (req, res) => {
     const vat_amount = Math.round(subtotal * vatR / 100);
     const total = subtotal + vat_amount;
 
-    db.prepare(`UPDATE quotes SET contact_id = ?, contact_name = ?, contact_email = ?, contact_phone = ?, contact_address = ?, contact_vat = ?, currency = ?, vat_rate = ?, subtotal = ?, vat_amount = ?, total = ?, notes = ?, status = ?, valid_until = ?, updated_at = datetime('now') WHERE id = ?`).run(
-      contact_id ?? existing.contact_id, contact_name ?? existing.contact_name, contact_email ?? existing.contact_email, contact_phone ?? existing.contact_phone, contact_address ?? existing.contact_address, contact_vat ?? existing.contact_vat, currency ?? existing.currency, vatR, subtotal, vat_amount, total, notes ?? existing.notes, status ?? existing.status, valid_until ?? existing.valid_until, req.params.id
+    db.prepare(`UPDATE quotes SET title = ?, contact_id = ?, contact_name = ?, contact_email = ?, contact_phone = ?, contact_address = ?, contact_vat = ?, currency = ?, vat_rate = ?, subtotal = ?, vat_amount = ?, total = ?, notes = ?, status = ?, valid_until = ?, updated_at = datetime('now') WHERE id = ?`).run(
+      title ?? existing.title ?? '', contact_id ?? existing.contact_id, contact_name ?? existing.contact_name, contact_email ?? existing.contact_email, contact_phone ?? existing.contact_phone, contact_address ?? existing.contact_address, contact_vat ?? existing.contact_vat, currency ?? existing.currency, vatR, subtotal, vat_amount, total, notes ?? existing.notes, status ?? existing.status, valid_until ?? existing.valid_until, req.params.id
     );
 
     // Tételek újraírása
@@ -1106,39 +1106,43 @@ function formatMoney(amount, currency = 'HUF') {
 function generateQuotePdf(quote, items, companyInfo, logoPath) {
   return new Promise((resolve, reject) => {
     const pdfPath = path.join(QUOTES_DIR, `${quote.id}.pdf`);
-    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    const pageW = doc.page.width - 100;
-    const accentColor = '#1AA19C';
+    const M = 50;
+    const pageW = doc.page.width - M * 2;
+    const accent = '#1AA19C';
 
-    // Logó
+    // ─── Logó (bal felső) ───
     if (logoPath && fs.existsSync(logoPath)) {
-      try { doc.image(logoPath, 50, 40, { height: 50 }); } catch {}
+      try { doc.image(logoPath, M, 40, { height: 45 }); } catch {}
     }
 
-    // Fejléc - Árajánlat felirat
-    doc.fontSize(24).fillColor(accentColor).text('ÁRAJÁNLAT', 50, 50, { align: 'right' });
-    doc.fontSize(10).fillColor('#666').text(quote.quote_number, 50, 78, { align: 'right' });
+    // ─── Fejléc jobb oldalon ───
+    doc.fontSize(22).fillColor(accent).text('ÁRAJÁNLAT', M, M, { width: pageW, align: 'right' });
+    doc.fontSize(9).fillColor('#666').text(quote.quote_number, M, M + 26, { width: pageW, align: 'right' });
+    if (quote.title) {
+      doc.fontSize(10).fillColor('#444').text(quote.title, M, M + 40, { width: pageW, align: 'right' });
+    }
 
-    doc.moveDown(0.5);
-    let y = 110;
-
-    // Vízszintes vonal
-    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor(accentColor).lineWidth(2).stroke();
+    let y = 105;
+    doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor(accent).lineWidth(2).stroke();
     y += 15;
 
-    // Két oszlop: Kiállító | Vevő
+    // ─── Két oszlop: Kiállító | Vevő ───
     const colW = pageW / 2 - 10;
+    const leftX = M;
+    const rightX = M + colW + 20;
+    const headerY = y;
 
     // Kiállító (bal)
-    doc.fontSize(8).fillColor(accentColor).text('KIÁLLÍTÓ', 50, y);
-    y += 14;
-    doc.fontSize(10).fillColor('#333').text(companyInfo.company_name || companyInfo.app_name || 'Cég neve', 50, y);
+    doc.fontSize(7).fillColor(accent).text('KIÁLLÍTÓ', leftX, y, { width: colW });
+    y += 13;
+    doc.fontSize(10).fillColor('#333').text(companyInfo.company_name || companyInfo.app_name || 'Cég neve', leftX, y, { width: colW });
     y += 14;
     const companyDetails = [
-      companyInfo.company_street, 
+      companyInfo.company_street,
       [companyInfo.company_zip, companyInfo.company_city].filter(Boolean).join(' '),
       companyInfo.company_country,
       companyInfo.company_vat ? `Adószám: ${companyInfo.company_vat}` : '',
@@ -1148,14 +1152,14 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
       companyInfo.company_bank_iban ? `IBAN: ${companyInfo.company_bank_iban}` : '',
     ].filter(Boolean);
     doc.fontSize(8).fillColor('#666');
-    for (const line of companyDetails) { doc.text(line, 50, y); y += 12; }
+    for (const line of companyDetails) { doc.text(line, leftX, y, { width: colW }); y += 11; }
 
     // Vevő (jobb)
-    let yRight = 125;
-    doc.fontSize(8).fillColor(accentColor).text('VEVŐ', 50 + colW + 20, yRight);
-    yRight += 14;
-    doc.fontSize(10).fillColor('#333').text(quote.contact_name || 'Ügyfél neve', 50 + colW + 20, yRight);
-    yRight += 14;
+    let yR = headerY;
+    doc.fontSize(7).fillColor(accent).text('VEVŐ', rightX, yR, { width: colW });
+    yR += 13;
+    doc.fontSize(10).fillColor('#333').text(quote.contact_name || 'Ügyfél neve', rightX, yR, { width: colW });
+    yR += 14;
     const clientDetails = [
       quote.contact_address,
       quote.contact_vat ? `Adószám: ${quote.contact_vat}` : '',
@@ -1163,81 +1167,92 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
       quote.contact_phone,
     ].filter(Boolean);
     doc.fontSize(8).fillColor('#666');
-    for (const line of clientDetails) { doc.text(line, 50 + colW + 20, yRight); yRight += 12; }
+    for (const line of clientDetails) { doc.text(line, rightX, yR, { width: colW }); yR += 11; }
 
-    y = Math.max(y, yRight) + 15;
+    y = Math.max(y, yR) + 12;
 
-    // Dátum sor
+    // ─── Dátum sor ───
     doc.fontSize(8).fillColor('#666');
-    doc.text(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, 50, y);
-    if (quote.valid_until) doc.text(`Érvényes: ${quote.valid_until}`, 250, y);
-    doc.text(`Pénznem: ${quote.currency}`, 400, y);
-    y += 20;
+    doc.text(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, M, y, { width: 150, continued: false });
+    if (quote.valid_until) doc.text(`Érvényes: ${quote.valid_until}`, M + 180, y, { width: 150 });
+    doc.text(`Pénznem: ${quote.currency}`, M + 360, y, { width: 100 });
+    y += 18;
 
-    // Vízszintes vonal
-    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
-    y += 5;
+    doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
+    y += 8;
 
-    // Táblázat fejléc
+    // ─── Táblázat fejléc ───
     const cols = [
-      { label: '#', x: 50, w: 25 },
-      { label: 'Megnevezés', x: 75, w: 220 },
-      { label: 'Menny.', x: 295, w: 45 },
-      { label: 'Egység', x: 340, w: 45 },
-      { label: 'Egységár', x: 385, w: 75 },
-      { label: 'Összeg', x: 460, w: 85 },
+      { label: '#', x: M, w: 25, align: 'right' },
+      { label: 'Megnevezés', x: M + 25, w: 220, align: 'left' },
+      { label: 'Menny.', x: M + 245, w: 45, align: 'right' },
+      { label: 'Egység', x: M + 290, w: 45, align: 'right' },
+      { label: 'Egységár', x: M + 335, w: 75, align: 'right' },
+      { label: 'Összeg', x: M + 410, w: 85, align: 'right' },
     ];
 
-    doc.fontSize(7).fillColor(accentColor);
-    for (const col of cols) { doc.text(col.label, col.x, y, { width: col.w, align: col.label === 'Megnevezés' ? 'left' : 'right' }); }
-    y += 14;
-    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#eee').lineWidth(0.5).stroke();
+    doc.fontSize(7).fillColor(accent);
+    for (const col of cols) doc.text(col.label, col.x, y, { width: col.w, align: col.align });
+    y += 13;
+    doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#eee').lineWidth(0.5).stroke();
     y += 5;
 
-    // Tételek
-    doc.fontSize(9).fillColor('#333');
+    // ─── Tételek ───
     items.forEach((item, i) => {
-      if (y > 720) { doc.addPage(); y = 50; }
-      const rowY = y;
-      // Zebra háttér
-      if (i % 2 === 0) { doc.rect(50, rowY - 2, pageW, 16).fillColor('#f8f9fa').fill(); }
-      doc.fillColor('#333');
-      doc.text(String(i + 1), cols[0].x, rowY, { width: cols[0].w, align: 'right' });
-      doc.text(item.description, cols[1].x, rowY, { width: cols[1].w });
-      doc.text(String(item.quantity), cols[2].x, rowY, { width: cols[2].w, align: 'right' });
-      doc.text(item.unit, cols[3].x, rowY, { width: cols[3].w, align: 'right' });
-      doc.text(formatMoney(item.unit_price, quote.currency), cols[4].x, rowY, { width: cols[4].w, align: 'right' });
-      doc.text(formatMoney(item.total, quote.currency), cols[5].x, rowY, { width: cols[5].w, align: 'right' });
-      y += 18;
+      if (y > 700) { doc.addPage(); y = M; }
+      if (i % 2 === 0) doc.save().rect(M, y - 2, pageW, 16).fillColor('#f8f9fa').fill().restore();
+      doc.fontSize(9).fillColor('#333');
+      for (const col of cols) {
+        let val = '';
+        if (col.label === '#') val = String(i + 1);
+        else if (col.label === 'Megnevezés') val = item.description || '';
+        else if (col.label === 'Menny.') val = String(item.quantity);
+        else if (col.label === 'Egység') val = item.unit;
+        else if (col.label === 'Egységár') val = formatMoney(item.unit_price, quote.currency);
+        else if (col.label === 'Összeg') val = formatMoney(item.total, quote.currency);
+        doc.text(val, col.x, y, { width: col.w, align: col.align });
+      }
+      y += 17;
     });
 
-    y += 10;
-    doc.moveTo(50, y).lineTo(50 + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
+    y += 8;
+    doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
     y += 10;
 
-    // Összesítés - jobb oldalon
-    const sumX = 380;
-    const sumW = 165;
+    // ─── Összesítés ───
+    const sumX = M + 310;
+    const sumW = pageW - 310;
     doc.fontSize(9).fillColor('#666');
-    doc.text('Nettó összeg:', sumX, y, { width: 80 }); doc.text(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 16;
-    doc.text(`ÁFA (${quote.vat_rate}%):`, sumX, y, { width: 80 }); doc.text(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 16;
-    doc.moveTo(sumX, y).lineTo(sumX + sumW, y).strokeColor(accentColor).lineWidth(1).stroke(); y += 8;
-    doc.fontSize(12).fillColor(accentColor).text('Összesen:', sumX, y, { width: 80 }); doc.text(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' }); y += 25;
+    doc.text('Nettó összeg:', sumX, y, { width: 80 });
+    doc.text(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    y += 15;
+    doc.text(`ÁFA (${quote.vat_rate}%):`, sumX, y, { width: 80 });
+    doc.text(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    y += 15;
+    doc.moveTo(sumX, y).lineTo(sumX + sumW, y).strokeColor(accent).lineWidth(1).stroke();
+    y += 8;
+    doc.fontSize(12).fillColor(accent);
+    doc.text('Összesen:', sumX, y, { width: 80 });
+    doc.text(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    y += 22;
 
-    // Megjegyzések
+    // ─── Megjegyzések ───
     if (quote.notes) {
-      doc.fontSize(8).fillColor(accentColor).text('MEGJEGYZÉSEK', 50, y); y += 12;
-      doc.fontSize(8).fillColor('#666').text(quote.notes, 50, y, { width: pageW }); y += 20;
+      doc.fontSize(7).fillColor(accent).text('MEGJEGYZÉSEK', M, y, { width: pageW });
+      y += 11;
+      doc.fontSize(8).fillColor('#666').text(quote.notes, M, y, { width: pageW });
     }
 
-    // Lábléc
-    const footerY = doc.page.height - 60;
-    doc.moveTo(50, footerY).lineTo(50 + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
+    // ─── Lábléc (csak az első oldalon, alulra) ───
+    const footerY = doc.page.height - 55;
+    doc.moveTo(M, footerY).lineTo(M + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
     doc.fontSize(7).fillColor('#999').text(
       `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`,
-      50, footerY + 8, { width: pageW, align: 'center' }
+      M, footerY + 8, { width: pageW, align: 'center' }
     );
 
+    // Töröljük az üres oldalakat ha vannak
+    const pages = doc.bufferedPageRange();
     doc.end();
     stream.on('finish', () => resolve(pdfPath));
     stream.on('error', reject);

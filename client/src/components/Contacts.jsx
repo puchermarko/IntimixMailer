@@ -15,7 +15,7 @@ export default function Contacts() {
   const [showForm, setShowForm] = useState(false)
   const [editingContact, setEditingContact] = useState(null)
   const [selectedContactId, setSelectedContactId] = useState(null)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', street_number: '', city: '', zip: '', country: '', region: '' })
   const [saving, setSaving] = useState(false)
 
   const fetchContacts = async () => {
@@ -39,13 +39,13 @@ export default function Contacts() {
 
   const openCreate = () => {
     setEditingContact(null)
-    setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
+    setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', street_number: '', city: '', zip: '', country: '', region: '' })
     setShowForm(true)
   }
 
   const openEdit = (contact) => {
     setEditingContact(contact)
-    setForm({ name: contact.name, email: contact.email, phone: contact.phone || '', notes: contact.notes || '', company: contact.company || '', vat_id: contact.vat_id || '', street: contact.street || '', city: contact.city || '', zip: contact.zip || '', country: contact.country || '' })
+    setForm({ name: contact.name, email: contact.email, phone: contact.phone || '', notes: contact.notes || '', company: contact.company || '', vat_id: contact.vat_id || '', street: contact.street || '', street_number: contact.street_number || '', city: contact.city || '', zip: contact.zip || '', country: contact.country || '', region: contact.region || '' })
     setShowForm(true)
   }
 
@@ -64,7 +64,7 @@ export default function Contacts() {
         toast.success('Kapcsolat létrehozva')
       }
       setShowForm(false)
-      setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', city: '', zip: '', country: '' })
+      setForm({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', street_number: '', city: '', zip: '', country: '', region: '' })
       setEditingContact(null)
       await fetchContacts()
     } catch (err) {
@@ -263,13 +263,19 @@ export default function Contacts() {
                     <input type="text" value={form.vat_id} onChange={(e) => setForm(f => ({ ...f, vat_id: e.target.value }))}
                       placeholder="Adószám" className="input-field px-3 py-2 rounded-lg text-sm" />
                   </div>
-                  <input type="text" value={form.street} onChange={(e) => setForm(f => ({ ...f, street: e.target.value }))}
-                    placeholder="Utca, házszám" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
+                    <input type="text" value={form.street} onChange={(e) => setForm(f => ({ ...f, street: e.target.value }))}
+                      placeholder="Utca" className="input-field col-span-3 px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={form.street_number} onChange={(e) => setForm(f => ({ ...f, street_number: e.target.value }))}
+                      placeholder="Hsz." className="input-field px-3 py-2 rounded-lg text-sm" />
+                  </div>
+                  <div className="grid grid-cols-4 gap-3">
                     <input type="text" value={form.zip} onChange={(e) => setForm(f => ({ ...f, zip: e.target.value }))}
                       placeholder="Ir.szám" className="input-field px-3 py-2 rounded-lg text-sm" />
                     <input type="text" value={form.city} onChange={(e) => setForm(f => ({ ...f, city: e.target.value }))}
                       placeholder="Város" className="input-field px-3 py-2 rounded-lg text-sm" />
+                    <input type="text" value={form.region} onChange={(e) => setForm(f => ({ ...f, region: e.target.value }))}
+                      placeholder="Megye" className="input-field px-3 py-2 rounded-lg text-sm" />
                     <input type="text" value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))}
                       placeholder="Ország" className="input-field px-3 py-2 rounded-lg text-sm" />
                   </div>

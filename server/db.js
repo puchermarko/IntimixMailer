@@ -187,14 +187,22 @@ const newCols = [
   ['company', 'TEXT DEFAULT \'\''],
   ['vat_id', 'TEXT DEFAULT \'\''],
   ['street', 'TEXT DEFAULT \'\''],
+  ['street_number', 'TEXT DEFAULT \'\''],
   ['city', 'TEXT DEFAULT \'\''],
   ['zip', 'TEXT DEFAULT \'\''],
   ['country', 'TEXT DEFAULT \'\''],
+  ['region', 'TEXT DEFAULT \'\''],
 ];
 for (const [col, def] of newCols) {
   if (!contactCols.includes(col)) {
     db.exec(`ALTER TABLE contacts ADD COLUMN ${col} ${def}`);
   }
+}
+
+// Migrációk - quotes táblához title mező
+const quoteCols = db.prepare("PRAGMA table_info(quotes)").all().map(c => c.name);
+if (!quoteCols.includes('title')) {
+  db.exec("ALTER TABLE quotes ADD COLUMN title TEXT DEFAULT ''");
 }
 
 export default db;

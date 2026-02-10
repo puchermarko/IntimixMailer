@@ -107,6 +107,7 @@ export default function Quotes() {
                     {statusLabels[q.status] || q.status}
                   </span>
                 </div>
+                {q.title && <p className="text-xs text-gray-300 truncate">{q.title}</p>}
                 <p className="text-xs text-gray-400 truncate">{q.contact_name || 'Nincs megadva'} — {formatMoney(q.total, q.currency)}</p>
               </div>
               <div className="text-right shrink-0">
@@ -136,6 +137,7 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
   const [showSendModal, setShowSendModal] = useState(false)
 
   // Form mezők
+  const [title, setTitle] = useState(quote?.title || '')
   const [contactId, setContactId] = useState(quote?.contact_id || '')
   const [contactName, setContactName] = useState(quote?.contact_name || '')
   const [contactEmail, setContactEmail] = useState(quote?.contact_email || '')
@@ -170,7 +172,8 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
     setContactEmail(c.email)
     setContactPhone(c.phone || '')
     setContactVat(c.vat_id || '')
-    const addr = [c.street, [c.zip, c.city].filter(Boolean).join(' '), c.country].filter(Boolean).join(', ')
+    const streetFull = [c.street, c.street_number].filter(Boolean).join(' ')
+    const addr = [streetFull, [c.zip, c.city].filter(Boolean).join(' '), c.region, c.country].filter(Boolean).join(', ')
     setContactAddress(addr)
     setShowContactPicker(false)
   }
@@ -179,7 +182,7 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
     if (!items.some(i => i.description)) { toast.error('Legalább egy tétel szükséges'); return }
     setSaving(true)
     try {
-      const payload = { contact_id: contactId || null, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone, contact_address: contactAddress, contact_vat: contactVat, currency, vat_rate: vatRate, notes, valid_until: validUntil, items }
+      const payload = { title, contact_id: contactId || null, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone, contact_address: contactAddress, contact_vat: contactVat, currency, vat_rate: vatRate, notes, valid_until: validUntil, items }
       if (quote?.id) {
         await updateQuote(quote.id, payload)
         toast.success('Árajánlat mentve!')
@@ -224,6 +227,10 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
         <div className="flex-1">
           <h2 className="text-xl font-bold text-white">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
           <p className="text-xs text-gray-500">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
+        </div>
+        <div className="flex-1 max-w-xs">
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" />
         </div>
         <div className="flex items-center gap-2">
           {quote?.id && (
