@@ -16,11 +16,6 @@ const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
 const logoAttachments = [
   {
-    filename: 'intimix-logo.svg',
-    path: path.join(__dirname, 'assets', 'logo-header.svg'),
-    cid: 'intimix-logo-header'
-  },
-  {
     filename: 'intimix-logo.png',
     path: path.join(__dirname, 'assets', 'logo-header.png'),
     cid: 'intimix-logo-png'

@@ -46,7 +46,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -136,7 +136,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
@@ -214,7 +214,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -305,7 +305,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
@@ -383,7 +383,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -473,7 +473,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
@@ -551,7 +551,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -642,7 +642,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
@@ -729,7 +729,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -822,7 +822,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1009,7 +1009,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1193,7 +1193,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1286,7 +1286,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1380,7 +1380,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1473,7 +1473,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1568,7 +1568,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1652,7 +1652,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1730,7 +1730,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
@@ -1808,7 +1808,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1898,7 +1898,7 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-header" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
