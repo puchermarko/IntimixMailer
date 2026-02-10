@@ -1110,31 +1110,13 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    // Magyar ékezetes karakterekhez Abhaya Libre font regisztrálása
-    const fontDir = path.join(import.meta.dirname, 'abhaya-libre');
-    const fontRegular = path.join(fontDir, 'AbhayaLibre-Regular.ttf');
-    const fontBold = path.join(fontDir, 'AbhayaLibre-Bold.ttf');
-    if (fs.existsSync(fontRegular)) {
-      doc.registerFont('HU', fontRegular);
-      doc.registerFont('HU-Bold', fs.existsSync(fontBold) ? fontBold : fontRegular);
-    }
-    const font = fs.existsSync(fontRegular) ? 'HU' : 'Helvetica';
-    const fontB = fs.existsSync(fontRegular) ? 'HU-Bold' : 'Helvetica-Bold';
+    const font = 'Helvetica';
+    const fontB = 'Helvetica-Bold';
 
     const M = 50;
     const pageW = doc.page.width - M * 2;
     const accent = '#1AA19C';
     const pageH = doc.page.height;
-
-    // ─── Lábléc ELŐSZÖR rajzoljuk (nem mozgatja a cursort mert stroke + explicit pozíció) ───
-    const footerY = pageH - 55;
-    doc.save();
-    doc.moveTo(M, footerY).lineTo(M + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
-    doc.font(font).fontSize(7).fillColor('#999').text(
-      `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`,
-      M, footerY + 8, { width: pageW, align: 'center', lineBreak: false }
-    );
-    doc.restore();
 
     // ─── Logó (bal felső) ───
     if (logoPath && fs.existsSync(logoPath)) {
@@ -1264,6 +1246,12 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
       y += 11;
       doc.font(font).fontSize(8).fillColor('#666').text(quote.notes, M, y, { width: pageW });
     }
+
+    // ─── Lábléc ───
+    const footerY = pageH - 55;
+    doc.moveTo(M, footerY).lineTo(M + pageW, footerY).strokeColor('#eee').lineWidth(0.5).stroke();
+    const footerText = `${companyInfo.company_name || companyInfo.app_name || ''} | ${companyInfo.company_email || ''} | ${companyInfo.company_phone || ''}`;
+    doc.font(font).fontSize(7).fillColor('#999').text(footerText, M, footerY + 8, { width: pageW, align: 'center', lineBreak: false, height: 10 });
 
     doc.end();
     stream.on('finish', () => resolve(pdfPath));
