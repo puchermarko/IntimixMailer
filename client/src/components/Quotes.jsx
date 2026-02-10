@@ -142,13 +142,41 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
   const [contactName, setContactName] = useState(quote?.contact_name || '')
   const [contactEmail, setContactEmail] = useState(quote?.contact_email || '')
   const [contactPhone, setContactPhone] = useState(quote?.contact_phone || '')
-  const [contactAddress, setContactAddress] = useState(quote?.contact_address || '')
+  const [contactStreet, setContactStreet] = useState('')
+  const [contactStreetNumber, setContactStreetNumber] = useState('')
+  const [contactZip, setContactZip] = useState('')
+  const [contactCity, setContactCity] = useState('')
+  const [contactCountry, setContactCountry] = useState('')
+  const [contactRegion, setContactRegion] = useState('')
   const [contactVat, setContactVat] = useState(quote?.contact_vat || '')
   const [currency, setCurrency] = useState(quote?.currency || 'HUF')
   const [vatRate, setVatRate] = useState(quote?.vat_rate ?? 27)
   const [notes, setNotes] = useState(quote?.notes || '')
   const [validUntil, setValidUntil] = useState(quote?.valid_until || '')
   const [items, setItems] = useState(quote?.items?.length ? quote.items.map(i => ({ ...i })) : [{ description: '', quantity: 1, unit: 'db', unit_price: 0 }])
+
+  // Parse existing address back into fields on edit
+  useEffect(() => {
+    if (quote?.contact_address) {
+      const parts = quote.contact_address.split(', ')
+      if (parts.length >= 1) {
+        const streetParts = parts[0].split(' ')
+        if (streetParts.length > 1) {
+          setContactStreetNumber(streetParts.pop())
+          setContactStreet(streetParts.join(' '))
+        } else {
+          setContactStreet(parts[0])
+        }
+      }
+      if (parts.length >= 2) {
+        const zipCity = parts[1].split(' ')
+        if (zipCity.length > 1) { setContactZip(zipCity[0]); setContactCity(zipCity.slice(1).join(' ')) }
+        else setContactCity(parts[1])
+      }
+      if (parts.length >= 4) { setContactRegion(parts[2]); setContactCountry(parts[3]) }
+      else if (parts.length >= 3) { setContactCountry(parts[2]) }
+    }
+  }, [])
 
   useEffect(() => {
     getContacts().then(data => setContacts(Array.isArray(data) ? data : data.contacts || [])).catch(() => {})
@@ -166,15 +194,23 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
   const vatAmount = Math.round(subtotal * vatRate / 100)
   const total = subtotal + vatAmount
 
+  const buildAddress = (street, num, zip, city, region, country) => {
+    const streetFull = [street, num].filter(Boolean).join(' ')
+    return [streetFull, [zip, city].filter(Boolean).join(' '), region, country].filter(Boolean).join(', ')
+  }
+
   const selectContact = (c) => {
     setContactId(c.id)
     setContactName(c.name)
     setContactEmail(c.email)
     setContactPhone(c.phone || '')
     setContactVat(c.vat_id || '')
-    const streetFull = [c.street, c.street_number].filter(Boolean).join(' ')
-    const addr = [streetFull, [c.zip, c.city].filter(Boolean).join(' '), c.region, c.country].filter(Boolean).join(', ')
-    setContactAddress(addr)
+    setContactStreet(c.street || '')
+    setContactStreetNumber(c.street_number || '')
+    setContactZip(c.zip || '')
+    setContactCity(c.city || '')
+    setContactRegion(c.region || '')
+    setContactCountry(c.country || '')
     setShowContactPicker(false)
   }
 
@@ -182,7 +218,8 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
     if (!items.some(i => i.description)) { toast.error('Legalább egy tétel szükséges'); return }
     setSaving(true)
     try {
-      const payload = { title, contact_id: contactId || null, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone, contact_address: contactAddress, contact_vat: contactVat, currency, vat_rate: vatRate, notes, valid_until: validUntil, items }
+      const contact_address = buildAddress(contactStreet, contactStreetNumber, contactZip, contactCity, contactRegion, contactCountry)
+      const payload = { title, contact_id: contactId || null, contact_name: contactName, contact_email: contactEmail, contact_phone: contactPhone, contact_address, contact_vat: contactVat, currency, vat_rate: vatRate, notes, valid_until: validUntil, items }
       if (quote?.id) {
         await updateQuote(quote.id, payload)
         toast.success('Árajánlat mentve!')
@@ -293,9 +330,29 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Adószám</label>
                 <input type="text" value={contactVat} onChange={(e) => setContactVat(e.target.value)}
                   placeholder="12345678-1-23" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
-              <div><label className="block text-[10px] text-gray-500 mb-0.5">Cím</label>
-                <input type="text" value={contactAddress} onChange={(e) => setContactAddress(e.target.value)}
-                  placeholder="1234 Budapest, Példa utca 1." className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+              <div className="pt-2 border-t border-white/5">
+                <p className="text-[10px] text-gray-500 mb-2 flex items-center gap-1"><MapPin className="w-3 h-3" /> Cím</p>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="col-span-3"><input type="text" value={contactStreet} onChange={(e) => setContactStreet(e.target.value)}
+                      placeholder="Utca" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                    <div><input type="text" value={contactStreetNumber} onChange={(e) => setContactStreetNumber(e.target.value)}
+                      placeholder="Hsz." className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div><input type="text" value={contactZip} onChange={(e) => setContactZip(e.target.value)}
+                      placeholder="Ir.szám" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                    <div className="col-span-2"><input type="text" value={contactCity} onChange={(e) => setContactCity(e.target.value)}
+                      placeholder="Város" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><input type="text" value={contactRegion} onChange={(e) => setContactRegion(e.target.value)}
+                      placeholder="Megye" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                    <div><input type="text" value={contactCountry} onChange={(e) => setContactCountry(e.target.value)}
+                      placeholder="Ország" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
