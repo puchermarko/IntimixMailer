@@ -309,7 +309,7 @@ export default function Settings() {
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs text-gray-400 mb-1">Cégnév</label>
                     <input type="text" value={companyName} onChange={(e) => { setCompanyName(e.target.value); setBrandDirty(true) }}
-                      placeholder="Lakics Márk E.V." className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="Cég neve" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Adószám</label>
                     <input type="text" value={companyVat} onChange={(e) => { setCompanyVat(e.target.value); setBrandDirty(true) }}
                       placeholder="12345678-1-23" className="input-field w-full px-3 py-2 text-sm" /></div>
@@ -346,7 +346,7 @@ export default function Settings() {
                       placeholder="OTP Bank" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">IBAN / Számlaszám</label>
                     <input type="text" value={companyBankIban} onChange={(e) => { setCompanyBankIban(e.target.value); setBrandDirty(true) }}
-                      placeholder="HU12 1234 5678 9012 3456 7890 1234" className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="HU12 1234 5678 9112 1234 1234 1234" className="input-field w-full px-3 py-2 text-sm" /></div>
                 </div>
               </div>
 
