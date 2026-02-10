@@ -222,21 +222,25 @@ export default function TemplateGallery() {
             </>
           )}
 
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium px-1 mb-1">Beépített sablonok</p>
-          {emailTemplates.map(template => (
-            <button key={template.id}
-              onClick={() => { setPreviewId(template.id); setPreviewSource('builtin'); setViewMode('preview') }}
-              className={`template-card w-full p-3 rounded-xl text-left ${previewId === template.id && previewSource === 'builtin' ? 'selected' : ''}`}>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-gray-200 truncate">{template.name}</p>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1AA19C]/10 text-[#2EC4BE] border border-[#1AA19C]/20 shrink-0 ml-2">
-                  {template.category}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1 truncate">{template.description}</p>
-              <p className="text-xs text-gray-600 mt-1 font-mono truncate">{template.subject || '(nincs tárgy)'}</p>
-            </button>
-          ))}
+          {showBuiltin && (
+            <>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium px-1 mb-1">Beépített sablonok</p>
+              {emailTemplates.map(template => (
+                <button key={template.id}
+                  onClick={() => { setPreviewId(template.id); setPreviewSource('builtin'); setViewMode('preview') }}
+                  className={`template-card w-full p-3 rounded-xl text-left ${previewId === template.id && previewSource === 'builtin' ? 'selected' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-200 truncate">{template.name}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1AA19C]/10 text-[#2EC4BE] border border-[#1AA19C]/20 shrink-0 ml-2">
+                      {template.category}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{template.description}</p>
+                  <p className="text-xs text-gray-600 mt-1 font-mono truncate">{template.subject || '(nincs tárgy)'}</p>
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
         {/* Preview area */}
