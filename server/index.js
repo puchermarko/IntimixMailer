@@ -1110,10 +1110,10 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     const stream = fs.createWriteStream(pdfPath);
     doc.pipe(stream);
 
-    // Magyar ékezetes karakterekhez DejaVu font regisztrálása
-    const fontDir = path.join(import.meta.dirname, 'fonts');
-    const fontRegular = path.join(fontDir, 'DejaVuSans.ttf');
-    const fontBold = path.join(fontDir, 'DejaVuSans-Bold.ttf');
+    // Magyar ékezetes karakterekhez Abhaya Libre font regisztrálása
+    const fontDir = path.join(import.meta.dirname, 'abhaya-libre');
+    const fontRegular = path.join(fontDir, 'AbhayaLibre-Regular.ttf');
+    const fontBold = path.join(fontDir, 'AbhayaLibre-Bold.ttf');
     if (fs.existsSync(fontRegular)) {
       doc.registerFont('HU', fontRegular);
       doc.registerFont('HU-Bold', fs.existsSync(fontBold) ? fontBold : fontRegular);
