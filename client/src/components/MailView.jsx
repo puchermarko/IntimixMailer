@@ -12,6 +12,7 @@ import {
   replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates
 } from '../lib/api'
 import { emailTemplates as builtinTemplates } from '../lib/templates'
+import { useBranding } from '../App'
 import toast from 'react-hot-toast'
 
 const TABS = [
@@ -639,6 +640,7 @@ function SentTab() {
    ÚJ LEVÉL FÜL - innen küldesz egy darab emailt valakinek
    ═══════════════════════════════════════════════════════════════ */
 function ComposeTab() {
+  const { login_domain } = useBranding()
   const [to, setTo] = useState('')
   const [recipientName, setRecipientName] = useState('')
   const [orderId, setOrderId] = useState('')
@@ -664,7 +666,8 @@ function ComposeTab() {
   const [customTemplates, setCustomTemplates] = useState([])
   const fileInputRef = useRef(null)
 
-  const allTemplates = [...builtinTemplates, ...customTemplates]
+  const showBuiltin = login_domain === 'intimix.hu'
+  const allTemplates = [...(showBuiltin ? builtinTemplates : []), ...customTemplates]
 
   useEffect(() => {
     getContacts().then(setContacts).catch(() => {})
@@ -913,6 +916,7 @@ function ComposeTab() {
    TÖMEGES KÜLDÉS FÜL - egyszerre több címzettnek megy ki a levél
    ═══════════════════════════════════════════════════════════════ */
 function BulkTab() {
+  const { login_domain } = useBranding()
   const [recipients, setRecipients] = useState([{ name: '', email: '', order_id: '', tracking_number: '', tracking_url: '', delivery_time: '', delivery_phone: '' }])
   const [subject, setSubject] = useState('')
   const [html, setHtml] = useState('')
@@ -925,7 +929,8 @@ function BulkTab() {
   const [showEcommerce, setShowEcommerce] = useState(false)
   const fileInputRef = useRef(null)
 
-  const allTemplates = [...builtinTemplates, ...customTemplates]
+  const showBuiltin = login_domain === 'intimix.hu'
+  const allTemplates = [...(showBuiltin ? builtinTemplates : []), ...customTemplates]
 
   useEffect(() => { getCustomTemplates().then(setCustomTemplates).catch(() => {}) }, [])
 

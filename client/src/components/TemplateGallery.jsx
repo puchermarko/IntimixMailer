@@ -2,10 +2,12 @@
 import { useState, useEffect } from 'react'
 import { emailTemplates } from '../lib/templates'
 import { getCustomTemplates, createTemplate, updateTemplate, deleteTemplate } from '../lib/api'
+import { useBranding } from '../App'
 import { Eye, Code, Copy, Check, Plus, Edit3, Trash2, Save, X, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function TemplateGallery() {
+  const { login_domain } = useBranding()
   const [customTemplates, setCustomTemplates] = useState([])
   const [previewId, setPreviewId] = useState(null)
   const [previewSource, setPreviewSource] = useState(null) // 'builtin' | 'custom'
@@ -20,8 +22,9 @@ export default function TemplateGallery() {
     getCustomTemplates().then(setCustomTemplates).catch(() => {})
   }, [])
 
+  const showBuiltin = login_domain === 'intimix.hu'
   const allTemplates = [
-    ...emailTemplates.map(t => ({ ...t, _source: 'builtin' })),
+    ...(showBuiltin ? emailTemplates.map(t => ({ ...t, _source: 'builtin' })) : []),
     ...customTemplates.map(t => ({ ...t, _source: 'custom' }))
   ]
 

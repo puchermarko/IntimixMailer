@@ -1394,6 +1394,9 @@ app.get('/api/branding', (req, res) => {
     for (const row of rows) {
       if (row.value) result[row.key] = row.value;
     }
+    // Expose login domain so frontend can conditionally show built-in templates
+    const loginEmail = process.env.LOGIN_EMAIL || '';
+    result.login_domain = loginEmail.split('@')[1] || '';
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
