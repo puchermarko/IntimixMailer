@@ -10,7 +10,10 @@ import {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  const d = new Date(dateStr + 'Z')
+  // Only append Z for bare SQLite timestamps (YYYY-MM-DD HH:MM:SS) that lack timezone info
+  const hasTimezone = /[Z+\-]\d{2}:?\d{2}$|Z$/i.test(dateStr)
+  const d = new Date(hasTimezone ? dateStr : dateStr + 'Z')
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleDateString('hu-HU', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
