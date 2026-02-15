@@ -1666,6 +1666,10 @@ app.get('/api/branding', authenticate, (req, res) => {
     for (const [key, val] of Object.entries(settings)) {
       if (val) result[key] = val;
     }
+    // Derive login_domain from smtp_user for template visibility
+    if (settings.smtp_user && settings.smtp_user.includes('@')) {
+      result.login_domain = settings.smtp_user.split('@')[1].toLowerCase();
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
