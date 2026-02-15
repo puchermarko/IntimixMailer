@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { getBranding } from './lib/api'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import './App.css'
@@ -93,6 +94,7 @@ function App() {
       <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus }}>
         <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
           <Route path="/dashboard/*" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
           <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="*" element={<Navigate to="/" />} />

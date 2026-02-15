@@ -173,6 +173,36 @@ app.post('/api/login', (req, res) => {
   return res.status(401).json({ error: 'Invalid credentials' });
 });
 
+// ─── REGISTRATION ────────────────────────────────────────────
+
+app.post('/api/register', (req, res) => {
+  const { name, email, password, formLoadedAt } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'Név, email és jelszó megadása kötelező.' });
+
+  // Anti-bot: form must have been open for at least 5 seconds
+  if (!formLoadedAt || (Date.now() - formLoadedAt) < 5000) {
+    return res.status(429).json({ error: 'Túl gyors regisztráció. Kérjük, próbáld újra.' });
+  }
+
+  // Basic email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Érvénytelen email cím.' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'A jelszónak legalább 6 karakter hosszúnak kell lennie.' });
+  }
+
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) return res.status(409).json({ error: 'Ezzel az email címmel már létezik fiók.' });
+
+  const id = randomUUID();
+  db.prepare('INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)').run(id, email, password, name);
+
+  // Auto-login after registration
+  const token = jwt.sign({ role: 'user', userId: id, email }, JWT_SECRET, { expiresIn: '24h' });
+  res.status(201).json({ token, email, role: 'user', name, userId: id, subscription_status: 'none' });
+});
+
 // ─── ADMIN: USER MANAGEMENT ────────────────────────────────
 
 // List all users

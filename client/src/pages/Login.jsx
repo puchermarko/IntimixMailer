@@ -97,8 +97,11 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-500 mt-6">
-          Biztonságos email platform
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Nincs még fiókod?{' '}
+          <button onClick={() => navigate('/register')} className="text-[#2EC4BE] hover:text-white transition-colors font-medium">
+            Regisztráció
+          </button>
         </p>
 
         <button onClick={() => navigate('/')}

@@ -113,7 +113,7 @@ export default function Landing() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 fade-in">
-            <button onClick={() => navigate('/login')}
+            <button onClick={() => navigate('/register')}
               className="btn-primary px-8 py-3.5 rounded-xl text-white font-bold text-base flex items-center gap-2.5 w-full sm:w-auto justify-center">
               Ingyenes Próba Indítása <ArrowRight className="w-5 h-5" />
             </button>
@@ -259,7 +259,7 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigate('/login')}
+              <button onClick={() => navigate('/register')}
                 className="w-full py-3 rounded-xl text-sm font-semibold glass hover:border-[#1AA19C]/40 text-white transition-all flex items-center justify-center gap-2">
                 Próba Indítása <ArrowRight className="w-4 h-4" />
               </button>
@@ -292,7 +292,7 @@ export default function Landing() {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigate('/login')}
+              <button onClick={() => navigate('/register')}
                 className="btn-primary w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
                 Előfizetés <ArrowRight className="w-4 h-4" />
               </button>
@@ -317,7 +317,7 @@ export default function Landing() {
             <p className="text-gray-400 text-base sm:text-lg mb-8 max-w-lg mx-auto">
               Próbáld ki 30 napig teljesen ingyen. Nincs rejtett költség, nincs kötelezettség.
             </p>
-            <button onClick={() => navigate('/login')}
+            <button onClick={() => navigate('/register')}
               className="btn-primary px-10 py-4 rounded-xl text-white font-bold text-base flex items-center gap-2.5 mx-auto">
               Ingyenes Próba Indítása <ArrowRight className="w-5 h-5" />
             </button>
