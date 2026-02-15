@@ -6,6 +6,9 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
+import Impressum from './pages/Impressum'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 import './App.css'
 
 const AuthContext = createContext(null)
@@ -101,6 +104,9 @@ function App() {
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
           <Route path="/dashboard/*" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
+          <Route path="/impressum" element={<Impressum />} />
+          <Route path="/adatvedelem" element={<Privacy />} />
+          <Route path="/aszf" element={<Terms />} />
           <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

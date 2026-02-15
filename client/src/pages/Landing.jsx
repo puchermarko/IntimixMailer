@@ -608,17 +608,22 @@ export default function Landing() {
       </section>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="border-t border-white/5 py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3 group cursor-default">
-            <img src="/pultify-logo.png" alt="Pultify" className="h-7 object-contain" />
+      <footer className="border-t border-white/5 py-10 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3 cursor-default">
+              <img src="/pultify-logo.png" alt="Pultify" className="h-7 object-contain" />
+            </div>
+            <div className="flex items-center gap-5 text-xs">
+              <button onClick={() => navigate('/impressum')} className="text-gray-500 hover:text-[#2EC4BE] transition-colors">Impresszum</button>
+              <button onClick={() => navigate('/adatvedelem')} className="text-gray-500 hover:text-[#2EC4BE] transition-colors">Adatvédelem</button>
+              <button onClick={() => navigate('/aszf')} className="text-gray-500 hover:text-[#2EC4BE] transition-colors">ÁSZF</button>
+              <button onClick={() => navigate('/login')} className="text-gray-500 hover:text-[#2EC4BE] transition-colors">Bejelentkezés</button>
+            </div>
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-600">
+          <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-center gap-1 text-xs text-gray-600">
             Készítette a <Heart className="w-3 h-3 text-[#1AA19C] mx-0.5" /> <span className="text-gray-500 font-medium">TM Infotech Kft.</span> — Magyarország, {new Date().getFullYear()}
           </div>
-          <button onClick={() => navigate('/login')} className="text-xs text-gray-500 hover:text-[#2EC4BE] transition-colors">
-            Bejelentkezés &rarr;
-          </button>
         </div>
       </footer>
     </div>
