@@ -1,10 +1,12 @@
 // Bejelentkezés oldal - ide érkezel ha nincs token
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../App'
 import toast from 'react-hot-toast'
-import { Mail, Lock, Loader2, Send } from 'lucide-react'
+import { Mail, Lock, Loader2, Send, ArrowLeft } from 'lucide-react'
 
 export default function Login() {
+  const navigate = useNavigate()
   const { login } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -98,6 +100,11 @@ export default function Login() {
         <p className="text-center text-xs text-gray-500 mt-6">
           Biztonságos email platform
         </p>
+
+        <button onClick={() => navigate('/')}
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-[#2EC4BE] transition-colors mx-auto mt-4">
+          <ArrowLeft className="w-3.5 h-3.5" /> Vissza a főoldalra
+        </button>
       </div>
     </div>
   )
