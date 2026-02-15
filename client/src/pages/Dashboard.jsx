@@ -54,7 +54,7 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-      {showTour && <QuickTour onComplete={() => setShowTour(false)} />}
+      {showTour && <QuickTour onComplete={() => setShowTour(false)} setActiveView={setActiveView} setSidebarOpen={setSidebarOpen} />}
       <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <main className={`lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen ${impersonating ? 'mt-10' : ''}`}>
         <div className="max-w-5xl mx-auto fade-in" key={activeView}>

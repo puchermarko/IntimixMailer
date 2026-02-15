@@ -1,108 +1,242 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Mail, BookUser, FileText, LayoutGrid, Settings, ChevronRight, ChevronLeft,
-  X, Inbox, SendHorizontal, PenLine, Users, RefreshCw, Sparkles, Check,
+  X, Inbox, SendHorizontal, PenLine, RefreshCw, Sparkles, Check,
   Zap, Shield, CreditCard, Image
 } from 'lucide-react'
 
 const TOUR_STEPS = [
   {
+    target: null,
+    view: null,
     icon: Sparkles,
     title: 'Üdvözlünk az IntimixMailerben!',
-    description: 'Rövid bemutató a legfontosabb funkciókról. Bármikor átugorhatod, és a Beállításokban újra elindíthatod.',
-    color: '#2EC4BE',
-    features: [],
+    description: 'Interaktív bemutató a legfontosabb funkciókról. Végigvezetünk a rendszeren — kattints a „Tovább" gombra!',
+    tips: ['A bemutató bármikor kihagyható', 'A Beállításokban újra elindíthatod'],
+    position: 'center',
   },
   {
+    target: '[data-tour="mail"]',
+    view: 'mail',
     icon: Mail,
     title: 'Levelezés',
-    description: 'A Levelezés fülön kezelheted az összes email tevékenységedet.',
-    color: '#2EC4BE',
-    features: [
-      { icon: Inbox, text: 'Bejövő levelek — IMAP szinkronizálással valós időben' },
-      { icon: SendHorizontal, text: 'Kimenő levelek — elküldött leveleid nyomon követése' },
-      { icon: PenLine, text: 'Levél írás — egyedi vagy tömeges email küldés sablonokkal' },
-      { icon: RefreshCw, text: 'Szinkronizálás — egy kattintással frissítheted a postaládádat' },
+    description: 'Itt kezelheted az összes email tevékenységedet.',
+    tips: [
+      'Bejövő levelek — IMAP szinkronizálással',
+      'Kimenő levelek — elküldött leveleid',
+      'Levél írás — egyedi vagy tömeges küldés',
+      'Szinkronizálás gombbal frissítheted a postaládádat',
     ],
+    position: 'right',
   },
   {
+    target: '[data-tour="contacts"]',
+    view: 'contacts',
     icon: BookUser,
     title: 'Kapcsolatok (CRM)',
-    description: 'Ügyfeleid és partnereid adatait egy helyen kezelheted.',
-    color: '#2EC4BE',
-    features: [
-      { icon: Users, text: 'Kapcsolatok listája — név, email, telefon, megjegyzések' },
-      { icon: Mail, text: 'Levelezési előzmények — minden kontakthoz tartozó levelek' },
-      { icon: PenLine, text: 'Szerkesztés — kontaktok hozzáadása, módosítása, törlése' },
+    description: 'Ügyfeleid és partnereid adatai egy helyen.',
+    tips: [
+      'Kapcsolatok listája — név, email, telefon',
+      'Levelezési előzmények kontaktonként',
+      'Új kontakt hozzáadása, szerkesztés, törlés',
     ],
+    position: 'right',
   },
   {
+    target: '[data-tour="quotes"]',
+    view: 'quotes',
     icon: FileText,
     title: 'Árajánlatok',
-    description: 'Professzionális árajánlatokat készíthetsz és küldhetsz emailben.',
-    color: '#2EC4BE',
-    features: [
-      { icon: FileText, text: 'PDF generálás — automatikus sorszámozással' },
-      { icon: Mail, text: 'Azonnali küldés — árajánlat emailben, egy kattintással' },
-      { icon: CreditCard, text: 'Tételek kezelése — termékek, árak, mennyiségek' },
+    description: 'Professzionális árajánlatok készítése és küldése.',
+    tips: [
+      'PDF generálás automatikus sorszámozással',
+      'Azonnali küldés emailben',
+      'Tételek, árak és mennyiségek kezelése',
     ],
+    position: 'right',
   },
   {
+    target: '[data-tour="templates"]',
+    view: 'templates',
     icon: LayoutGrid,
     title: 'Sablonok',
     description: 'Email sablonok galériája a gyorsabb munkához.',
-    color: '#2EC4BE',
-    features: [
-      { icon: LayoutGrid, text: 'Sablon galéria — előre elkészített email sablonok' },
-      { icon: PenLine, text: 'Testreszabás — változók használata a személyre szabáshoz' },
-      { icon: Zap, text: 'Gyors küldés — sablon kiválasztása és azonnali használat' },
+    tips: [
+      'Előre elkészített email sablonok',
+      'Változók használata személyre szabáshoz',
+      'Sablon kiválasztása és azonnali használat',
     ],
+    position: 'right',
   },
   {
+    target: '[data-tour="settings"]',
+    view: 'settings',
     icon: Settings,
     title: 'Beállítások',
     description: 'A rendszer teljes konfigurációja egy helyen.',
-    color: '#2EC4BE',
-    features: [
-      { icon: Shield, text: 'SMTP/IMAP — levelezőszerver beállítások és tesztelés' },
-      { icon: Image, text: 'Márka — céges logó, alkalmazás neve, megjelenés' },
-      { icon: CreditCard, text: 'Előfizetés — próbaidőszak és fizetős csomag kezelése' },
-      { icon: Sparkles, text: 'Bemutató — a gyors bemutató bármikor újraindítható innen' },
+    tips: [
+      'SMTP/IMAP szerver beállítások',
+      'Céges logó és márka testreszabás',
+      'Előfizetés kezelése',
+      'Bemutató újraindítása bármikor',
     ],
+    position: 'right',
   },
 ]
 
-export default function QuickTour({ onComplete }) {
+export default function QuickTour({ onComplete, setActiveView, setSidebarOpen }) {
   const [step, setStep] = useState(0)
+  const [spotlightRect, setSpotlightRect] = useState(null)
+  const [tooltipStyle, setTooltipStyle] = useState({})
+  const rafRef = useRef(null)
+
   const current = TOUR_STEPS[step]
   const Icon = current.icon
   const isLast = step === TOUR_STEPS.length - 1
   const isFirst = step === 0
 
-  const finish = () => {
+  const finish = useCallback(() => {
     localStorage.setItem('intimix_tour_completed', 'true')
     onComplete()
+  }, [onComplete])
+
+  const updateSpotlight = useCallback(() => {
+    if (!current.target) {
+      setSpotlightRect(null)
+      setTooltipStyle({ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+      return
+    }
+
+    const el = document.querySelector(current.target)
+    if (!el) {
+      setSpotlightRect(null)
+      setTooltipStyle({ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' })
+      return
+    }
+
+    const rect = el.getBoundingClientRect()
+    const pad = 6
+    setSpotlightRect({
+      top: rect.top - pad,
+      left: rect.left - pad,
+      width: rect.width + pad * 2,
+      height: rect.height + pad * 2,
+    })
+
+    // Position tooltip to the right of the highlighted element
+    const tooltipWidth = 380
+    const tooltipX = rect.right + 20
+    const tooltipY = rect.top - 10
+
+    // Ensure tooltip stays in viewport
+    const maxX = window.innerWidth - tooltipWidth - 20
+    const maxY = window.innerHeight - 350
+
+    setTooltipStyle({
+      position: 'fixed',
+      top: `${Math.max(20, Math.min(tooltipY, maxY))}px`,
+      left: `${Math.min(tooltipX, maxX)}px`,
+      transform: 'none',
+    })
+  }, [current.target])
+
+  // Navigate to the correct view when step changes
+  useEffect(() => {
+    if (current.view && setActiveView) {
+      setActiveView(current.view)
+    }
+    // On mobile, ensure sidebar is visible for sidebar-targeted steps
+    if (current.target && setSidebarOpen) {
+      setSidebarOpen(true)
+    }
+
+    // Small delay to let the view render, then position spotlight
+    const timer = setTimeout(() => {
+      updateSpotlight()
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [step, current.view, current.target, setActiveView, setSidebarOpen, updateSpotlight])
+
+  // Update spotlight position on resize/scroll
+  useEffect(() => {
+    const handleUpdate = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      rafRef.current = requestAnimationFrame(updateSpotlight)
+    }
+    window.addEventListener('resize', handleUpdate)
+    window.addEventListener('scroll', handleUpdate, true)
+    return () => {
+      window.removeEventListener('resize', handleUpdate)
+      window.removeEventListener('scroll', handleUpdate, true)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [updateSpotlight])
+
+  const goNext = () => {
+    if (isLast) return finish()
+    setStep(s => s + 1)
+  }
+
+  const goPrev = () => {
+    if (!isFirst) setStep(s => s - 1)
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={finish} />
+    <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
+      {/* Dark overlay with spotlight cutout using CSS clip-path */}
+      <svg className="fixed inset-0 w-full h-full" style={{ pointerEvents: 'auto' }} onClick={finish}>
+        <defs>
+          <mask id="tour-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {spotlightRect && (
+              <rect
+                x={spotlightRect.left}
+                y={spotlightRect.top}
+                width={spotlightRect.width}
+                height={spotlightRect.height}
+                rx="12"
+                fill="black"
+              />
+            )}
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.65)" mask="url(#tour-mask)" />
+      </svg>
 
-      <div className="relative w-full max-w-lg fade-in" key={step}>
-        <div className="glass glow rounded-2xl overflow-hidden">
-          {/* Top accent bar */}
+      {/* Spotlight ring glow */}
+      {spotlightRect && (
+        <div
+          className="fixed rounded-xl border-2 border-[#2EC4BE]/60 shadow-[0_0_20px_rgba(46,196,190,0.3)] transition-all duration-300 ease-out"
+          style={{
+            pointerEvents: 'none',
+            top: spotlightRect.top,
+            left: spotlightRect.left,
+            width: spotlightRect.width,
+            height: spotlightRect.height,
+          }}
+        />
+      )}
+
+      {/* Tooltip card */}
+      <div
+        className="w-[340px] sm:w-[380px] transition-all duration-300 ease-out"
+        style={{ ...tooltipStyle, pointerEvents: 'auto', zIndex: 101 }}
+        key={step}
+      >
+        <div className="glass glow rounded-2xl overflow-hidden fade-in">
+          {/* Top accent */}
           <div className="h-1 bg-gradient-to-r from-[#1AA19C] via-[#2EC4BE] to-[#1AA19C]" />
 
-          {/* Close / Skip */}
+          {/* Close */}
           <button onClick={finish}
-            className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-gray-300 transition-all z-10">
+            className="absolute top-3 right-3 p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-all z-10">
             <X className="w-4 h-4" />
           </button>
 
-          <div className="p-7 sm:p-9">
-            {/* Step indicator dots */}
-            <div className="flex items-center justify-center gap-1.5 mb-6">
+          <div className="p-6">
+            {/* Step dots */}
+            <div className="flex items-center justify-center gap-1.5 mb-5">
               {TOUR_STEPS.map((_, i) => (
                 <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${
                   i === step ? 'w-6 bg-[#2EC4BE]' : i < step ? 'w-1.5 bg-[#1AA19C]' : 'w-1.5 bg-white/10'
@@ -110,27 +244,28 @@ export default function QuickTour({ onComplete }) {
               ))}
             </div>
 
-            {/* Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-[#1AA19C]/15 flex items-center justify-center mx-auto mb-5">
-              <Icon className="w-7 h-7 text-[#2EC4BE]" />
+            {/* Icon + title */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/15 flex items-center justify-center shrink-0">
+                <Icon className="w-5 h-5 text-[#2EC4BE]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">{current.title}</h3>
+                <p className="text-xs text-gray-500">{step + 1} / {TOUR_STEPS.length} lépés</p>
+              </div>
             </div>
 
-            {/* Title & description */}
-            <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-2">{current.title}</h2>
-            <p className="text-sm text-gray-400 text-center mb-6 max-w-sm mx-auto leading-relaxed">{current.description}</p>
+            <p className="text-sm text-gray-400 mb-4 leading-relaxed">{current.description}</p>
 
-            {/* Feature list */}
-            {current.features.length > 0 && (
-              <div className="space-y-2.5 mb-6">
-                {current.features.map((f, i) => {
-                  const FIcon = f.icon
-                  return (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl glass-light">
-                      <FIcon className="w-4 h-4 text-[#2EC4BE] shrink-0" />
-                      <span className="text-sm text-gray-300">{f.text}</span>
-                    </div>
-                  )
-                })}
+            {/* Tips */}
+            {current.tips.length > 0 && (
+              <div className="space-y-1.5 mb-5">
+                {current.tips.map((tip, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <Check className="w-3.5 h-3.5 text-[#2EC4BE] mt-0.5 shrink-0" />
+                    <span className="text-gray-300 text-xs">{tip}</span>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -138,9 +273,9 @@ export default function QuickTour({ onComplete }) {
             <div className="flex items-center justify-between pt-4 border-t border-white/5">
               <div>
                 {!isFirst ? (
-                  <button onClick={() => setStep(step - 1)}
-                    className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors">
-                    <ChevronLeft className="w-4 h-4" /> Vissza
+                  <button onClick={goPrev}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
+                    <ChevronLeft className="w-3.5 h-3.5" /> Vissza
                   </button>
                 ) : (
                   <button onClick={finish}
@@ -158,26 +293,18 @@ export default function QuickTour({ onComplete }) {
                   </button>
                 )}
 
-                {isLast ? (
-                  <button onClick={finish}
-                    className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2">
-                    <Check className="w-4 h-4" /> Kezdjünk!
-                  </button>
-                ) : (
-                  <button onClick={() => setStep(step + 1)}
-                    className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
-                    Tovább <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
+                <button onClick={goNext}
+                  className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5">
+                  {isLast ? (
+                    <><Check className="w-3.5 h-3.5" /> Kezdjünk!</>
+                  ) : (
+                    <>Tovább <ChevronRight className="w-3.5 h-3.5" /></>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Step counter */}
-        <p className="text-center text-xs text-gray-600 mt-4">
-          {step + 1} / {TOUR_STEPS.length}
-        </p>
       </div>
     </div>
   )

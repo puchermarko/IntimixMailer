@@ -66,6 +66,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, setIsOpen }
             return (
               <button
                 key={item.id}
+                data-tour={item.id}
                 onClick={() => handleNav(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
