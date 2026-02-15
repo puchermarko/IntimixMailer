@@ -1,13 +1,13 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
-import { useState, useEffect } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo } from '../lib/api'
-import { useBranding } from '../App'
+import { useState, useEffect, useRef } from 'react'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup } from '../lib/api'
+import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
-  Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette
+  Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
+  Download, UploadCloud, Database, FileJson, Users, HardDrive
 } from 'lucide-react'
-import { useRef } from 'react'
 
 export default function Settings() {
   const [testing, setTesting] = useState(false)
@@ -33,6 +33,11 @@ export default function Settings() {
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
   const { refreshBranding } = useBranding()
+  const { isAdmin } = useAuth()
+  const [backupExporting, setBackupExporting] = useState(false)
+  const [backupImporting, setBackupImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
+  const backupInputRef = useRef(null)
   const [companyName, setCompanyName] = useState('')
   const [companyVat, setCompanyVat] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
@@ -45,7 +50,7 @@ export default function Settings() {
   const [companyBankIban, setCompanyBankIban] = useState('')
 
   useEffect(() => {
-    if (activeTab === 'api') loadKeys()
+    if (activeTab === 'expert') loadKeys()
     if (activeTab === 'config' || activeTab === 'general') loadEnv()
     if (activeTab === 'branding') loadBrand()
   }, [activeTab])
@@ -160,12 +165,43 @@ export default function Settings() {
 
   const maskKey = (key) => key.slice(0, 8) + '••••••••••••••••' + key.slice(-4)
 
+  const handleExportBackup = async () => {
+    setBackupExporting(true)
+    try {
+      const data = await exportBackup()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `backup-${isAdmin ? 'full' : 'user'}-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Mentés letöltve!')
+    } catch (err) { toast.error(err.message) }
+    finally { setBackupExporting(false) }
+  }
+
+  const handleImportBackup = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBackupImporting(true)
+    setImportResult(null)
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      const result = await importBackup(data)
+      setImportResult(result.results)
+      toast.success('Visszaállítás sikeres!')
+    } catch (err) { toast.error(err.message) }
+    finally { setBackupImporting(false); if (backupInputRef.current) backupInputRef.current.value = '' }
+  }
+
   const tabs = [
     { id: 'general', label: 'Általános' },
     { id: 'branding', label: 'Márka' },
     { id: 'config', label: 'Konfiguráció' },
-    { id: 'api', label: 'API Kulcsok' },
-    { id: 'docs', label: 'API Dokumentáció' },
+    { id: 'backup', label: 'Mentés' },
+    { id: 'expert', label: 'Haladó' },
   ]
 
   const baseUrl = 'https://marketing.intimix.hu'
@@ -440,8 +476,91 @@ export default function Settings() {
         </div>
       )}
 
-      {/* ═══ API KULCSOK FÜL ═══ */}
-      {activeTab === 'api' && (
+      {/* ═══ MENTÉS FÜL ═══ */}
+      {activeTab === 'backup' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          {/* Export */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Download className="w-5 h-5 text-[#1AA19C]" /></div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Mentés exportálása</h3>
+                <p className="text-xs text-gray-500">
+                  {isAdmin
+                    ? 'Teljes mentés: összes felhasználó, kapcsolatok, árajánlatok, emailek, sablonok és beállítások'
+                    : 'Saját fiók mentése: kapcsolatok, árajánlatok, emailek, sablonok és beállítások'}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg glass-light">
+                <Database className="w-4 h-4 text-gray-400" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-200">{isAdmin ? 'Teljes rendszer mentés' : 'Fiók mentés'}</p>
+                  <p className="text-[10px] text-gray-500">JSON formátum, minden adat benne van</p>
+                </div>
+                <button onClick={handleExportBackup} disabled={backupExporting}
+                  className="btn-primary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                  {backupExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Letöltés
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Import */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center"><UploadCloud className="w-5 h-5 text-amber-400" /></div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Mentés visszaállítása</h3>
+                <p className="text-xs text-gray-500">
+                  {isAdmin
+                    ? 'Teljes mentés importálása: felhasználók és adataik visszaállítása'
+                    : 'Saját fiók visszaállítása egy korábbi mentésből'}
+                </p>
+              </div>
+            </div>
+
+            <div className="glass rounded-lg p-4 flex items-start gap-3 border border-amber-500/20 mb-4">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-amber-300 font-medium">Figyelem</p>
+                <p className="text-xs text-gray-500 mt-0.5">Az importálás nem törli a meglévő adatokat, csak hozzáadja az újakat. Duplikált rekordok automatikusan kiszűrésre kerülnek.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <input type="file" ref={backupInputRef} onChange={handleImportBackup} accept=".json" className="hidden" />
+              <button onClick={() => backupInputRef.current?.click()} disabled={backupImporting}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-light hover:border-amber-500/20 border border-white/5 text-sm text-gray-300 transition-all disabled:opacity-50 w-full justify-center">
+                {backupImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
+                {backupImporting ? 'Importálás...' : 'JSON fájl kiválasztása'}
+              </button>
+            </div>
+
+            {importResult && (
+              <div className="mt-4 space-y-2 fade-in">
+                <p className="text-xs text-green-400 font-medium">Importálás eredménye:</p>
+                {importResult.map((r, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-2.5 rounded-lg glass-light">
+                    <FileJson className="w-4 h-4 text-[#1AA19C]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-200 font-medium">{r.user === 'current' ? 'Saját fiók' : r.user}</p>
+                      <p className="text-[10px] text-gray-500">
+                        {r.contacts} kapcsolat · {r.emails} email · {r.templates} sablon · {r.quotes} árajánlat · {r.settings} beállítás
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ HALADÓ FÜL (API Kulcsok + Dokumentáció) ═══ */}
+      {activeTab === 'expert' && (
         <div className="space-y-6 max-w-2xl fade-in">
           <div className="glass rounded-xl p-6">
             <div className="flex items-center gap-3 mb-5">
@@ -519,12 +638,8 @@ export default function Settings() {
               </div>
             )}
           </div>
-        </div>
-      )}
 
-      {/* ═══ API DOKI FÜL - ez marad kétnyelvű mert a fejlesztők lehet nem beszélnek magyarul ═══ */}
-      {activeTab === 'docs' && (
-        <div className="space-y-6 fade-in">
+          {/* API Dokumentáció — same tab */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BookOpen className="w-5 h-5 text-[#1AA19C]" />
@@ -729,6 +844,7 @@ curl -X POST -H "X-Api-Key: imx_your_api_key_here" \\
 }
 
 // Na ezek itt a segéd komponensek a dokihoz, semmi extra
+
 
 function CodeBlock({ code, label, onCopy, copiedKey }) {
   const id = code.slice(0, 30)

@@ -1646,6 +1646,164 @@ app.get('/api/test-smtp', authenticate, async (req, res) => {
   }
 });
 
+// ─── BACKUP - export / import ────────────────────────────────
+
+function exportUserData(userId) {
+  const contacts = db.prepare('SELECT * FROM contacts WHERE user_id = ?').all(userId);
+  const emailLog = db.prepare('SELECT * FROM email_log WHERE user_id = ?').all(userId);
+  const attachments = db.prepare('SELECT id, email_log_id, contact_id, filename, mimetype, size, uploaded_at FROM attachments WHERE contact_id IN (SELECT id FROM contacts WHERE user_id = ?)').all(userId);
+  const inbox = db.prepare('SELECT * FROM inbox WHERE user_id = ?').all(userId);
+  const sentImap = db.prepare('SELECT * FROM sent_imap WHERE user_id = ?').all(userId);
+  const templates = db.prepare('SELECT * FROM custom_templates WHERE user_id = ?').all(userId);
+  const apiKeys = db.prepare('SELECT id, name, key, created_at, last_used_at, active FROM api_keys WHERE user_id = ?').all(userId);
+  const quotes = db.prepare('SELECT * FROM quotes WHERE user_id = ?').all(userId);
+  const quoteItems = quotes.length > 0
+    ? db.prepare(`SELECT * FROM quote_items WHERE quote_id IN (${quotes.map(() => '?').join(',')})`)
+        .all(...quotes.map(q => q.id))
+    : [];
+  const settings = db.prepare('SELECT key, value FROM user_settings WHERE user_id = ?').all(userId);
+  return { contacts, emailLog, attachments, inbox, sentImap, templates, apiKeys, quotes, quoteItems, settings };
+}
+
+app.get('/api/backup/export', authenticate, (req, res) => {
+  try {
+    const isAdmin = req.role === 'admin';
+    const backup = { version: 1, exported_at: new Date().toISOString(), type: isAdmin ? 'full' : 'user' };
+
+    if (isAdmin) {
+      const users = db.prepare('SELECT id, email, name, active, created_at FROM users').all();
+      backup.users = users.map(u => ({
+        ...u,
+        data: exportUserData(u.id)
+      }));
+      // Also export admin's own settings
+      backup.adminData = exportUserData('__admin__');
+    } else {
+      backup.userId = req.userId;
+      backup.data = exportUserData(req.userId);
+    }
+
+    const filename = `backup-${isAdmin ? 'full' : 'user'}-${new Date().toISOString().slice(0, 10)}.json`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(backup);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+function importUserData(userId, data) {
+  const stats = { contacts: 0, emails: 0, templates: 0, quotes: 0, settings: 0 };
+
+  // Import settings
+  if (data.settings && data.settings.length > 0) {
+    const upsert = db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value');
+    for (const s of data.settings) { upsert.run(userId, s.key, s.value); stats.settings++; }
+  }
+
+  // Import contacts
+  const contactIdMap = {};
+  if (data.contacts && data.contacts.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO contacts (id, user_id, name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const c of data.contacts) {
+      const newId = c.id;
+      ins.run(newId, userId, c.name, c.email, c.phone, c.notes, c.company || '', c.vat_id || '', c.street || '', c.street_number || '', c.city || '', c.zip || '', c.country || '', c.region || '', c.created_at);
+      contactIdMap[c.id] = newId;
+      stats.contacts++;
+    }
+  }
+
+  // Import email log
+  if (data.emailLog && data.emailLog.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO email_log (id, user_id, contact_id, recipient_email, subject, html, sent_at, message_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const e of data.emailLog) {
+      ins.run(e.id, userId, contactIdMap[e.contact_id] || e.contact_id, e.recipient_email, e.subject, e.html, e.sent_at, e.message_id, e.status);
+      stats.emails++;
+    }
+  }
+
+  // Import templates
+  if (data.templates && data.templates.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO custom_templates (id, user_id, name, description, category, subject, html, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const t of data.templates) {
+      ins.run(t.id, userId, t.name, t.description, t.category, t.subject, t.html, t.created_at, t.updated_at);
+      stats.templates++;
+    }
+  }
+
+  // Import quotes
+  if (data.quotes && data.quotes.length > 0) {
+    const insQ = db.prepare('INSERT OR IGNORE INTO quotes (id, user_id, quote_number, contact_id, contact_name, contact_email, status, valid_until, notes, currency, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const insI = db.prepare('INSERT OR IGNORE INTO quote_items (id, quote_id, description, quantity, unit, unit_price, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const q of data.quotes) {
+      insQ.run(q.id, userId, q.quote_number, contactIdMap[q.contact_id] || q.contact_id, q.contact_name, q.contact_email, q.status, q.valid_until, q.notes, q.currency || 'HUF', q.created_at, q.updated_at);
+      stats.quotes++;
+    }
+    if (data.quoteItems) {
+      for (const i of data.quoteItems) {
+        insI.run(i.id, i.quote_id, i.description, i.quantity, i.unit, i.unit_price, i.sort_order);
+      }
+    }
+  }
+
+  // Import inbox
+  if (data.inbox && data.inbox.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO inbox (id, user_id, uid, message_id, from_address, from_name, to_address, subject, date, text_body, html_body, has_attachments, contact_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const m of data.inbox) {
+      ins.run(m.id, userId, m.uid, m.message_id, m.from_address, m.from_name, m.to_address, m.subject, m.date, m.text_body, m.html_body, m.has_attachments, contactIdMap[m.contact_id] || m.contact_id);
+    }
+  }
+
+  // Import sent_imap
+  if (data.sentImap && data.sentImap.length > 0) {
+    const ins = db.prepare('INSERT OR IGNORE INTO sent_imap (id, user_id, uid, message_id, from_address, from_name, to_address, subject, date, text_body, html_body, has_attachments, contact_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    for (const m of data.sentImap) {
+      ins.run(m.id, userId, m.uid, m.message_id, m.from_address, m.from_name, m.to_address, m.subject, m.date, m.text_body, m.html_body, m.has_attachments, contactIdMap[m.contact_id] || m.contact_id);
+    }
+  }
+
+  return stats;
+}
+
+app.post('/api/backup/import', authenticate, express.json({ limit: '100mb' }), (req, res) => {
+  try {
+    const backup = req.body;
+    if (!backup || !backup.version) return res.status(400).json({ error: 'Invalid backup file' });
+
+    const isAdmin = req.role === 'admin';
+    const results = [];
+
+    if (backup.type === 'full' && isAdmin) {
+      // Full backup import — admin only
+      if (backup.users && backup.users.length > 0) {
+        const insUser = db.prepare('INSERT OR IGNORE INTO users (id, email, password, name, active, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+        for (const u of backup.users) {
+          insUser.run(u.id, u.email, u.password || '', u.name, u.active !== undefined ? u.active : 1, u.created_at);
+          const stats = importUserData(u.id, u.data);
+          results.push({ user: u.email, ...stats });
+        }
+      }
+      if (backup.adminData) {
+        const stats = importUserData('__admin__', backup.adminData);
+        results.push({ user: 'admin', ...stats });
+      }
+    } else if (backup.type === 'user') {
+      // User backup import — import into current user
+      if (!backup.data) return res.status(400).json({ error: 'No data in backup' });
+      const stats = importUserData(req.userId, backup.data);
+      results.push({ user: 'current', ...stats });
+    } else if (backup.type === 'full' && !isAdmin) {
+      return res.status(403).json({ error: 'Only admin can import full backups' });
+    } else {
+      return res.status(400).json({ error: 'Unknown backup type' });
+    }
+
+    res.json({ success: true, results });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Buildelt frontend kiszolgálása prodban
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {

@@ -454,6 +454,28 @@ export async function updateUserSettingsAdmin(id, settings) {
   return data
 }
 
+// ─── BACKUP ─────────────────────────────────────────────────
+
+export async function exportBackup() {
+  const res = await fetch(`${API_BASE}/backup/export`, { headers: getHeaders() })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Failed to export backup')
+  }
+  return res.json()
+}
+
+export async function importBackup(backupData) {
+  const res = await fetch(`${API_BASE}/backup/import`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(backupData)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to import backup')
+  return data
+}
+
 export async function replyToEmail({ to, subject, html, cc, bcc, inReplyTo, attachments }) {
   const formData = new FormData()
   formData.append('to', to)
