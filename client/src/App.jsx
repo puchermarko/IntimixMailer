@@ -22,21 +22,24 @@ function App() {
   const [email, setEmail] = useState(() => localStorage.getItem('intimix_email'))
   const [role, setRole] = useState(() => localStorage.getItem('intimix_role'))
   const [name, setName] = useState(() => localStorage.getItem('intimix_name'))
+  const [subscriptionStatus, setSubscriptionStatus] = useState(() => localStorage.getItem('intimix_sub_status') || 'none')
   const [impersonating, setImpersonating] = useState(() => {
     const t = localStorage.getItem('intimix_token')
     if (!t) return null
     try { const p = JSON.parse(atob(t.split('.')[1])); return p.impersonating ? { id: p.impersonating, name: p.impersonatingName, email: p.impersonatingEmail } : null } catch { return null }
   })
 
-  const login = (newToken, userEmail, userRole, userName) => {
+  const login = (newToken, userEmail, userRole, userName, subStatus) => {
     localStorage.setItem('intimix_token', newToken)
     localStorage.setItem('intimix_email', userEmail)
     localStorage.setItem('intimix_role', userRole || 'user')
     localStorage.setItem('intimix_name', userName || '')
+    localStorage.setItem('intimix_sub_status', subStatus || (userRole === 'admin' ? 'active' : 'none'))
     setToken(newToken)
     setEmail(userEmail)
     setRole(userRole || 'user')
     setName(userName || '')
+    setSubscriptionStatus(subStatus || (userRole === 'admin' ? 'active' : 'none'))
     setImpersonating(null)
   }
 
@@ -63,15 +66,18 @@ function App() {
     localStorage.removeItem('intimix_role')
     localStorage.removeItem('intimix_name')
     localStorage.removeItem('intimix_impersonate_backup')
+    localStorage.removeItem('intimix_sub_status')
     setToken(null)
     setEmail(null)
     setRole(null)
     setName(null)
+    setSubscriptionStatus('none')
     setImpersonating(null)
   }
 
   const isAuthenticated = !!token
   const isAdmin = role === 'admin'
+  const hasSubscription = isAdmin || subscriptionStatus === 'active' || subscriptionStatus === 'trial'
 
   const [branding, setBranding] = useState({ app_name: 'Mailer', app_subtitle: '', app_logo: '/logo-header.png' })
 
@@ -83,7 +89,7 @@ function App() {
 
   return (
     <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
-      <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation }}>
+      <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus }}>
         <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/" /> : <Login />} />
           <Route path="/*" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />

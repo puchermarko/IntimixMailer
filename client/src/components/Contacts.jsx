@@ -2,13 +2,15 @@
 import { useState, useEffect } from 'react'
 import { getContacts, createContact, updateContact, deleteContact } from '../lib/api'
 import ContactDetail from './ContactDetail'
+import { useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Plus, Search, User, Mail, Phone, Trash2, Edit3, X,
-  Loader2, BookOpen, Paperclip, ChevronRight, MapPin, Building2
+  Loader2, BookOpen, Paperclip, ChevronRight, MapPin, Building2, Lock
 } from 'lucide-react'
 
 export default function Contacts() {
+  const { hasSubscription } = useAuth()
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -104,8 +106,10 @@ export default function Contacts() {
           <h2 className="text-xl sm:text-2xl font-bold text-white">Kapcsolatok</h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
         </div>
-        <button onClick={openCreate} className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
-          <Plus className="w-4 h-4" />
+        <button onClick={openCreate} disabled={!hasSubscription}
+          className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
+          {!hasSubscription ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           Új kapcsolat
         </button>
       </div>
@@ -181,13 +185,17 @@ export default function Contacts() {
               <div className="flex items-center gap-1 ml-2 sm:ml-3 shrink-0">
                 <button
                   onClick={(e) => { e.stopPropagation(); openEdit(contact) }}
-                  className="p-2 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all sm:opacity-0 sm:group-hover:opacity-100"
+                  disabled={!hasSubscription}
+                  className={`p-2 rounded-lg transition-all sm:opacity-0 sm:group-hover:opacity-100 ${!hasSubscription ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}
+                  title={!hasSubscription ? 'Aktív előfizetés szükséges' : 'Szerkesztés'}
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  {!hasSubscription ? <Lock className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(contact.id, contact.name) }}
-                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all sm:opacity-0 sm:group-hover:opacity-100"
+                  disabled={!hasSubscription}
+                  className={`p-2 rounded-lg transition-all sm:opacity-0 sm:group-hover:opacity-100 ${!hasSubscription ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}
+                  title={!hasSubscription ? 'Aktív előfizetés szükséges' : 'Törlés'}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

@@ -4,7 +4,7 @@ import {
   Inbox as InboxIcon, SendHorizontal, PenLine, Users, RefreshCw, Search, X,
   Paperclip, ChevronLeft, ChevronRight, ArrowLeft, Download, User, Clock,
   FileText, Loader2, Trash2, Reply, Send, Eye, Code, ChevronDown, ChevronUp,
-  LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag
+  LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
@@ -12,18 +12,19 @@ import {
   replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates
 } from '../lib/api'
 import { emailTemplates as builtinTemplates } from '../lib/templates'
-import { useBranding } from '../App'
+import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 
 const TABS = [
   { id: 'inbox', label: 'Bejövő', icon: InboxIcon },
   { id: 'sent', label: 'Elküldött', icon: SendHorizontal },
-  { id: 'compose', label: 'Új levél', icon: PenLine },
-  { id: 'bulk', label: 'Tömeges küldés', icon: Users },
+  { id: 'compose', label: 'Új levél', icon: PenLine, requiresSub: true },
+  { id: 'bulk', label: 'Tömeges küldés', icon: Users, requiresSub: true },
 ]
 
 export default function MailView() {
   const [activeTab, setActiveTab] = useState('inbox')
+  const { hasSubscription } = useAuth()
 
   return (
     <div className="space-y-6 fade-in">
@@ -32,18 +33,24 @@ export default function MailView() {
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
+          const disabled = tab.requiresSub && !hasSubscription
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => !disabled && setActiveTab(tab.id)}
+              disabled={disabled}
               className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium transition-all border-b-2 -mb-px whitespace-nowrap ${
-                isActive
-                  ? 'text-[#2EC4BE] border-[#1AA19C]'
-                  : 'text-gray-400 border-transparent hover:text-gray-200 hover:border-white/10'
+                disabled
+                  ? 'text-gray-600 border-transparent cursor-not-allowed opacity-50'
+                  : isActive
+                    ? 'text-[#2EC4BE] border-[#1AA19C]'
+                    : 'text-gray-400 border-transparent hover:text-gray-200 hover:border-white/10'
               }`}
+              title={disabled ? 'Aktív előfizetés szükséges' : ''}
             >
               <Icon className="w-4 h-4" />
               {tab.label}
+              {disabled && <Lock className="w-3 h-3" />}
             </button>
           )
         })}
@@ -64,6 +71,7 @@ export default function MailView() {
    BEJÖVŐ FÜL - itt jönnek be a levelek IMAP-ról
    ═══════════════════════════════════════════════════════════════ */
 function InboxTab() {
+  const { hasSubscription } = useAuth()
   const [emails, setEmails] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -368,9 +376,10 @@ function InboxTab() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
           )}
         </form>
-        <button onClick={handleSync} disabled={syncing}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0">
-          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+        <button onClick={handleSync} disabled={syncing || !hasSubscription}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+          title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
+          {!hasSubscription ? <Lock className="w-4 h-4" /> : <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />}
           <span className="sm:inline">{syncing ? 'Szinkronizálás...' : 'Szinkronizálás'}</span>
         </button>
       </div>
@@ -429,6 +438,7 @@ function InboxTab() {
    ELKÜLDÖTT FÜL - helyi + IMAP-ról szinkronizált kimenő levelek
    ═══════════════════════════════════════════════════════════════ */
 function SentTab() {
+  const { hasSubscription } = useAuth()
   const [emails, setEmails] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -579,9 +589,10 @@ function SentTab() {
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
           )}
         </form>
-        <button onClick={handleSync} disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0">
-          <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+        <button onClick={handleSync} disabled={syncing || !hasSubscription}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+          title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
+          {!hasSubscription ? <Lock className="w-4 h-4" /> : <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />}
           {syncing ? 'Szinkronizálás...' : 'Kimenő szinkronizálása'}
         </button>
       </div>

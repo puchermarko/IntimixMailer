@@ -33,7 +33,7 @@ export default function Settings() {
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
   const { refreshBranding } = useBranding()
-  const { isAdmin } = useAuth()
+  const { isAdmin, setSubscriptionStatus } = useAuth()
   const [backupExporting, setBackupExporting] = useState(false)
   const [backupImporting, setBackupImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
@@ -60,7 +60,15 @@ export default function Settings() {
 
   const loadSubscription = async () => {
     setSubLoading(true)
-    try { setSubscription(await getSubscription()) } catch (err) { toast.error(err.message) }
+    try {
+      const sub = await getSubscription()
+      setSubscription(sub)
+      // Sync status back to AuthContext so the rest of the app stays up to date
+      if (sub.status && setSubscriptionStatus) {
+        setSubscriptionStatus(sub.status)
+        localStorage.setItem('intimix_sub_status', sub.status)
+      }
+    } catch (err) { toast.error(err.message) }
     finally { setSubLoading(false) }
   }
 

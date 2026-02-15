@@ -50,6 +50,26 @@ function adminOnly(req, res, next) {
   next();
 }
 
+// Subscription check middleware — blocks users without active/trial subscription
+function requireSubscription(req, res, next) {
+  // Admin always passes
+  if (req.user.role === 'admin') return next();
+  const user = db.prepare('SELECT subscription_status, trial_end FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(403).json({ error: 'Nincs aktív előfizetés. Kérjük, aktiváld az előfizetésed.' });
+  let status = user.subscription_status || 'none';
+  // Auto-expire trial
+  if (status === 'trial' && user.trial_end) {
+    const now = new Date();
+    const end = new Date(user.trial_end + 'Z');
+    if (now > end) {
+      db.prepare("UPDATE users SET subscription_status = 'expired', updated_at = datetime('now') WHERE id = ?").run(req.userId);
+      status = 'expired';
+    }
+  }
+  if (status === 'active' || status === 'trial') return next();
+  return res.status(403).json({ error: 'Nincs aktív előfizetés. Kérjük, aktiváld az előfizetésed.' });
+}
+
 // ─── PER-USER HELPERS ───────────────────────────────────────
 
 // Get user settings as object
@@ -136,8 +156,18 @@ app.post('/api/login', (req, res) => {
   // User login (from DB)
   const user = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(email);
   if (user && user.password === password) {
+    // Auto-expire trial at login time
+    let subStatus = user.subscription_status || 'none';
+    if (subStatus === 'trial' && user.trial_end) {
+      const now = new Date();
+      const end = new Date(user.trial_end + 'Z');
+      if (now > end) {
+        db.prepare("UPDATE users SET subscription_status = 'expired', updated_at = datetime('now') WHERE id = ?").run(user.id);
+        subStatus = 'expired';
+      }
+    }
     const token = jwt.sign({ role: 'user', userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id });
+    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id, subscription_status: subStatus });
   }
 
   return res.status(401).json({ error: 'Invalid credentials' });
@@ -355,7 +385,7 @@ app.get('/api/contacts/:id', authenticate, (req, res) => {
 });
 
 // Új kapcsolat létrehozása
-app.post('/api/contacts', authenticate, (req, res) => {
+app.post('/api/contacts', authenticate, requireSubscription, (req, res) => {
   const { name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
 
@@ -371,7 +401,7 @@ app.post('/api/contacts', authenticate, (req, res) => {
 });
 
 // Kapcsolat módosítása
-app.put('/api/contacts/:id', authenticate, (req, res) => {
+app.put('/api/contacts/:id', authenticate, requireSubscription, (req, res) => {
   const { name, email, phone, notes } = req.body;
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
@@ -391,7 +421,7 @@ app.put('/api/contacts/:id', authenticate, (req, res) => {
 });
 
 // Kapcsolat törlése az összes emailjével és fájljával együtt
-app.delete('/api/contacts/:id', authenticate, (req, res) => {
+app.delete('/api/contacts/:id', authenticate, requireSubscription, (req, res) => {
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
@@ -524,7 +554,7 @@ app.get('/api/sent-imap-attachments/:id/download', (req, res) => {
 });
 
 // Kimenő levelek szinkronizálása IMAP-ról + kapcsolatokhoz rendelés
-app.post('/api/sent/sync', authenticate, async (req, res) => {
+app.post('/api/sent/sync', authenticate, requireSubscription, async (req, res) => {
   const client = getUserImapClient(req.userId);
   if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
@@ -647,7 +677,7 @@ app.post('/api/sent/sync', authenticate, async (req, res) => {
 
 // ─── EMAIL KÜLDÉS - naplózással együtt ───────────────────────
 
-app.post('/api/send-email', authenticate, upload.array('attachments', 5), async (req, res) => {
+app.post('/api/send-email', authenticate, requireSubscription, upload.array('attachments', 5), async (req, res) => {
   try {
     const { to, subject, html, cc, bcc, inReplyTo } = req.body;
 
@@ -705,7 +735,7 @@ app.post('/api/send-email', authenticate, upload.array('attachments', 5), async 
 
 // ─── TÖMEGES EMAIL KÜLDÉS - mindenkit végigmegy és naplóz ───
 
-app.post('/api/send-bulk', authenticate, upload.array('attachments', 5), async (req, res) => {
+app.post('/api/send-bulk', authenticate, requireSubscription, upload.array('attachments', 5), async (req, res) => {
   try {
     const { recipients, subject, html } = req.body;
     const parsed = JSON.parse(recipients);
@@ -780,7 +810,7 @@ app.post('/api/send-bulk', authenticate, upload.array('attachments', 5), async (
 // ─── BEJÖVŐ LEVELEK (IMAP) - itt jön be minden ami érkezik ─
 
 // Bejövő szinkronizálás - lehúzza az új leveleket IMAP-ról és eltárolja
-app.post('/api/inbox/sync', authenticate, async (req, res) => {
+app.post('/api/inbox/sync', authenticate, requireSubscription, async (req, res) => {
   const client = getUserImapClient(req.userId);
   if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
@@ -1208,7 +1238,7 @@ function nextQuoteNumber(userId) {
 }
 
 // Összes árajánlat listázása
-app.get('/api/quotes', authenticate, (req, res) => {
+app.get('/api/quotes', authenticate, requireSubscription, (req, res) => {
   try {
     const quotes = db.prepare('SELECT * FROM quotes WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
     res.json({ quotes });
@@ -1216,7 +1246,7 @@ app.get('/api/quotes', authenticate, (req, res) => {
 });
 
 // Egy árajánlat lekérdezése tételekkel
-app.get('/api/quotes/:id', authenticate, (req, res) => {
+app.get('/api/quotes/:id', authenticate, requireSubscription, (req, res) => {
   try {
     const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
@@ -1226,7 +1256,7 @@ app.get('/api/quotes/:id', authenticate, (req, res) => {
 });
 
 // Új árajánlat létrehozása
-app.post('/api/quotes', authenticate, (req, res) => {
+app.post('/api/quotes', authenticate, requireSubscription, (req, res) => {
   try {
     const { title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, items } = req.body;
     const id = randomUUID();
@@ -1258,7 +1288,7 @@ app.post('/api/quotes', authenticate, (req, res) => {
 });
 
 // Árajánlat módosítása
-app.put('/api/quotes/:id', authenticate, (req, res) => {
+app.put('/api/quotes/:id', authenticate, requireSubscription, (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!existing) return res.status(404).json({ error: 'Quote not found' });
@@ -1293,7 +1323,7 @@ app.put('/api/quotes/:id', authenticate, (req, res) => {
 });
 
 // Árajánlat törlése
-app.delete('/api/quotes/:id', authenticate, (req, res) => {
+app.delete('/api/quotes/:id', authenticate, requireSubscription, (req, res) => {
   try {
     const existing = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!existing) return res.status(404).json({ error: 'Quote not found' });
@@ -1497,7 +1527,7 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
 }
 
 // PDF letöltés
-app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
+app.get('/api/quotes/:id/pdf', authenticate, requireSubscription, async (req, res) => {
   try {
     const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
@@ -1515,7 +1545,7 @@ app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
 });
 
 // Árajánlat küldése emailben
-app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
+app.post('/api/quotes/:id/send', authenticate, requireSubscription, async (req, res) => {
   try {
     const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });

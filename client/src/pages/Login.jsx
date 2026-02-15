@@ -21,7 +21,7 @@ export default function Login() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Login failed')
-      login(data.token, data.email, data.role, data.name)
+      login(data.token, data.email, data.role, data.name, data.subscription_status)
       toast.success('Üdv, visszatértél!')
     } catch (err) {
       toast.error(err.message)

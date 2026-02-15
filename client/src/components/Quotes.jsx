@@ -5,7 +5,7 @@ import { useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, FileText, Send, Download, Loader2, ChevronLeft, Search,
-  User, Building2, MapPin, Phone, Mail, Hash, Calendar, StickyNote, X, Check
+  User, Building2, MapPin, Phone, Mail, Hash, Calendar, StickyNote, X, Check, Lock
 } from 'lucide-react'
 
 const statusLabels = { draft: 'Piszkozat', sent: 'Elküldve', accepted: 'Elfogadva', rejected: 'Elutasítva' }
@@ -17,14 +17,14 @@ function formatMoney(amount, currency = 'HUF') {
 }
 
 export default function Quotes() {
-  const { token } = useAuth()
+  const { token, hasSubscription } = useAuth()
   const [quotes, setQuotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list') // list | editor
   const [editingQuote, setEditingQuote] = useState(null)
   const [search, setSearch] = useState('')
 
-  useEffect(() => { loadQuotes() }, [])
+  useEffect(() => { if (hasSubscription) loadQuotes() }, [])
 
   const loadQuotes = async () => {
     setLoading(true)
@@ -62,6 +62,24 @@ export default function Quotes() {
     (q.contact_name || '').toLowerCase().includes(search.toLowerCase()) ||
     (q.quote_number || '').toLowerCase().includes(search.toLowerCase())
   )
+
+  if (!hasSubscription) {
+    return (
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Árajánlatok</h2>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">Árajánlatok kezelése, PDF generálás és küldés</p>
+          </div>
+        </div>
+        <div className="glass rounded-xl p-12 text-center">
+          <Lock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-300 font-medium">Aktív előfizetés szükséges</p>
+          <p className="text-gray-500 text-sm mt-1">Az árajánlatok használatához aktiváld az előfizetésed a Beállítások &rarr; Előfizetés menüben.</p>
+        </div>
+      </div>
+    )
+  }
 
   if (view === 'editor') {
     return <QuoteEditor quote={editingQuote} onBack={() => { setView('list'); loadQuotes() }} onSaved={handleSaved} token={token} />
