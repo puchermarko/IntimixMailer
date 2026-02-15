@@ -8,11 +8,13 @@ import Settings from '../components/Settings'
 import Contacts from '../components/Contacts'
 import Quotes from '../components/Quotes'
 import UserManagement from '../components/UserManagement'
+import SetupWizard from '../components/SetupWizard'
 import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
-  const { isAdmin, impersonating, stopImpersonation } = useAuth()
+  const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
+  const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const views = {
@@ -22,6 +24,10 @@ export default function Dashboard() {
     templates: <TemplateGallery />,
     settings: <Settings />,
     users: <UserManagement />,
+  }
+
+  if (showWizard) {
+    return <SetupWizard onComplete={() => setShowWizard(false)} />
   }
 
   return (

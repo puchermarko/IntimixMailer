@@ -259,6 +259,9 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_imap_user_uid ON sent_imap(u
 try { db.exec('DROP INDEX IF EXISTS sqlite_autoindex_contacts_1'); } catch {}
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_user_email ON contacts(user_id, email)');
 
+// Setup wizard completed flag
+addColumnIfMissing('users', 'setup_completed', 'INTEGER DEFAULT 0');
+
 // Subscription fields on users table
 const subscriptionCols = [
   ['subscription_status', "TEXT DEFAULT 'none'"],

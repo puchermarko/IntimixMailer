@@ -25,23 +25,26 @@ function App() {
   const [role, setRole] = useState(() => localStorage.getItem('intimix_role'))
   const [name, setName] = useState(() => localStorage.getItem('intimix_name'))
   const [subscriptionStatus, setSubscriptionStatus] = useState(() => localStorage.getItem('intimix_sub_status') || 'none')
+  const [setupCompleted, setSetupCompleted] = useState(() => localStorage.getItem('intimix_setup_completed') === 'true')
   const [impersonating, setImpersonating] = useState(() => {
     const t = localStorage.getItem('intimix_token')
     if (!t) return null
     try { const p = JSON.parse(atob(t.split('.')[1])); return p.impersonating ? { id: p.impersonating, name: p.impersonatingName, email: p.impersonatingEmail } : null } catch { return null }
   })
 
-  const login = (newToken, userEmail, userRole, userName, subStatus) => {
+  const login = (newToken, userEmail, userRole, userName, subStatus, setupDone) => {
     localStorage.setItem('intimix_token', newToken)
     localStorage.setItem('intimix_email', userEmail)
     localStorage.setItem('intimix_role', userRole || 'user')
     localStorage.setItem('intimix_name', userName || '')
     localStorage.setItem('intimix_sub_status', subStatus || (userRole === 'admin' ? 'active' : 'none'))
+    localStorage.setItem('intimix_setup_completed', setupDone === true || setupDone === 'true' || userRole === 'admin' ? 'true' : 'false')
     setToken(newToken)
     setEmail(userEmail)
     setRole(userRole || 'user')
     setName(userName || '')
     setSubscriptionStatus(subStatus || (userRole === 'admin' ? 'active' : 'none'))
+    setSetupCompleted(setupDone === true || setupDone === 'true' || userRole === 'admin')
     setImpersonating(null)
   }
 
@@ -69,11 +72,13 @@ function App() {
     localStorage.removeItem('intimix_name')
     localStorage.removeItem('intimix_impersonate_backup')
     localStorage.removeItem('intimix_sub_status')
+    localStorage.removeItem('intimix_setup_completed')
     setToken(null)
     setEmail(null)
     setRole(null)
     setName(null)
     setSubscriptionStatus('none')
+    setSetupCompleted(false)
     setImpersonating(null)
   }
 
@@ -91,7 +96,7 @@ function App() {
 
   return (
     <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
-      <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus }}>
+      <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
         <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />

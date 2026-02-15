@@ -43,7 +43,7 @@ export default function Register() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Regisztráció sikertelen')
-      login(data.token, data.email, data.role, data.name, data.subscription_status)
+      login(data.token, data.email, data.role, data.name, data.subscription_status, data.setup_completed)
       toast.success('Sikeres regisztráció! Üdvözlünk!')
     } catch (err) {
       toast.error(err.message)

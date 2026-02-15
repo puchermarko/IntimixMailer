@@ -167,7 +167,7 @@ app.post('/api/login', (req, res) => {
       }
     }
     const token = jwt.sign({ role: 'user', userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id, subscription_status: subStatus });
+    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id, subscription_status: subStatus, setup_completed: !!user.setup_completed });
   }
 
   return res.status(401).json({ error: 'Invalid credentials' });
@@ -200,7 +200,13 @@ app.post('/api/register', (req, res) => {
 
   // Auto-login after registration
   const token = jwt.sign({ role: 'user', userId: id, email }, JWT_SECRET, { expiresIn: '24h' });
-  res.status(201).json({ token, email, role: 'user', name, userId: id, subscription_status: 'none' });
+  res.status(201).json({ token, email, role: 'user', name, userId: id, subscription_status: 'none', setup_completed: false });
+});
+
+// Mark setup wizard as completed (or skipped)
+app.post('/api/setup-complete', authenticate, (req, res) => {
+  db.prepare("UPDATE users SET setup_completed = 1, updated_at = datetime('now') WHERE id = ?").run(req.userId);
+  res.json({ success: true });
 });
 
 // ─── ADMIN: USER MANAGEMENT ────────────────────────────────
