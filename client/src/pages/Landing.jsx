@@ -224,7 +224,6 @@ export default function Landing() {
   const ctaRef = useScrollReveal()
   const contactRef = useScrollReveal()
   const pricingCard1Ref = useScrollReveal()
-  const pricingCard2Ref = useScrollReveal()
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 50)
@@ -475,68 +474,37 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-3xl mx-auto">
-            {/* Trial */}
-            <div ref={pricingCard1Ref} className="reveal-left glass rounded-2xl p-7 sm:p-9 card-hover">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1AA19C]/10 text-xs font-semibold text-[#2EC4BE] mb-5">
-                <Sparkles className="w-3.5 h-3.5" /> Próba
-              </div>
-              <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-4xl sm:text-5xl font-extrabold text-white">Ingyenes</span>
-              </div>
-              <p className="text-gray-500 text-sm mb-7">30 napig, kötelezettség nélkül</p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Teljes funkciókészlet',
-                  'Email küldés & fogadás',
-                  'Kapcsolatkezelés (CRM)',
-                  'Árajánlat készítés & PDF',
-                  '30 napos próbaidőszak',
-                  'Nincs bankkártya szükséges',
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-[#2EC4BE] shrink-0" /> {item}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={() => navigate('/register')}
-                className="magnetic-btn w-full py-3 rounded-xl text-sm font-semibold glass hover:border-[#1AA19C]/40 text-white transition-all flex items-center justify-center gap-2">
-                Próba Indítása <ArrowRight className="w-4 h-4" />
-              </button>
+          <div ref={pricingCard1Ref} className="reveal-scale max-w-lg mx-auto relative glass rounded-2xl p-8 sm:p-10 border-[#1AA19C]/30 card-hover">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#1AA19C] text-xs font-bold text-white shadow-lg shadow-[#1AA19C]/30">
+              30 napos ingyenes próba
             </div>
-
-            {/* Paid */}
-            <div ref={pricingCard2Ref} className="reveal-right relative glass rounded-2xl p-7 sm:p-9 border-[#1AA19C]/30 card-hover">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#1AA19C] text-xs font-bold text-white shadow-lg shadow-[#1AA19C]/30">
-                Ajánlott
-              </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#1AA19C]/10 text-xs font-semibold text-[#2EC4BE] mb-5">
-                <Star className="w-3.5 h-3.5" /> Teljes
-              </div>
-              <div className="flex items-baseline gap-1.5 mb-2">
-                <span className="text-4xl sm:text-5xl font-extrabold text-white">3 090</span>
-                <span className="text-lg text-gray-400 font-medium">Ft / hó</span>
-              </div>
-              <p className="text-gray-500 text-sm mb-7">Korlátlan hozzáférés minden funkcióhoz</p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  'Minden próba funkció',
-                  'Korlátlan email küldés',
-                  'Korlátlan kapcsolatok',
-                  'Korlátlan árajánlatok',
-                  'Tömeges email küldés',
-                  'Prioritásos támogatás',
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-[#2EC4BE] shrink-0" /> {item}
-                  </li>
-                ))}
-              </ul>
-              <button onClick={() => navigate('/register')}
-                className="magnetic-btn btn-primary w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
-                Előfizetés <ArrowRight className="w-4 h-4" />
-              </button>
+            <div className="flex items-baseline gap-1.5 mb-2 mt-2">
+              <span className="text-4xl sm:text-5xl font-extrabold text-white">3 090</span>
+              <span className="text-lg text-gray-400 font-medium">Ft / hó</span>
             </div>
+            <p className="text-gray-500 text-sm mb-8">Korlátlan hozzáférés minden funkcióhoz</p>
+            <ul className="space-y-3 mb-8">
+              {[
+                'Korlátlan email küldés & fogadás',
+                'IMAP szinkronizálás',
+                'Kapcsolatkezelés (CRM)',
+                'Árajánlat készítés & PDF generálás',
+                'Tömeges email küldés',
+                'Email sablonok kezelése',
+                'Céges márkaépítés (logó, cégadatok)',
+                'API hozzáférés',
+                'Prioritásos támogatás',
+              ].map((item, i) => (
+                <li key={i} className="flex items-center gap-2.5 text-sm text-gray-300">
+                  <Check className="w-4 h-4 text-[#2EC4BE] shrink-0" /> {item}
+                </li>
+              ))}
+            </ul>
+            <button onClick={() => navigate('/register')}
+              className="magnetic-btn btn-primary w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
+              Ingyenes Próba Indítása <ArrowRight className="w-4 h-4" />
+            </button>
+            <p className="text-center text-xs text-gray-500 mt-4">30 napig ingyenes · Nincs bankkártya szükséges · Bármikor lemondható</p>
           </div>
         </div>
       </section>
