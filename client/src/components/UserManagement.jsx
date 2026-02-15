@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../App'
-import { getUsers, createUser, updateUser, deleteUser, impersonateUser } from '../lib/api'
+import { getUsers, createUser, updateUser, deleteUser, impersonateUser, updateUserSubscription } from '../lib/api'
 import toast from 'react-hot-toast'
-import { Users, Plus, Pencil, Trash2, Eye, X, Mail, Shield, UserCheck, UserX, Loader2 } from 'lucide-react'
+import { Users, Plus, Pencil, Trash2, Eye, X, UserCheck, UserX, Loader2, Play, Square, CreditCard, Clock, Ban } from 'lucide-react'
+
+const subStatusLabel = {
+  none: { text: 'Nincs', color: 'bg-gray-500/20 text-gray-400' },
+  trial: { text: 'Próba', color: 'bg-blue-500/20 text-blue-400' },
+  active: { text: 'Aktív', color: 'bg-green-500/20 text-green-400' },
+  inactive: { text: 'Inaktív', color: 'bg-yellow-500/20 text-yellow-400' },
+  expired: { text: 'Lejárt', color: 'bg-red-500/20 text-red-400' },
+}
+
+function trialDaysLeft(trialEnd) {
+  if (!trialEnd) return null
+  const end = new Date(trialEnd + 'Z')
+  const now = new Date()
+  const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24))
+  return diff > 0 ? diff : 0
+}
 
 export default function UserManagement() {
   const { startImpersonation } = useAuth()
@@ -81,6 +97,17 @@ export default function UserManagement() {
     try {
       await updateUser(user.id, { active: user.active ? 0 : 1 })
       toast.success(user.active ? 'Felhasználó deaktiválva' : 'Felhasználó aktiválva')
+      fetchUsers()
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
+  const handleSubscription = async (user, action) => {
+    try {
+      await updateUserSubscription(user.id, action)
+      const msgs = { activate: 'Előfizetés aktiválva', deactivate: 'Előfizetés deaktiválva', start_trial: 'Próbaidőszak elindítva (30 nap)', stop_trial: 'Próbaidőszak leállítva' }
+      toast.success(msgs[action] || 'Frissítve')
       fetchUsers()
     } catch (err) {
       toast.error(err.message)
@@ -170,57 +197,101 @@ export default function UserManagement() {
         </div>
       ) : (
         <div className="space-y-3">
-          {users.map(user => (
-            <div key={user.id} className="glass rounded-xl p-4 border border-white/5 hover:border-white/10 transition-all">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${user.active ? 'bg-[#1AA19C]' : 'bg-gray-600'}`}>
-                  {(user.name || user.email)?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-white truncate">{user.name || 'Névtelen'}</p>
-                    {!user.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Inaktív</span>}
+          {users.map(user => {
+            const sub = subStatusLabel[user.subscription_status] || subStatusLabel.none
+            const days = user.subscription_status === 'trial' ? trialDaysLeft(user.trial_end) : null
+
+            return (
+              <div key={user.id} className="glass rounded-xl p-4 border border-white/5 hover:border-white/10 transition-all">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 ${user.active ? 'bg-[#1AA19C]' : 'bg-gray-600'}`}>
+                    {(user.name || user.email)?.[0]?.toUpperCase() || 'U'}
                   </div>
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                </div>
-                <div className="hidden sm:flex items-center gap-4 text-xs text-gray-500">
-                  <span>{user.contact_count || 0} kapcsolat</span>
-                  <span>{user.email_count || 0} email</span>
-                  <span>{user.quote_count || 0} árajánlat</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleImpersonate(user)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-[#1AA19C] hover:bg-[#1AA19C]/10 transition-all"
-                    title="Belépés felhasználóként"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleEdit(user)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
-                    title="Szerkesztés"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleToggleActive(user)}
-                    className={`p-2 rounded-lg transition-all ${user.active ? 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10' : 'text-gray-400 hover:text-green-400 hover:bg-green-500/10'}`}
-                    title={user.active ? 'Deaktiválás' : 'Aktiválás'}
-                  >
-                    {user.active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(user)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                    title="Törlés"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-white truncate">{user.name || 'Névtelen'}</p>
+                      {!user.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Inaktív</span>}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${sub.color}`}>{sub.text}</span>
+                      {days !== null && <span className="text-[10px] text-gray-500">{days} nap</span>}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-4 text-xs text-gray-500">
+                    <span>{user.contact_count || 0} kapcsolat</span>
+                    <span>{user.email_count || 0} email</span>
+                    <span>{user.quote_count || 0} árajánlat</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {/* Subscription actions */}
+                    {(!user.subscription_status || user.subscription_status === 'none' || user.subscription_status === 'inactive' || user.subscription_status === 'expired') && (
+                      <>
+                        <button
+                          onClick={() => handleSubscription(user, 'start_trial')}
+                          className="p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                          title="Próbaidőszak indítása (30 nap)"
+                        >
+                          <Clock className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleSubscription(user, 'activate')}
+                          className="p-2 rounded-lg text-gray-400 hover:text-green-400 hover:bg-green-500/10 transition-all"
+                          title="Előfizetés aktiválása"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    {user.subscription_status === 'trial' && (
+                      <button
+                        onClick={() => handleSubscription(user, 'stop_trial')}
+                        className="p-2 rounded-lg text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                        title="Próbaidőszak leállítása"
+                      >
+                        <Square className="w-4 h-4" />
+                      </button>
+                    )}
+                    {user.subscription_status === 'active' && (
+                      <button
+                        onClick={() => handleSubscription(user, 'deactivate')}
+                        className="p-2 rounded-lg text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                        title="Előfizetés deaktiválása"
+                      >
+                        <Ban className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleImpersonate(user)}
+                      className="p-2 rounded-lg text-gray-400 hover:text-[#1AA19C] hover:bg-[#1AA19C]/10 transition-all"
+                      title="Belépés felhasználóként"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleEdit(user)}
+                      className="p-2 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                      title="Szerkesztés"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleToggleActive(user)}
+                      className={`p-2 rounded-lg transition-all ${user.active ? 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-500/10' : 'text-gray-400 hover:text-green-400 hover:bg-green-500/10'}`}
+                      title={user.active ? 'Deaktiválás' : 'Aktiválás'}
+                    >
+                      {user.active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(user)}
+                      className="p-2 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      title="Törlés"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

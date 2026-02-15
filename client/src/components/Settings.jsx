@@ -1,12 +1,12 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, getSubscription } from '../lib/api'
 import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
-  Download, UploadCloud, Database, FileJson, Users, HardDrive
+  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard
 } from 'lucide-react'
 
 export default function Settings() {
@@ -38,6 +38,8 @@ export default function Settings() {
   const [backupImporting, setBackupImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const backupInputRef = useRef(null)
+  const [subscription, setSubscription] = useState(null)
+  const [subLoading, setSubLoading] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [companyVat, setCompanyVat] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
@@ -53,7 +55,14 @@ export default function Settings() {
     if (activeTab === 'expert') loadKeys()
     if (activeTab === 'config' || activeTab === 'general') loadEnv()
     if (activeTab === 'branding') loadBrand()
+    if (activeTab === 'subscription') loadSubscription()
   }, [activeTab])
+
+  const loadSubscription = async () => {
+    setSubLoading(true)
+    try { setSubscription(await getSubscription()) } catch (err) { toast.error(err.message) }
+    finally { setSubLoading(false) }
+  }
 
   const loadBrand = async () => {
     setBrandLoading(true)
@@ -200,6 +209,7 @@ export default function Settings() {
     { id: 'general', label: 'Általános' },
     { id: 'branding', label: 'Márka' },
     { id: 'config', label: 'Konfiguráció' },
+    { id: 'subscription', label: 'Előfizetés' },
     { id: 'backup', label: 'Mentés' },
     { id: 'expert', label: 'Haladó' },
   ]
@@ -473,6 +483,79 @@ export default function Settings() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ═══ ELŐFIZETÉS FÜL ═══ */}
+      {activeTab === 'subscription' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          {subLoading ? (
+            <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" /></div>
+          ) : subscription ? (
+            <>
+              {/* Státusz */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><CreditCard className="w-5 h-5 text-[#1AA19C]" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Előfizetés állapota</h3><p className="text-xs text-gray-500">Jelenlegi előfizetési státuszod</p></div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
+                    <span className="text-xs text-gray-400">Státusz</span>
+                    <span className={`text-sm font-medium px-2.5 py-1 rounded-lg ${
+                      subscription.status === 'active' ? 'bg-green-500/15 text-green-400' :
+                      subscription.status === 'trial' ? 'bg-blue-500/15 text-blue-400' :
+                      subscription.status === 'admin' ? 'bg-purple-500/15 text-purple-400' :
+                      subscription.status === 'expired' ? 'bg-red-500/15 text-red-400' :
+                      'bg-gray-500/15 text-gray-400'
+                    }`}>
+                      {subscription.status === 'active' ? 'Aktív előfizetés' :
+                       subscription.status === 'trial' ? 'Próbaidőszak' :
+                       subscription.status === 'admin' ? 'Adminisztrátor' :
+                       subscription.status === 'expired' ? 'Lejárt' :
+                       subscription.status === 'inactive' ? 'Inaktív' : 'Nincs előfizetés'}
+                    </span>
+                  </div>
+                  {subscription.status === 'trial' && subscription.trial_end && (
+                    <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
+                      <span className="text-xs text-gray-400">Próbaidőszak vége</span>
+                      <span className="text-sm text-gray-200">{new Date(subscription.trial_end + 'Z').toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                  )}
+                  {subscription.status === 'trial' && subscription.trial_end && (() => {
+                    const days = Math.ceil((new Date(subscription.trial_end + 'Z') - new Date()) / (1000 * 60 * 60 * 24))
+                    return (
+                      <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
+                        <span className="text-xs text-gray-400">Hátralévő napok</span>
+                        <span className={`text-sm font-medium ${days <= 7 ? 'text-amber-400' : 'text-gray-200'}`}>{days > 0 ? `${days} nap` : 'Lejárt'}</span>
+                      </div>
+                    )
+                  })()}
+                  {subscription.status === 'active' && subscription.subscription_start && (
+                    <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
+                      <span className="text-xs text-gray-400">Előfizetés kezdete</span>
+                      <span className="text-sm text-gray-200">{new Date(subscription.subscription_start + 'Z').toLocaleDateString('hu-HU', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Előfizetés placeholder */}
+              {subscription.status !== 'admin' && (
+                <div className="glass rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><CreditCard className="w-5 h-5 text-purple-400" /></div>
+                    <div><h3 className="text-base font-semibold text-white">Előfizetés kezelése</h3><p className="text-xs text-gray-500">Fizetési lehetőségek</p></div>
+                  </div>
+                  <div className="rounded-xl glass-light p-6 text-center">
+                    <CreditCard className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                    <p className="text-sm text-gray-300 font-medium">Hamarosan elérhető</p>
+                    <p className="text-xs text-gray-500 mt-1">Az online fizetési lehetőség még fejlesztés alatt áll. Kérjük, vedd fel a kapcsolatot az adminisztrátorral az előfizetés aktiválásához.</p>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
         </div>
       )}
 

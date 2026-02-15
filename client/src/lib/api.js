@@ -454,6 +454,26 @@ export async function updateUserSettingsAdmin(id, settings) {
   return data
 }
 
+// ─── SUBSCRIPTION ───────────────────────────────────────────
+
+export async function updateUserSubscription(id, action) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}/subscription`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update subscription')
+  return data
+}
+
+export async function getSubscription() {
+  const res = await fetch(`${API_BASE}/subscription`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch subscription')
+  return data
+}
+
 // ─── BACKUP ─────────────────────────────────────────────────
 
 export async function exportBackup() {

@@ -149,6 +149,7 @@ app.post('/api/login', (req, res) => {
 app.get('/api/admin/users', authenticate, adminOnly, (req, res) => {
   const users = db.prepare(`
     SELECT u.id, u.email, u.name, u.active, u.created_at, u.updated_at,
+      u.subscription_status, u.subscription_type, u.trial_start, u.trial_end, u.subscription_start, u.subscription_end,
       (SELECT COUNT(*) FROM contacts WHERE user_id = u.id) as contact_count,
       (SELECT COUNT(*) FROM email_log WHERE user_id = u.id) + (SELECT COUNT(*) FROM sent_imap WHERE user_id = u.id) as email_count,
       (SELECT COUNT(*) FROM quotes WHERE user_id = u.id) as quote_count
@@ -232,6 +233,53 @@ app.put('/api/admin/users/:id/settings', authenticate, adminOnly, (req, res) => 
     setUserSetting(req.params.id, key, value || '');
   }
   res.json({ success: true });
+});
+
+// Admin: subscription management
+app.put('/api/admin/users/:id/subscription', authenticate, adminOnly, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { action } = req.body;
+
+  if (action === 'activate') {
+    db.prepare("UPDATE users SET subscription_status = 'active', subscription_type = 'paid', subscription_start = datetime('now'), subscription_end = '', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  } else if (action === 'deactivate') {
+    db.prepare("UPDATE users SET subscription_status = 'inactive', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  } else if (action === 'start_trial') {
+    const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    db.prepare("UPDATE users SET subscription_status = 'trial', subscription_type = 'trial', trial_start = datetime('now'), trial_end = ?, updated_at = datetime('now') WHERE id = ?").run(trialEnd, req.params.id);
+  } else if (action === 'stop_trial') {
+    db.prepare("UPDATE users SET subscription_status = 'inactive', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
+  } else {
+    return res.status(400).json({ error: 'Invalid action. Use: activate, deactivate, start_trial, stop_trial' });
+  }
+
+  const updated = db.prepare('SELECT id, email, name, active, subscription_status, subscription_type, trial_start, trial_end, subscription_start, subscription_end FROM users WHERE id = ?').get(req.params.id);
+  res.json(updated);
+});
+
+// User: get own subscription info
+app.get('/api/subscription', authenticate, (req, res) => {
+  if (req.role === 'admin') return res.json({ status: 'admin', type: 'admin' });
+  const user = db.prepare('SELECT subscription_status, subscription_type, trial_start, trial_end, subscription_start, subscription_end FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  // Check if trial has expired
+  if (user.subscription_status === 'trial' && user.trial_end) {
+    const now = new Date();
+    const end = new Date(user.trial_end + 'Z');
+    if (now > end) {
+      db.prepare("UPDATE users SET subscription_status = 'expired', updated_at = datetime('now') WHERE id = ?").run(req.userId);
+      user.subscription_status = 'expired';
+    }
+  }
+  res.json({
+    status: user.subscription_status || 'none',
+    type: user.subscription_type || '',
+    trial_start: user.trial_start || '',
+    trial_end: user.trial_end || '',
+    subscription_start: user.subscription_start || '',
+    subscription_end: user.subscription_end || '',
+  });
 });
 
 // ─── KAPCSOLATOK CRUD - itt kezeled a kontaktokat ───────────────────
