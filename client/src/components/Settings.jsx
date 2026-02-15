@@ -6,10 +6,10 @@ import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
-  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard
+  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play
 } from 'lucide-react'
 
-export default function Settings() {
+export default function Settings({ onStartTour }) {
   const [testing, setTesting] = useState(false)
   const [smtpStatus, setSmtpStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('general')
@@ -290,6 +290,18 @@ export default function Settings() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Play className="w-5 h-5 text-[#1AA19C]" /></div>
+              <div><h3 className="text-base font-semibold text-white">Gyors Bemutató</h3><p className="text-xs text-gray-500">Nézd meg újra a funkciók bemutatóját</p></div>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">Ha szeretnéd újra megnézni a rendszer funkcióinak bemutatóját, kattints az alábbi gombra.</p>
+            <button onClick={() => { if (onStartTour) { localStorage.removeItem('intimix_tour_completed'); onStartTour() } }}
+              className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2">
+              <Play className="w-4 h-4" /> Bemutató Újraindítása
+            </button>
           </div>
         </div>
       )}

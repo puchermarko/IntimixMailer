@@ -9,25 +9,34 @@ import Contacts from '../components/Contacts'
 import Quotes from '../components/Quotes'
 import UserManagement from '../components/UserManagement'
 import SetupWizard from '../components/SetupWizard'
+import QuickTour from '../components/QuickTour'
 import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
   const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
+  const [showTour, setShowTour] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const startTour = () => setShowTour(true)
 
   const views = {
     mail: <MailView />,
     contacts: <Contacts />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
-    settings: <Settings />,
+    settings: <Settings onStartTour={startTour} />,
     users: <UserManagement />,
   }
 
   if (showWizard) {
-    return <SetupWizard onComplete={() => setShowWizard(false)} />
+    return <SetupWizard onComplete={() => {
+      setShowWizard(false)
+      if (localStorage.getItem('intimix_tour_completed') !== 'true') {
+        setShowTour(true)
+      }
+    }} />
   }
 
   return (
@@ -45,6 +54,7 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+      {showTour && <QuickTour onComplete={() => setShowTour(false)} />}
       <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
       <main className={`lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen ${impersonating ? 'mt-10' : ''}`}>
         <div className="max-w-5xl mx-auto fade-in" key={activeView}>
