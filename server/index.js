@@ -18,63 +18,92 @@ const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const logoAttachments = [
-  {
-    filename: 'intimix-logo.png',
-    path: path.join(__dirname, 'assets', 'logo-header.png'),
-    cid: 'intimix-logo-png'
-  }
-];
-
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(cors());
 app.use(express.json());
 
-const {
-  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
-  IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASS,
-  JWT_SECRET, LOGIN_EMAIL, LOGIN_PASSWORD
-} = process.env;
+const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
 
-const transporter = nodemailer.createTransport({
-  host: SMTP_HOST,
-  port: Number(SMTP_PORT),
-  secure: true,
-  auth: { user: SMTP_USER, pass: SMTP_PASS },
-  tls: { rejectUnauthorized: false }
-});
+// ─── AUTH MIDDLEWARE ─────────────────────────────────────────
 
-// SMTP kapcsolat ellenőrzése induláskor, hogy tudjuk megy-e
-transporter.verify()
-  .then(() => console.log('✅ SMTP connection verified'))
-  .catch((err) => console.error('❌ SMTP connection failed:', err.message));
-
-// JWT hitelesítés middleware - ez védi a belső API-t
+// JWT hitelesítés middleware
+// Token payload: { role: 'admin'|'user', userId: string, email: string, impersonating?: string }
 function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    req.user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    const decoded = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    req.user = decoded;
+    // Effective user: if admin is impersonating, use the impersonated user's id
+    req.userId = decoded.impersonating || decoded.userId || '';
     next();
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
+// Admin-only middleware
+function adminOnly(req, res, next) {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  next();
+}
+
+// ─── PER-USER HELPERS ───────────────────────────────────────
+
+// Get user settings as object
+function getUserSettings(userId) {
+  const rows = db.prepare('SELECT key, value FROM user_settings WHERE user_id = ?').all(userId);
+  const settings = {};
+  for (const r of rows) settings[r.key] = r.value;
+  return settings;
+}
+
+// Upsert a user setting
+function setUserSetting(userId, key, value) {
+  db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value').run(userId, key, value);
+}
+
+// Create SMTP transporter for a user
+function getUserTransporter(userId) {
+  const s = getUserSettings(userId);
+  if (!s.smtp_host || !s.smtp_user || !s.smtp_pass) return null;
+  return nodemailer.createTransport({
+    host: s.smtp_host,
+    port: Number(s.smtp_port) || 465,
+    secure: (Number(s.smtp_port) || 465) === 465,
+    auth: { user: s.smtp_user, pass: s.smtp_pass },
+    tls: { rejectUnauthorized: false }
+  });
+}
+
+// Create IMAP client for a user
+function getUserImapClient(userId) {
+  const s = getUserSettings(userId);
+  if (!s.imap_host || !s.imap_user || !s.imap_pass) return null;
+  return new ImapFlow({
+    host: s.imap_host,
+    port: Number(s.imap_port) || 993,
+    secure: true,
+    auth: { user: s.imap_user, pass: s.imap_pass },
+    tls: { rejectUnauthorized: false },
+    logger: false
+  });
+}
+
 // Segéd: megkeresi a kontaktot email alapján, visszaadja az id-t ha van
-function findContactByEmail(email) {
-  const row = db.prepare('SELECT id FROM contacts WHERE email = ?').get(email);
+function findContactByEmail(email, userId) {
+  const row = db.prepare('SELECT id FROM contacts WHERE email = ? AND user_id = ?').get(email, userId);
   return row ? row.id : null;
 }
 
 // Segéd: email naplózása és csatolmányok mentése a szerverre
-function logEmail({ contactId, recipientEmail, subject, html, messageId, files }) {
+function logEmail({ userId, contactId, recipientEmail, subject, html, messageId, files }) {
   const emailId = randomUUID();
   db.prepare(
-    'INSERT INTO email_log (id, contact_id, recipient_email, subject, html, message_id) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(emailId, contactId, recipientEmail, subject, html, messageId || '');
+    'INSERT INTO email_log (id, user_id, contact_id, recipient_email, subject, html, message_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).run(emailId, userId, contactId, recipientEmail, subject, html, messageId || '');
 
   if (files && files.length > 0) {
     const insertAtt = db.prepare(
@@ -92,14 +121,117 @@ function logEmail({ contactId, recipientEmail, subject, html, messageId, files }
   return emailId;
 }
 
-// Bejelentkezés - egyszerű email+jelszó, JWT-t kap vissza
+// ─── LOGIN ──────────────────────────────────────────────────
+
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
-  if (email === LOGIN_EMAIL && password === LOGIN_PASSWORD) {
-    const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ token, email });
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+
+  // Admin login (from .env)
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    const token = jwt.sign({ role: 'admin', userId: '__admin__', email }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ token, email, role: 'admin', name: 'Admin' });
   }
+
+  // User login (from DB)
+  const user = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(email);
+  if (user && user.password === password) {
+    const token = jwt.sign({ role: 'user', userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id });
+  }
+
   return res.status(401).json({ error: 'Invalid credentials' });
+});
+
+// ─── ADMIN: USER MANAGEMENT ────────────────────────────────
+
+// List all users
+app.get('/api/admin/users', authenticate, adminOnly, (req, res) => {
+  const users = db.prepare(`
+    SELECT u.id, u.email, u.name, u.active, u.created_at, u.updated_at,
+      (SELECT COUNT(*) FROM contacts WHERE user_id = u.id) as contact_count,
+      (SELECT COUNT(*) FROM email_log WHERE user_id = u.id) + (SELECT COUNT(*) FROM sent_imap WHERE user_id = u.id) as email_count,
+      (SELECT COUNT(*) FROM quotes WHERE user_id = u.id) as quote_count
+    FROM users u ORDER BY u.created_at DESC
+  `).all();
+  res.json(users);
+});
+
+// Create user
+app.post('/api/admin/users', authenticate, adminOnly, (req, res) => {
+  const { email, password, name } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  if (existing) return res.status(409).json({ error: 'User with this email already exists' });
+  const id = randomUUID();
+  db.prepare('INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)').run(id, email, password, name || '');
+  const user = db.prepare('SELECT id, email, name, active, created_at FROM users WHERE id = ?').get(id);
+  res.status(201).json(user);
+});
+
+// Update user
+app.put('/api/admin/users/:id', authenticate, adminOnly, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { email, password, name, active } = req.body;
+  if (email && email !== user.email) {
+    const dup = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.params.id);
+    if (dup) return res.status(409).json({ error: 'Another user with this email already exists' });
+  }
+  db.prepare("UPDATE users SET email = ?, password = ?, name = ?, active = ?, updated_at = datetime('now') WHERE id = ?").run(
+    email || user.email, password || user.password, name ?? user.name, active ?? user.active, req.params.id
+  );
+  const updated = db.prepare('SELECT id, email, name, active, created_at, updated_at FROM users WHERE id = ?').get(req.params.id);
+  res.json(updated);
+});
+
+// Delete user and all their data
+app.delete('/api/admin/users/:id', authenticate, adminOnly, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  // Delete all user data
+  const uid = req.params.id;
+  db.prepare('DELETE FROM quote_items WHERE quote_id IN (SELECT id FROM quotes WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM quotes WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM attachments WHERE email_log_id IN (SELECT id FROM email_log WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM email_log WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM inbox_attachments WHERE inbox_id IN (SELECT id FROM inbox WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM inbox WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM sent_imap_attachments WHERE sent_id IN (SELECT id FROM sent_imap WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM sent_imap WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM contacts WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM custom_templates WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM api_keys WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM user_settings WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+  res.json({ success: true });
+});
+
+// Impersonate user — admin gets a new token acting as that user
+app.post('/api/admin/impersonate/:id', authenticate, adminOnly, (req, res) => {
+  const user = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const token = jwt.sign({
+    role: 'admin', userId: '__admin__', email: req.user.email,
+    impersonating: user.id, impersonatingName: user.name, impersonatingEmail: user.email
+  }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token, user });
+});
+
+// Get user settings (admin)
+app.get('/api/admin/users/:id/settings', authenticate, adminOnly, (req, res) => {
+  const settings = getUserSettings(req.params.id);
+  res.json(settings);
+});
+
+// Update user settings (admin)
+app.put('/api/admin/users/:id/settings', authenticate, adminOnly, (req, res) => {
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'Settings object required' });
+  for (const [key, value] of Object.entries(settings)) {
+    setUserSetting(req.params.id, key, value || '');
+  }
+  res.json({ success: true });
 });
 
 // ─── KAPCSOLATOK CRUD - itt kezeled a kontaktokat ───────────────────
@@ -114,14 +246,14 @@ app.get('/api/contacts', authenticate, (req, res) => {
       (SELECT COUNT(*) FROM attachments WHERE contact_id = c.id)
         + (SELECT COUNT(*) FROM inbox_attachments ia JOIN inbox i ON ia.inbox_id = i.id WHERE i.contact_id = c.id)
         + (SELECT COUNT(*) FROM sent_imap_attachments sa JOIN sent_imap s ON sa.sent_id = s.id WHERE s.contact_id = c.id) as attachment_count
-    FROM contacts c ORDER BY c.name ASC
-  `).all();
+    FROM contacts c WHERE c.user_id = ? ORDER BY c.name ASC
+  `).all(req.userId);
   res.json(contacts);
 });
 
 // Egy kapcsolat részletei az összes emailjével és fájljával
 app.get('/api/contacts/:id', authenticate, (req, res) => {
-  const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  const contact = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
 
   const emails = db.prepare(
@@ -179,12 +311,12 @@ app.post('/api/contacts', authenticate, (req, res) => {
   const { name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
 
-  const existing = db.prepare('SELECT id FROM contacts WHERE email = ?').get(email);
+  const existing = db.prepare('SELECT id FROM contacts WHERE email = ? AND user_id = ?').get(email, req.userId);
   if (existing) return res.status(409).json({ error: 'A contact with this email already exists' });
 
   const id = randomUUID();
-  db.prepare('INSERT INTO contacts (id, name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-    id, name, email, phone || '', notes || '', company || '', vat_id || '', street || '', street_number || '', city || '', zip || '', country || '', region || ''
+  db.prepare('INSERT INTO contacts (id, user_id, name, email, phone, notes, company, vat_id, street, street_number, city, zip, country, region) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, req.userId, name, email, phone || '', notes || '', company || '', vat_id || '', street || '', street_number || '', city || '', zip || '', country || '', region || ''
   );
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   res.status(201).json(contact);
@@ -193,11 +325,11 @@ app.post('/api/contacts', authenticate, (req, res) => {
 // Kapcsolat módosítása
 app.put('/api/contacts/:id', authenticate, (req, res) => {
   const { name, email, phone, notes } = req.body;
-  const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
   if (email && email !== existing.email) {
-    const dup = db.prepare('SELECT id FROM contacts WHERE email = ? AND id != ?').get(email, req.params.id);
+    const dup = db.prepare('SELECT id FROM contacts WHERE email = ? AND id != ? AND user_id = ?').get(email, req.params.id, req.userId);
     if (dup) return res.status(409).json({ error: 'Another contact with this email already exists' });
   }
 
@@ -212,7 +344,7 @@ app.put('/api/contacts/:id', authenticate, (req, res) => {
 
 // Kapcsolat törlése az összes emailjével és fájljával együtt
 app.delete('/api/contacts/:id', authenticate, (req, res) => {
-  const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
 
   // Delete stored attachment files
@@ -254,7 +386,7 @@ app.get('/api/attachments/:id/download', (req, res) => {
 // ─── EGY ADOTT EMAIL RÉSZLETEI ──────────────────────────────
 
 app.get('/api/emails/:id', authenticate, (req, res) => {
-  const email = db.prepare('SELECT * FROM email_log WHERE id = ?').get(req.params.id);
+  const email = db.prepare('SELECT * FROM email_log WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!email) return res.status(404).json({ error: 'Email not found' });
 
   const attachments = db.prepare(
@@ -281,13 +413,14 @@ app.get('/api/sent', authenticate, (req, res) => {
     params = [s, s];
   }
 
-  // Union local sent + IMAP sent
+  // Union local sent + IMAP sent (scoped by user_id)
+  const uid = req.userId;
   const countSql = `SELECT COUNT(*) as count FROM (
-    SELECT id FROM email_log e ${search ? 'WHERE e.subject LIKE ? OR e.recipient_email LIKE ?' : ''}
+    SELECT id FROM email_log e WHERE e.user_id = ? ${search ? 'AND (e.subject LIKE ? OR e.recipient_email LIKE ?)' : ''}
     UNION ALL
-    SELECT id FROM sent_imap s ${search ? 'WHERE s.subject LIKE ? OR s.to_address LIKE ?' : ''}
+    SELECT id FROM sent_imap s WHERE s.user_id = ? ${search ? 'AND (s.subject LIKE ? OR s.to_address LIKE ?)' : ''}
   )`;
-  const countParams = search ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`] : [];
+  const countParams = search ? [uid, `%${search}%`, `%${search}%`, uid, `%${search}%`, `%${search}%`] : [uid, uid];
   const total = db.prepare(countSql).get(...countParams);
 
   const dataSql = `
@@ -295,15 +428,15 @@ app.get('/api/sent', authenticate, (req, res) => {
       SELECT e.id, e.recipient_email as recipient, e.subject, e.sent_at as date, e.status, e.contact_id,
         c.name as contact_name, (SELECT COUNT(*) FROM attachments WHERE email_log_id = e.id) as has_attachments, 'local' as source
       FROM email_log e LEFT JOIN contacts c ON e.contact_id = c.id
-      ${search ? 'WHERE e.subject LIKE ? OR e.recipient_email LIKE ?' : ''}
+      WHERE e.user_id = ? ${search ? 'AND (e.subject LIKE ? OR e.recipient_email LIKE ?)' : ''}
       UNION ALL
       SELECT s.id, s.to_address as recipient, s.subject, s.date, 'sent' as status, s.contact_id,
         c.name as contact_name, s.has_attachments, 'imap' as source
       FROM sent_imap s LEFT JOIN contacts c ON s.contact_id = c.id
-      ${search ? 'WHERE s.subject LIKE ? OR s.to_address LIKE ?' : ''}
+      WHERE s.user_id = ? ${search ? 'AND (s.subject LIKE ? OR s.to_address LIKE ?)' : ''}
     ) ORDER BY date DESC LIMIT ? OFFSET ?
   `;
-  const dataParams = search ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, limit, offset] : [limit, offset];
+  const dataParams = search ? [uid, `%${search}%`, `%${search}%`, uid, `%${search}%`, `%${search}%`, limit, offset] : [uid, uid, limit, offset];
   const emails = db.prepare(dataSql).all(...dataParams);
 
   res.json({ emails, total: total.count, page, limit });
@@ -314,8 +447,8 @@ app.get('/api/sent-imap/:id', authenticate, (req, res) => {
   const email = db.prepare(`
     SELECT s.*, c.name as contact_name
     FROM sent_imap s LEFT JOIN contacts c ON s.contact_id = c.id
-    WHERE s.id = ?
-  `).get(req.params.id);
+    WHERE s.id = ? AND s.user_id = ?
+  `).get(req.params.id, req.userId);
   if (!email) return res.status(404).json({ error: 'Email not found' });
 
   const attachments = db.prepare(
@@ -344,7 +477,8 @@ app.get('/api/sent-imap-attachments/:id/download', (req, res) => {
 
 // Kimenő levelek szinkronizálása IMAP-ról + kapcsolatokhoz rendelés
 app.post('/api/sent/sync', authenticate, async (req, res) => {
-  const client = getImapClient();
+  const client = getUserImapClient(req.userId);
+  if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
     await client.connect();
 
@@ -375,7 +509,7 @@ app.post('/api/sent/sync', authenticate, async (req, res) => {
 
     const lock = await client.getMailboxLock(sentFolder);
     try {
-      const lastRow = db.prepare('SELECT MAX(uid) as maxUid FROM sent_imap').get();
+      const lastRow = db.prepare('SELECT MAX(uid) as maxUid FROM sent_imap WHERE user_id = ?').get(req.userId);
       const maxUid = lastRow?.maxUid || 0;
 
       let newCount = 0;
@@ -387,7 +521,7 @@ app.post('/api/sent/sync', authenticate, async (req, res) => {
       }
 
       for await (const msg of messages) {
-        const exists = db.prepare('SELECT id FROM sent_imap WHERE uid = ?').get(msg.uid);
+        const exists = db.prepare('SELECT id FROM sent_imap WHERE uid = ? AND user_id = ?').get(msg.uid, req.userId);
         if (exists) continue;
 
         const parsed = await simpleParser(msg.source);
@@ -405,14 +539,14 @@ app.post('/api/sent/sync', authenticate, async (req, res) => {
         const toAddresses = parsed.to?.value?.map(v => v.address) || [];
         let contactId = null;
         for (const addr of toAddresses) {
-          contactId = findContactByEmail(addr);
+          contactId = findContactByEmail(addr, req.userId);
           if (contactId) break;
         }
 
         const sentId = randomUUID();
         db.prepare(
-          'INSERT INTO sent_imap (id, uid, message_id, from_address, from_name, to_address, subject, text_body, html_body, date, contact_id, has_attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(sentId, msg.uid, messageId, fromAddr, fromName, toAddr, subject, textBody, htmlBody, date, contactId, hasAttachments);
+          'INSERT INTO sent_imap (id, user_id, uid, message_id, from_address, from_name, to_address, subject, text_body, html_body, date, contact_id, has_attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(sentId, req.userId, msg.uid, messageId, fromAddr, fromName, toAddr, subject, textBody, htmlBody, date, contactId, hasAttachments);
 
         if (parsed.attachments && parsed.attachments.length > 0) {
           const insertAtt = db.prepare(
@@ -431,23 +565,23 @@ app.post('/api/sent/sync', authenticate, async (req, res) => {
       }
 
       // Retroactively link unlinked sent_imap to contacts
-      const unlinkedImap = db.prepare('SELECT id, to_address FROM sent_imap WHERE contact_id IS NULL').all();
+      const unlinkedImap = db.prepare('SELECT id, to_address FROM sent_imap WHERE contact_id IS NULL AND user_id = ?').all(req.userId);
       let linked = 0;
       const updateImapContact = db.prepare('UPDATE sent_imap SET contact_id = ? WHERE id = ?');
       for (const msg of unlinkedImap) {
         const addrs = msg.to_address.split(',').map(a => a.trim());
         for (const addr of addrs) {
-          const cid = findContactByEmail(addr);
+          const cid = findContactByEmail(addr, req.userId);
           if (cid) { updateImapContact.run(cid, msg.id); linked++; break; }
         }
       }
 
       // Also link local email_log
-      const unlinkedLocal = db.prepare('SELECT id, recipient_email FROM email_log WHERE contact_id IS NULL').all();
+      const unlinkedLocal = db.prepare('SELECT id, recipient_email FROM email_log WHERE contact_id IS NULL AND user_id = ?').all(req.userId);
       const updateLocalContact = db.prepare('UPDATE email_log SET contact_id = ? WHERE id = ?');
       const updateAttContact = db.prepare('UPDATE attachments SET contact_id = ? WHERE email_log_id = ? AND contact_id IS NULL');
       for (const msg of unlinkedLocal) {
-        const cid = findContactByEmail(msg.recipient_email);
+        const cid = findContactByEmail(msg.recipient_email, req.userId);
         if (cid) { updateLocalContact.run(cid, msg.id); updateAttContact.run(cid, msg.id); linked++; }
       }
 
@@ -473,6 +607,11 @@ app.post('/api/send-email', authenticate, upload.array('attachments', 5), async 
       return res.status(400).json({ error: 'Missing required fields: to, subject, html' });
     }
 
+    const userTransporter = getUserTransporter(req.userId);
+    if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
+    const userSettings = getUserSettings(req.userId);
+    const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
+
     const attachments = (req.files || []).map(file => ({
       filename: file.originalname,
       content: file.buffer,
@@ -480,11 +619,11 @@ app.post('/api/send-email', authenticate, upload.array('attachments', 5), async 
     }));
 
     const mailOptions = {
-      from: `"Intimix Shop" <${SMTP_USER}>`,
+      from: `"${fromName}" <${userSettings.smtp_user}>`,
       to,
       subject,
       html,
-      attachments: [...logoAttachments, ...attachments]
+      attachments
     };
 
     if (cc) mailOptions.cc = cc;
@@ -494,12 +633,13 @@ app.post('/api/send-email', authenticate, upload.array('attachments', 5), async 
       mailOptions.references = [inReplyTo];
     }
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await userTransporter.sendMail(mailOptions);
     console.log(`📧 Email sent to ${to} — MessageId: ${info.messageId}`);
 
     // Log email
-    const contactId = findContactByEmail(to);
+    const contactId = findContactByEmail(to, req.userId);
     logEmail({
+      userId: req.userId,
       contactId,
       recipientEmail: to,
       subject,
@@ -526,6 +666,11 @@ app.post('/api/send-bulk', authenticate, upload.array('attachments', 5), async (
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    const userTransporter = getUserTransporter(req.userId);
+    if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
+    const userSettings = getUserSettings(req.userId);
+    const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
+
     const attachments = (req.files || []).map(file => ({
       filename: file.originalname,
       content: file.buffer,
@@ -549,17 +694,18 @@ app.post('/api/send-bulk', authenticate, upload.array('attachments', 5), async (
           .replace(/\{\{order_id\}\}/gi, recipient.order_id || '')
           .replace(/\{\{tracking_number\}\}/gi, recipient.tracking_number || '');
 
-        const info = await transporter.sendMail({
-          from: `"Intimix Shop" <${SMTP_USER}>`,
+        const info = await userTransporter.sendMail({
+          from: `"${fromName}" <${userSettings.smtp_user}>`,
           to: recipient.email,
           subject: personalizedSubject,
           html: personalizedHtml,
-          attachments: [...logoAttachments, ...attachments]
+          attachments
         });
 
         // Log email per recipient
-        const contactId = findContactByEmail(recipient.email);
+        const contactId = findContactByEmail(recipient.email, req.userId);
         logEmail({
+          userId: req.userId,
           contactId,
           recipientEmail: recipient.email,
           subject: personalizedSubject,
@@ -585,26 +731,16 @@ app.post('/api/send-bulk', authenticate, upload.array('attachments', 5), async (
 
 // ─── BEJÖVŐ LEVELEK (IMAP) - itt jön be minden ami érkezik ─
 
-function getImapClient() {
-  return new ImapFlow({
-    host: IMAP_HOST,
-    port: Number(IMAP_PORT) || 993,
-    secure: true,
-    auth: { user: IMAP_USER, pass: IMAP_PASS },
-    tls: { rejectUnauthorized: false },
-    logger: false
-  });
-}
-
 // Bejövő szinkronizálás - lehúzza az új leveleket IMAP-ról és eltárolja
 app.post('/api/inbox/sync', authenticate, async (req, res) => {
-  const client = getImapClient();
+  const client = getUserImapClient(req.userId);
+  if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
     await client.connect();
     const lock = await client.getMailboxLock('INBOX');
     try {
       // Get highest UID we already have
-      const lastRow = db.prepare('SELECT MAX(uid) as maxUid FROM inbox').get();
+      const lastRow = db.prepare('SELECT MAX(uid) as maxUid FROM inbox WHERE user_id = ?').get(req.userId);
       const maxUid = lastRow?.maxUid || 0;
 
       // Use UID search to find new messages
@@ -628,7 +764,7 @@ app.post('/api/inbox/sync', authenticate, async (req, res) => {
 
       for await (const msg of messages) {
         // Skip if we already have this UID
-        const exists = db.prepare('SELECT id FROM inbox WHERE uid = ?').get(msg.uid);
+        const exists = db.prepare('SELECT id FROM inbox WHERE uid = ? AND user_id = ?').get(msg.uid, req.userId);
         if (exists) continue;
 
         const parsed = await simpleParser(msg.source);
@@ -644,12 +780,12 @@ app.post('/api/inbox/sync', authenticate, async (req, res) => {
         const hasAttachments = (parsed.attachments && parsed.attachments.length > 0) ? 1 : 0;
 
         // Link to contact if exists
-        const contactId = findContactByEmail(fromAddr);
+        const contactId = findContactByEmail(fromAddr, req.userId);
 
         const inboxId = randomUUID();
         db.prepare(
-          'INSERT INTO inbox (id, uid, message_id, from_address, from_name, to_address, subject, text_body, html_body, date, flags, contact_id, has_attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(inboxId, msg.uid, messageId, fromAddr, fromName, toAddr, subject, textBody, htmlBody, date, flags, contactId, hasAttachments);
+          'INSERT INTO inbox (id, user_id, uid, message_id, from_address, from_name, to_address, subject, text_body, html_body, date, flags, contact_id, has_attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(inboxId, req.userId, msg.uid, messageId, fromAddr, fromName, toAddr, subject, textBody, htmlBody, date, flags, contactId, hasAttachments);
 
         // Store attachments
         if (parsed.attachments && parsed.attachments.length > 0) {
@@ -670,11 +806,11 @@ app.post('/api/inbox/sync', authenticate, async (req, res) => {
       }
 
       // Retroactively link unlinked inbox emails to contacts
-      const unlinked = db.prepare('SELECT id, from_address FROM inbox WHERE contact_id IS NULL').all();
+      const unlinked = db.prepare('SELECT id, from_address FROM inbox WHERE contact_id IS NULL AND user_id = ?').all(req.userId);
       let linked = 0;
       const updateContact = db.prepare('UPDATE inbox SET contact_id = ? WHERE id = ?');
       for (const msg of unlinked) {
-        const cid = findContactByEmail(msg.from_address);
+        const cid = findContactByEmail(msg.from_address, req.userId);
         if (cid) {
           updateContact.run(cid, msg.id);
           linked++;
@@ -682,11 +818,11 @@ app.post('/api/inbox/sync', authenticate, async (req, res) => {
       }
 
       // Also link sent emails (email_log) that aren't linked yet
-      const unlinkedSent = db.prepare('SELECT id, recipient_email FROM email_log WHERE contact_id IS NULL').all();
+      const unlinkedSent = db.prepare('SELECT id, recipient_email FROM email_log WHERE contact_id IS NULL AND user_id = ?').all(req.userId);
       const updateSentContact = db.prepare('UPDATE email_log SET contact_id = ? WHERE id = ?');
       const updateAttContact = db.prepare('UPDATE attachments SET contact_id = ? WHERE email_log_id = ? AND contact_id IS NULL');
       for (const msg of unlinkedSent) {
-        const cid = findContactByEmail(msg.recipient_email);
+        const cid = findContactByEmail(msg.recipient_email, req.userId);
         if (cid) {
           updateSentContact.run(cid, msg.id);
           updateAttContact.run(cid, msg.id);
@@ -713,12 +849,13 @@ app.get('/api/inbox', authenticate, (req, res) => {
   const search = req.query.search || '';
   const offset = (page - 1) * limit;
 
-  let where = '';
-  let params = [];
+  const userWhere = 'WHERE i.user_id = ?';
+  let where = userWhere;
+  let params = [req.userId];
   if (search) {
-    where = 'WHERE i.subject LIKE ? OR i.from_address LIKE ? OR i.from_name LIKE ?';
+    where += ' AND (i.subject LIKE ? OR i.from_address LIKE ? OR i.from_name LIKE ?)';
     const s = `%${search}%`;
-    params = [s, s, s];
+    params.push(s, s, s);
   }
 
   const total = db.prepare(`SELECT COUNT(*) as count FROM inbox i ${where}`).get(...params);
@@ -741,8 +878,8 @@ app.get('/api/inbox/:id', authenticate, (req, res) => {
     SELECT i.*, c.name as contact_name
     FROM inbox i
     LEFT JOIN contacts c ON i.contact_id = c.id
-    WHERE i.id = ?
-  `).get(req.params.id);
+    WHERE i.id = ? AND i.user_id = ?
+  `).get(req.params.id, req.userId);
   if (!email) return res.status(404).json({ error: 'Email not found' });
 
   const attachments = db.prepare(
@@ -771,7 +908,7 @@ app.get('/api/inbox-attachments/:id/download', (req, res) => {
 
 // Bejövő levél törlése a csatolmányaival együtt
 app.delete('/api/inbox/:id', authenticate, (req, res) => {
-  const email = db.prepare('SELECT id FROM inbox WHERE id = ?').get(req.params.id);
+  const email = db.prepare('SELECT id FROM inbox WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!email) return res.status(404).json({ error: 'Email not found' });
 
   // Delete stored attachment files
@@ -789,7 +926,7 @@ app.delete('/api/inbox/:id', authenticate, (req, res) => {
 // ─── EGYÉNI SABLONOK CRUD - saját email sablonok kezelése ────
 
 app.get('/api/templates', authenticate, (req, res) => {
-  const templates = db.prepare('SELECT * FROM custom_templates ORDER BY updated_at DESC').all();
+  const templates = db.prepare('SELECT * FROM custom_templates WHERE user_id = ? ORDER BY updated_at DESC').all(req.userId);
   res.json(templates);
 });
 
@@ -797,14 +934,14 @@ app.post('/api/templates', authenticate, (req, res) => {
   const { name, description, category, subject, html } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
   const id = randomUUID();
-  db.prepare('INSERT INTO custom_templates (id, name, description, category, subject, html) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(id, name, description || '', category || 'Custom', subject || '', html || '');
+  db.prepare('INSERT INTO custom_templates (id, user_id, name, description, category, subject, html) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, req.userId, name, description || '', category || 'Custom', subject || '', html || '');
   res.json({ id, name, description, category, subject, html });
 });
 
 app.put('/api/templates/:id', authenticate, (req, res) => {
   const { name, description, category, subject, html } = req.body;
-  const existing = db.prepare('SELECT id FROM custom_templates WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id FROM custom_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Template not found' });
   db.prepare('UPDATE custom_templates SET name = ?, description = ?, category = ?, subject = ?, html = ?, updated_at = datetime(\'now\') WHERE id = ?')
     .run(name, description || '', category || 'Custom', subject || '', html || '', req.params.id);
@@ -812,7 +949,7 @@ app.put('/api/templates/:id', authenticate, (req, res) => {
 });
 
 app.delete('/api/templates/:id', authenticate, (req, res) => {
-  const existing = db.prepare('SELECT id FROM custom_templates WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id FROM custom_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Template not found' });
   db.prepare('DELETE FROM custom_templates WHERE id = ?').run(req.params.id);
   res.json({ success: true });
@@ -821,7 +958,7 @@ app.delete('/api/templates/:id', authenticate, (req, res) => {
 // ─── API KULCS KEZELÉS - külső appoknak generálsz kulcsot itt 
 
 app.get('/api/api-keys', authenticate, (req, res) => {
-  const keys = db.prepare('SELECT id, name, key, created_at, last_used_at, active FROM api_keys ORDER BY created_at DESC').all();
+  const keys = db.prepare('SELECT id, name, key, created_at, last_used_at, active FROM api_keys WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
   res.json(keys);
 });
 
@@ -830,17 +967,17 @@ app.post('/api/api-keys', authenticate, (req, res) => {
   if (!name) return res.status(400).json({ error: 'Name is required' });
   const id = randomUUID();
   const key = 'imx_' + randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '').slice(0, 16);
-  db.prepare('INSERT INTO api_keys (id, name, key) VALUES (?, ?, ?)').run(id, name, key);
+  db.prepare('INSERT INTO api_keys (id, user_id, name, key) VALUES (?, ?, ?, ?)').run(id, req.userId, name, key);
   res.json({ id, name, key });
 });
 
 app.delete('/api/api-keys/:id', authenticate, (req, res) => {
-  db.prepare('DELETE FROM api_keys WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM api_keys WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
   res.json({ success: true });
 });
 
 app.put('/api/api-keys/:id/toggle', authenticate, (req, res) => {
-  const existing = db.prepare('SELECT active FROM api_keys WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT active FROM api_keys WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'API key not found' });
   db.prepare('UPDATE api_keys SET active = ? WHERE id = ?').run(existing.active ? 0 : 1, req.params.id);
   res.json({ success: true, active: !existing.active });
@@ -851,22 +988,23 @@ app.put('/api/api-keys/:id/toggle', authenticate, (req, res) => {
 function authenticateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'] || req.query.api_key;
   if (!apiKey) return res.status(401).json({ error: 'API key required. Pass via X-Api-Key header or api_key query parameter.' });
-  const row = db.prepare('SELECT id, active FROM api_keys WHERE key = ?').get(apiKey);
+  const row = db.prepare('SELECT id, user_id, active FROM api_keys WHERE key = ?').get(apiKey);
   if (!row) return res.status(401).json({ error: 'Invalid API key' });
   if (!row.active) return res.status(403).json({ error: 'API key is disabled' });
   db.prepare('UPDATE api_keys SET last_used_at = datetime(\'now\') WHERE id = ?').run(row.id);
+  req.userId = row.user_id;
   next();
 }
 
 // Külső API: egyéni sablonok listázása
 app.get('/api/v1/templates', authenticateApiKey, (req, res) => {
-  const custom = db.prepare('SELECT id, name, description, category, subject, html, created_at, updated_at FROM custom_templates ORDER BY updated_at DESC').all();
+  const custom = db.prepare('SELECT id, name, description, category, subject, html, created_at, updated_at FROM custom_templates WHERE user_id = ? ORDER BY updated_at DESC').all(req.userId);
   res.json({ templates: custom });
 });
 
 // Külső API: egy sablon lekérdezése
 app.get('/api/v1/templates/:id', authenticateApiKey, (req, res) => {
-  const template = db.prepare('SELECT * FROM custom_templates WHERE id = ?').get(req.params.id);
+  const template = db.prepare('SELECT * FROM custom_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!template) return res.status(404).json({ error: 'Template not found' });
   res.json(template);
 });
@@ -878,12 +1016,12 @@ app.get('/api/v1/contacts', authenticateApiKey, (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const offset = (page - 1) * limit;
 
-  let where = '';
-  let params = [];
+  let where = 'WHERE c.user_id = ?';
+  let params = [req.userId];
   if (search) {
-    where = 'WHERE c.name LIKE ? OR c.email LIKE ?';
+    where += ' AND (c.name LIKE ? OR c.email LIKE ?)';
     const s = `%${search}%`;
-    params = [s, s];
+    params.push(s, s);
   }
 
   const total = db.prepare(`SELECT COUNT(*) as count FROM contacts c ${where}`).get(...params);
@@ -899,7 +1037,7 @@ app.get('/api/v1/contacts', authenticateApiKey, (req, res) => {
 
 // Külső API: egy kapcsolat lekérdezése
 app.get('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
-  const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  const contact = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
   res.json(contact);
 });
@@ -908,18 +1046,18 @@ app.get('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
 app.post('/api/v1/contacts', authenticateApiKey, (req, res) => {
   const { name, email, phone, notes } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'name and email are required' });
-  const existing = db.prepare('SELECT id FROM contacts WHERE email = ?').get(email);
+  const existing = db.prepare('SELECT id FROM contacts WHERE email = ? AND user_id = ?').get(email, req.userId);
   if (existing) return res.status(409).json({ error: 'A contact with this email already exists', contact_id: existing.id });
   const id = randomUUID();
-  db.prepare('INSERT INTO contacts (id, name, email, phone, notes) VALUES (?, ?, ?, ?, ?)')
-    .run(id, name, email, phone || '', notes || '');
+  db.prepare('INSERT INTO contacts (id, user_id, name, email, phone, notes) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, req.userId, name, email, phone || '', notes || '');
   res.json({ id, name, email, phone: phone || '', notes: notes || '' });
 });
 
 // Külső API: kapcsolat módosítása
 app.put('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
   const { name, email, phone, notes } = req.body;
-  const existing = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
   db.prepare('UPDATE contacts SET name = ?, email = ?, phone = ?, notes = ? WHERE id = ?')
     .run(name || existing.name, email || existing.email, phone !== undefined ? phone : existing.phone, notes !== undefined ? notes : existing.notes, req.params.id);
@@ -928,7 +1066,7 @@ app.put('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
 
 // Külső API: kapcsolat törlése
 app.delete('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
-  const existing = db.prepare('SELECT id FROM contacts WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
   db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.id);
   res.json({ success: true });
@@ -941,7 +1079,7 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
 
   let emailHtml = html || '';
   if (template_id) {
-    const tpl = db.prepare('SELECT html, subject FROM custom_templates WHERE id = ?').get(template_id);
+    const tpl = db.prepare('SELECT html, subject FROM custom_templates WHERE id = ? AND user_id = ?').get(template_id, req.userId);
     if (!tpl) return res.status(404).json({ error: 'Template not found' });
     emailHtml = tpl.html;
   }
@@ -954,20 +1092,21 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
 
   if (!emailHtml) return res.status(400).json({ error: 'html body or template_id is required' });
 
+  const userTransporter = getUserTransporter(req.userId);
+  if (!userTransporter) return res.status(400).json({ error: 'SMTP not configured for this user' });
+  const userSettings = getUserSettings(req.userId);
+  const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
+
   const mailOptions = {
-    from: `"${process.env.SMTP_FROM_NAME || 'Intimix Shop'}" <${process.env.SMTP_USER}>`,
+    from: `"${fromName}" <${userSettings.smtp_user}>`,
     to, subject, html: emailHtml,
-    ...(cc && { cc }), ...(bcc && { bcc }),
-    attachments: [
-      { filename: 'IntimiX.png', path: path.join(__dirname, 'assets', 'IntimiX.png'), cid: 'intimix-logo-png' },
-      { filename: 'IntimiX2.svg', path: path.join(__dirname, 'assets', 'IntimiX2.svg'), cid: 'intimix-logo-header' }
-    ]
+    ...(cc && { cc }), ...(bcc && { bcc })
   };
 
-  transporter.sendMail(mailOptions, (err, info) => {
+  userTransporter.sendMail(mailOptions, (err, info) => {
     if (err) return res.status(500).json({ error: err.message });
-    const contactId = findContactByEmail(to);
-    logEmail({ contactId, recipientEmail: to, subject, html: emailHtml, messageId: info.messageId, files: [] });
+    const contactId = findContactByEmail(to, req.userId);
+    logEmail({ userId: req.userId, contactId, recipientEmail: to, subject, html: emailHtml, messageId: info.messageId, files: [] });
     res.json({ success: true, messageId: info.messageId });
   });
 });
@@ -980,40 +1119,38 @@ if (!fs.existsSync(BRANDING_DIR)) fs.mkdirSync(BRANDING_DIR, { recursive: true }
 const QUOTES_DIR = path.join(__dirname, 'quotes');
 if (!fs.existsSync(QUOTES_DIR)) fs.mkdirSync(QUOTES_DIR, { recursive: true });
 
-// Segédfüggvény: cég adatok lekérdezése az app_settings-ből
-function getCompanyInfo() {
-  const rows = db.prepare('SELECT key, value FROM app_settings').all();
-  const info = {};
-  for (const r of rows) info[r.key] = r.value;
-  return info;
+// Segédfüggvény: cég adatok lekérdezése a user_settings-ből
+function getCompanyInfo(userId) {
+  return getUserSettings(userId);
 }
 
 // Logó fájl keresése a branding mappából (PDF generáláshoz)
-function findLogoPath(companyInfo) {
-  // 1) Uploaded logo from app_settings
+function findLogoPath(companyInfo, userId) {
+  const userBrandingDir = path.join(BRANDING_DIR, userId || '_default');
+  // 1) Uploaded logo from user_settings
   if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
     const logoFilename = companyInfo.app_logo.split('/').pop();
-    const lp = path.join(BRANDING_DIR, logoFilename);
+    const lp = path.join(userBrandingDir, logoFilename);
     // Skip SVG – PDFKit cannot render it
     if (fs.existsSync(lp) && !lp.endsWith('.svg')) return lp;
   }
-  // 2) Fallback: any image file in branding dir
-  if (fs.existsSync(BRANDING_DIR)) {
+  // 2) Fallback: any image file in user branding dir
+  if (fs.existsSync(userBrandingDir)) {
     const supported = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
-    const files = fs.readdirSync(BRANDING_DIR);
+    const files = fs.readdirSync(userBrandingDir);
     for (const f of files) {
       if (supported.includes(path.extname(f).toLowerCase())) {
-        return path.join(BRANDING_DIR, f);
+        return path.join(userBrandingDir, f);
       }
     }
   }
   return null;
 }
 
-// Következő árajánlat szám generálása
-function nextQuoteNumber() {
+// Következő árajánlat szám generálása (per user)
+function nextQuoteNumber(userId) {
   const year = new Date().getFullYear();
-  const last = db.prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? ORDER BY created_at DESC LIMIT 1").get(`AJ-${year}-%`);
+  const last = db.prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? AND user_id = ? ORDER BY created_at DESC LIMIT 1").get(`AJ-${year}-%`, userId);
   let seq = 1;
   if (last) {
     const parts = last.quote_number.split('-');
@@ -1025,7 +1162,7 @@ function nextQuoteNumber() {
 // Összes árajánlat listázása
 app.get('/api/quotes', authenticate, (req, res) => {
   try {
-    const quotes = db.prepare('SELECT * FROM quotes ORDER BY created_at DESC').all();
+    const quotes = db.prepare('SELECT * FROM quotes WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
     res.json({ quotes });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1033,7 +1170,7 @@ app.get('/api/quotes', authenticate, (req, res) => {
 // Egy árajánlat lekérdezése tételekkel
 app.get('/api/quotes/:id', authenticate, (req, res) => {
   try {
-    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
     const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
     res.json({ ...quote, items });
@@ -1045,7 +1182,7 @@ app.post('/api/quotes', authenticate, (req, res) => {
   try {
     const { title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, items } = req.body;
     const id = randomUUID();
-    const quote_number = nextQuoteNumber();
+    const quote_number = nextQuoteNumber(req.userId);
 
     let subtotal = 0;
     const parsedItems = (items || []).map((item, i) => {
@@ -1057,8 +1194,8 @@ app.post('/api/quotes', authenticate, (req, res) => {
     const vat_amount = Math.round(subtotal * vatR / 100);
     const total = subtotal + vat_amount;
 
-    db.prepare(`INSERT INTO quotes (id, quote_number, title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, subtotal, vat_amount, total, notes, status, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`).run(
-      id, quote_number, title || '', contact_id || null, contact_name || '', contact_email || '', contact_phone || '', contact_address || '', contact_vat || '', currency || 'HUF', vatR, subtotal, vat_amount, total, notes || '', valid_until || ''
+    db.prepare(`INSERT INTO quotes (id, user_id, quote_number, title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, subtotal, vat_amount, total, notes, status, valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)`).run(
+      id, req.userId, quote_number, title || '', contact_id || null, contact_name || '', contact_email || '', contact_phone || '', contact_address || '', contact_vat || '', currency || 'HUF', vatR, subtotal, vat_amount, total, notes || '', valid_until || ''
     );
 
     const insertItem = db.prepare('INSERT INTO quote_items (id, quote_id, description, quantity, unit, unit_price, total, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
@@ -1075,7 +1212,7 @@ app.post('/api/quotes', authenticate, (req, res) => {
 // Árajánlat módosítása
 app.put('/api/quotes/:id', authenticate, (req, res) => {
   try {
-    const existing = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const existing = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!existing) return res.status(404).json({ error: 'Quote not found' });
 
     const { title, contact_id, contact_name, contact_email, contact_phone, contact_address, contact_vat, currency, vat_rate, notes, valid_until, status, items } = req.body;
@@ -1110,7 +1247,7 @@ app.put('/api/quotes/:id', authenticate, (req, res) => {
 // Árajánlat törlése
 app.delete('/api/quotes/:id', authenticate, (req, res) => {
   try {
-    const existing = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const existing = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!existing) return res.status(404).json({ error: 'Quote not found' });
     db.prepare('DELETE FROM quote_items WHERE quote_id = ?').run(req.params.id);
     db.prepare('DELETE FROM quotes WHERE id = ?').run(req.params.id);
@@ -1314,12 +1451,12 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
 // PDF letöltés
 app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
   try {
-    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
     const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
-    const companyInfo = getCompanyInfo();
+    const companyInfo = getCompanyInfo(req.userId);
 
-    const logoPath = findLogoPath(companyInfo);
+    const logoPath = findLogoPath(companyInfo, req.userId);
 
     const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
     res.setHeader('Content-Type', 'application/pdf');
@@ -1332,14 +1469,14 @@ app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
 // Árajánlat küldése emailben
 app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
   try {
-    const quote = db.prepare('SELECT * FROM quotes WHERE id = ?').get(req.params.id);
+    const quote = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
     if (!quote) return res.status(404).json({ error: 'Quote not found' });
     if (!quote.contact_email) return res.status(400).json({ error: 'Nincs email cím megadva a vevőnél' });
 
     const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
-    const companyInfo = getCompanyInfo();
+    const companyInfo = getCompanyInfo(req.userId);
 
-    const logoPath = findLogoPath(companyInfo);
+    const logoPath = findLogoPath(companyInfo, req.userId);
 
     const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
 
@@ -1379,15 +1516,18 @@ app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
       </div>
     `;
 
+    const userTransporter = getUserTransporter(req.userId);
+    if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
+
     const mailOptions = {
-      from: `"${companyName}" <${process.env.SMTP_USER}>`,
+      from: `"${companyName}" <${companyInfo.smtp_user || ''}>`,
       to: quote.contact_email,
       subject: customSubject || defaultSubject,
       html: customHtml || defaultHtml,
       attachments: [{ filename: `${quote.quote_number}.pdf`, path: pdfPath }]
     };
 
-    transporter.sendMail(mailOptions, (err, info) => {
+    userTransporter.sendMail(mailOptions, (err, info) => {
       if (err) return res.status(500).json({ error: err.message });
       // Státusz frissítése
       db.prepare("UPDATE quotes SET status = 'sent', updated_at = datetime('now') WHERE id = ?").run(req.params.id);
@@ -1396,18 +1536,20 @@ app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ─── BRANDING - alkalmazás neve és logó testreszabása ────
+// ─── BRANDING - per-user branding és logó testreszabása ────
 
-app.get('/api/branding', (req, res) => {
+app.get('/api/branding', authenticate, (req, res) => {
   try {
-    const rows = db.prepare('SELECT key, value FROM app_settings').all();
-    const result = { app_name: 'Intimix', app_subtitle: 'Mailer', app_logo: '/logo-header.png' };
-    for (const row of rows) {
-      if (row.value) result[row.key] = row.value;
+    const settings = getUserSettings(req.userId);
+    const result = {
+      app_name: settings.app_name || 'Mailer',
+      app_subtitle: settings.app_subtitle || '',
+      app_logo: settings.app_logo || '/logo-header.png'
+    };
+    // Merge all user settings into result
+    for (const [key, val] of Object.entries(settings)) {
+      if (val) result[key] = val;
     }
-    // Expose login domain so frontend can conditionally show built-in templates
-    const loginEmail = process.env.LOGIN_EMAIL || '';
-    result.login_domain = loginEmail.split('@')[1] || '';
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1417,9 +1559,8 @@ app.get('/api/branding', (req, res) => {
 app.put('/api/branding', authenticate, (req, res) => {
   try {
     const allowed = ['app_name', 'app_subtitle', 'company_name', 'company_vat', 'company_email', 'company_phone', 'company_street', 'company_city', 'company_zip', 'company_country', 'company_bank_name', 'company_bank_iban'];
-    const upsert = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
     for (const [key, val] of Object.entries(req.body)) {
-      if (allowed.includes(key) && val !== undefined) upsert.run(key, val);
+      if (allowed.includes(key) && val !== undefined) setUserSetting(req.userId, key, val);
     }
     res.json({ success: true });
   } catch (err) {
@@ -1430,17 +1571,19 @@ app.put('/api/branding', authenticate, (req, res) => {
 app.post('/api/branding/logo', authenticate, upload.single('logo'), (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Nincs fájl feltöltve' });
-    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp', 'image/gif'];
-    if (!allowed.includes(req.file.mimetype)) return res.status(400).json({ error: 'Csak kép fájl engedélyezett (PNG, JPG, SVG, WebP, GIF)' });
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(req.file.mimetype)) return res.status(400).json({ error: 'Csak kép fájl engedélyezett (PNG, JPG, SVG, WebP, GIF)' });
+
+    const userBrandingDir = path.join(BRANDING_DIR, req.userId);
+    if (!fs.existsSync(userBrandingDir)) fs.mkdirSync(userBrandingDir, { recursive: true });
 
     const ext = path.extname(req.file.originalname) || '.png';
     const filename = `logo${ext}`;
-    const filepath = path.join(BRANDING_DIR, filename);
+    const filepath = path.join(userBrandingDir, filename);
     fs.writeFileSync(filepath, req.file.buffer);
 
     const logoUrl = `/api/branding/logo-file/${filename}`;
-    const upsert = db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
-    upsert.run('app_logo', logoUrl);
+    setUserSetting(req.userId, 'app_logo', logoUrl);
 
     res.json({ success: true, logo: logoUrl });
   } catch (err) {
@@ -1448,38 +1591,24 @@ app.post('/api/branding/logo', authenticate, upload.single('logo'), (req, res) =
   }
 });
 
-app.get('/api/branding/logo-file/:filename', (req, res) => {
-  const fp = path.join(BRANDING_DIR, path.basename(req.params.filename));
+app.get('/api/branding/logo-file/:filename', authenticate, (req, res) => {
+  const userBrandingDir = path.join(BRANDING_DIR, req.userId);
+  const fp = path.join(userBrandingDir, path.basename(req.params.filename));
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Logo not found' });
   res.sendFile(fp);
 });
 
-// ─── ENV KONFIGURÁCIÓ - beállítások oldalról szerkeszthető ────
+// ─── USER SETTINGS - per-user SMTP/IMAP/email beállítások ────
 
-const ENV_PATH = path.join(__dirname, '.env');
-const ENV_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM_NAME', 'IMAP_HOST', 'IMAP_PORT', 'IMAP_USER', 'IMAP_PASS', 'JWT_SECRET', 'LOGIN_EMAIL', 'LOGIN_PASSWORD', 'PORT'];
+const USER_SETTING_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'imap_host', 'imap_port', 'imap_user', 'imap_pass'];
 
 app.get('/api/env', authenticate, (req, res) => {
   try {
+    const settings = getUserSettings(req.userId);
     const result = {};
-    if (fs.existsSync(ENV_PATH)) {
-      const content = fs.readFileSync(ENV_PATH, 'utf-8');
-      for (const line of content.split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
-        const eqIdx = trimmed.indexOf('=');
-        if (eqIdx === -1) continue;
-        const key = trimmed.slice(0, eqIdx).trim();
-        const val = trimmed.slice(eqIdx + 1).trim();
-        if (ENV_KEYS.includes(key)) {
-          result[key] = key.includes('PASS') || key === 'JWT_SECRET' ? '••••••••' : val;
-        }
-      }
-    }
-    // Fallback: show current process.env values for keys not in file
-    for (const key of ENV_KEYS) {
-      if (!(key in result) && process.env[key]) {
-        result[key] = key.includes('PASS') || key === 'JWT_SECRET' ? '••••••••' : process.env[key];
+    for (const key of USER_SETTING_KEYS) {
+      if (settings[key]) {
+        result[key] = key.includes('pass') ? '••••••••' : settings[key];
       }
     }
     res.json(result);
@@ -1493,61 +1622,23 @@ app.put('/api/env', authenticate, (req, res) => {
     const updates = req.body;
     if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'Invalid body' });
 
-    // Read existing .env or start fresh
-    let existing = {};
-    let extraLines = [];
-    if (fs.existsSync(ENV_PATH)) {
-      const content = fs.readFileSync(ENV_PATH, 'utf-8');
-      for (const line of content.split('\n')) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) { extraLines.push(line); continue; }
-        const eqIdx = trimmed.indexOf('=');
-        if (eqIdx === -1) { extraLines.push(line); continue; }
-        const key = trimmed.slice(0, eqIdx).trim();
-        const val = trimmed.slice(eqIdx + 1).trim();
-        existing[key] = val;
-      }
-    }
-
-    // Merge updates (skip masked values so we don't overwrite secrets with dots)
     for (const [key, val] of Object.entries(updates)) {
-      if (!ENV_KEYS.includes(key)) continue;
+      if (!USER_SETTING_KEYS.includes(key)) continue;
       if (val === '••••••••' || val === '') continue;
-      existing[key] = val;
+      setUserSetting(req.userId, key, val);
     }
 
-    // Write back
-    const lines = [];
-    for (const key of ENV_KEYS) {
-      if (key in existing) lines.push(`${key}=${existing[key]}`);
-    }
-    // Append any non-standard keys that were already in the file
-    for (const [key, val] of Object.entries(existing)) {
-      if (!ENV_KEYS.includes(key)) lines.push(`${key}=${val}`);
-    }
-
-    fs.writeFileSync(ENV_PATH, lines.join('\n') + '\n', 'utf-8');
-
-    // Update process.env in memory so changes take effect without restart for some things
-    for (const [key, val] of Object.entries(existing)) {
-      process.env[key] = val;
-    }
-
-    res.json({ success: true, message: 'A változtatások mentve. SMTP/IMAP változásokhoz szerver újraindítás szükséges.' });
+    res.json({ success: true, message: 'Beállítások mentve.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// SMTP kapcsolat tesztelése - a beállításoknál használjuk
+// SMTP kapcsolat tesztelése - per-user
 app.get('/api/test-smtp', authenticate, async (req, res) => {
   try {
-    const testTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 465,
-      secure: (Number(process.env.SMTP_PORT) || 465) === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-    });
+    const testTransporter = getUserTransporter(req.userId);
+    if (!testTransporter) return res.status(400).json({ success: false, error: 'SMTP nincs konfigurálva' });
     await testTransporter.verify();
     res.json({ success: true, message: 'SMTP connection is working' });
   } catch (err) {

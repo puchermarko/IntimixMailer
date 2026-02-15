@@ -7,9 +7,12 @@ import TemplateGallery from '../components/TemplateGallery'
 import Settings from '../components/Settings'
 import Contacts from '../components/Contacts'
 import Quotes from '../components/Quotes'
+import UserManagement from '../components/UserManagement'
+import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
-  const [activeView, setActiveView] = useState('mail')
+  const { isAdmin, impersonating, stopImpersonation } = useAuth()
+  const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const views = {
@@ -18,12 +21,26 @@ export default function Dashboard() {
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     settings: <Settings />,
+    users: <UserManagement />,
   }
 
   return (
     <div className="min-h-screen">
+      {impersonating && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/90 backdrop-blur-sm text-black px-4 py-2 flex items-center justify-center gap-3 text-sm font-medium shadow-lg">
+          <Eye className="w-4 h-4" />
+          <span>Belépve mint: <strong>{impersonating.name || impersonating.email}</strong></span>
+          <button
+            onClick={() => { stopImpersonation(); setActiveView('users') }}
+            className="ml-2 px-3 py-1 bg-black/20 hover:bg-black/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+          >
+            <X className="w-3 h-3" />
+            Kilépés
+          </button>
+        </div>
+      )}
       <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      <main className="lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen">
+      <main className={`lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen ${impersonating ? 'mt-10' : ''}`}>
         <div className="max-w-5xl mx-auto fade-in" key={activeView}>
           {views[activeView]}
         </div>

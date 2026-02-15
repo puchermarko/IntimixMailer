@@ -196,7 +196,7 @@ export default function Settings() {
               <div><h3 className="text-base font-semibold text-white">SMTP Szerver</h3><p className="text-xs text-gray-500">Levelezőszerver kapcsolat</p></div>
             </div>
             <div className="space-y-2">
-              {[['Hoszt', envConfig.SMTP_HOST || '—'],['Port', envConfig.SMTP_PORT ? `${envConfig.SMTP_PORT} (${envConfig.SMTP_PORT === '465' ? 'SSL' : 'TLS'})` : '—'],['Felhasználó', envConfig.SMTP_USER || '—'],['Titkosítás', envConfig.SMTP_PORT === '465' ? 'SSL' : 'TLS'],['Feladó', envConfig.SMTP_FROM_NAME || envConfig.SMTP_USER || '—']].map(([l,v]) => (
+              {[['Hoszt', envConfig.smtp_host || '—'],['Port', envConfig.smtp_port ? `${envConfig.smtp_port} (${envConfig.smtp_port === '465' ? 'SSL' : 'TLS'})` : '—'],['Felhasználó', envConfig.smtp_user || '—'],['Titkosítás', envConfig.smtp_port === '465' ? 'SSL' : 'TLS'],['Feladó', envConfig.smtp_from_name || envConfig.smtp_user || '—']].map(([l,v]) => (
                 <div key={l} className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
                   <span className="text-xs text-gray-400">{l}</span><span className="text-sm text-gray-200 font-mono">{v}</span>
                 </div>
@@ -374,8 +374,8 @@ export default function Settings() {
               <div className="glass rounded-xl p-4 flex items-start gap-3 border border-amber-500/20">
                 <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm text-amber-300 font-medium">SMTP/IMAP változások után szerver újraindítás szükséges</p>
-                  <p className="text-xs text-gray-500 mt-0.5">A jelszavak és a JWT titok maszkolt formában jelennek meg. Csak akkor írd felül, ha változtatni akarod.</p>
+                  <p className="text-sm text-amber-300 font-medium">SMTP/IMAP beállítások</p>
+                  <p className="text-xs text-gray-500 mt-0.5">A jelszavak maszkolt formában jelennek meg. Csak akkor írd felül, ha változtatni akarod.</p>
                 </div>
               </div>
 
@@ -387,20 +387,20 @@ export default function Settings() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs text-gray-400 mb-1">SMTP hoszt</label>
-                    <input type="text" value={envConfig.SMTP_HOST || ''} onChange={(e) => handleEnvChange('SMTP_HOST', e.target.value)}
+                    <input type="text" value={envConfig.smtp_host || ''} onChange={(e) => handleEnvChange('smtp_host', e.target.value)}
                       placeholder="mail.example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">SMTP port</label>
-                    <input type="text" value={envConfig.SMTP_PORT || ''} onChange={(e) => handleEnvChange('SMTP_PORT', e.target.value)}
+                    <input type="text" value={envConfig.smtp_port || ''} onChange={(e) => handleEnvChange('smtp_port', e.target.value)}
                       placeholder="465" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">SMTP felhasználó</label>
-                    <input type="text" value={envConfig.SMTP_USER || ''} onChange={(e) => handleEnvChange('SMTP_USER', e.target.value)}
+                    <input type="text" value={envConfig.smtp_user || ''} onChange={(e) => handleEnvChange('smtp_user', e.target.value)}
                       placeholder="info@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">SMTP jelszó</label>
-                    <input type="password" value={envConfig.SMTP_PASS || ''} onChange={(e) => handleEnvChange('SMTP_PASS', e.target.value)}
+                    <input type="password" value={envConfig.smtp_pass || ''} onChange={(e) => handleEnvChange('smtp_pass', e.target.value)}
                       placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div className="col-span-2"><label className="block text-xs text-gray-400 mb-1">Feladó neve</label>
-                    <input type="text" value={envConfig.SMTP_FROM_NAME || ''} onChange={(e) => handleEnvChange('SMTP_FROM_NAME', e.target.value)}
-                      placeholder="Intimix Shop" className="input-field w-full px-3 py-2 text-sm" /></div>
+                    <input type="text" value={envConfig.smtp_from_name || ''} onChange={(e) => handleEnvChange('smtp_from_name', e.target.value)}
+                      placeholder="Cég neve" className="input-field w-full px-3 py-2 text-sm" /></div>
                 </div>
               </div>
 
@@ -412,39 +412,17 @@ export default function Settings() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs text-gray-400 mb-1">IMAP hoszt</label>
-                    <input type="text" value={envConfig.IMAP_HOST || ''} onChange={(e) => handleEnvChange('IMAP_HOST', e.target.value)}
+                    <input type="text" value={envConfig.imap_host || ''} onChange={(e) => handleEnvChange('imap_host', e.target.value)}
                       placeholder="mail.example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">IMAP port</label>
-                    <input type="text" value={envConfig.IMAP_PORT || ''} onChange={(e) => handleEnvChange('IMAP_PORT', e.target.value)}
+                    <input type="text" value={envConfig.imap_port || ''} onChange={(e) => handleEnvChange('imap_port', e.target.value)}
                       placeholder="993" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">IMAP felhasználó</label>
-                    <input type="text" value={envConfig.IMAP_USER || ''} onChange={(e) => handleEnvChange('IMAP_USER', e.target.value)}
+                    <input type="text" value={envConfig.imap_user || ''} onChange={(e) => handleEnvChange('imap_user', e.target.value)}
                       placeholder="info@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">IMAP jelszó</label>
-                    <input type="password" value={envConfig.IMAP_PASS || ''} onChange={(e) => handleEnvChange('IMAP_PASS', e.target.value)}
+                    <input type="password" value={envConfig.imap_pass || ''} onChange={(e) => handleEnvChange('imap_pass', e.target.value)}
                       placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
-                </div>
-              </div>
-
-              {/* Hitelesítés */}
-              <div className="glass rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><Shield className="w-5 h-5 text-green-400" /></div>
-                  <div><h3 className="text-base font-semibold text-white">Bejelentkezés & biztonság</h3><p className="text-xs text-gray-500">Admin fiók és JWT beállítások</p></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><label className="block text-xs text-gray-400 mb-1">Bejelentkezési email</label>
-                    <input type="email" value={envConfig.LOGIN_EMAIL || ''} onChange={(e) => handleEnvChange('LOGIN_EMAIL', e.target.value)}
-                      placeholder="admin@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-400 mb-1">Bejelentkezési jelszó</label>
-                    <input type="password" value={envConfig.LOGIN_PASSWORD || ''} onChange={(e) => handleEnvChange('LOGIN_PASSWORD', e.target.value)}
-                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-400 mb-1">JWT titok</label>
-                    <input type="password" value={envConfig.JWT_SECRET || ''} onChange={(e) => handleEnvChange('JWT_SECRET', e.target.value)}
-                      placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-400 mb-1">Szerver port</label>
-                    <input type="text" value={envConfig.PORT || ''} onChange={(e) => handleEnvChange('PORT', e.target.value)}
-                      placeholder="3001" className="input-field w-full px-3 py-2 text-sm" /></div>
                 </div>
               </div>
 

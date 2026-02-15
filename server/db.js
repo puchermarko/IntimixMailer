@@ -13,10 +13,31 @@ db.pragma('foreign_keys = ON');
 
 // Na itt jönnek a táblák - ez az egész adatbázis struktúra
 db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    name TEXT DEFAULT '',
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT DEFAULT '',
+    UNIQUE(user_id, key),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_user_settings_user ON user_settings(user_id);
+
   CREATE TABLE IF NOT EXISTS contacts (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL,
     phone TEXT DEFAULT '',
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
@@ -25,6 +46,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS email_log (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     contact_id TEXT,
     recipient_email TEXT NOT NULL,
     subject TEXT NOT NULL,
@@ -55,6 +77,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS inbox (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     uid INTEGER NOT NULL,
     message_id TEXT,
     from_address TEXT NOT NULL,
@@ -81,13 +104,13 @@ db.exec(`
     FOREIGN KEY (inbox_id) REFERENCES inbox(id) ON DELETE CASCADE
   );
 
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_uid ON inbox(uid);
   CREATE INDEX IF NOT EXISTS idx_inbox_from ON inbox(from_address);
   CREATE INDEX IF NOT EXISTS idx_inbox_contact ON inbox(contact_id);
   CREATE INDEX IF NOT EXISTS idx_inbox_attachments_inbox ON inbox_attachments(inbox_id);
 
   CREATE TABLE IF NOT EXISTS sent_imap (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     uid INTEGER NOT NULL,
     message_id TEXT,
     from_address TEXT NOT NULL,
@@ -113,13 +136,13 @@ db.exec(`
     FOREIGN KEY (sent_id) REFERENCES sent_imap(id) ON DELETE CASCADE
   );
 
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_imap_uid ON sent_imap(uid);
   CREATE INDEX IF NOT EXISTS idx_sent_imap_to ON sent_imap(to_address);
   CREATE INDEX IF NOT EXISTS idx_sent_imap_contact ON sent_imap(contact_id);
   CREATE INDEX IF NOT EXISTS idx_sent_imap_att ON sent_imap_attachments(sent_id);
 
   CREATE TABLE IF NOT EXISTS custom_templates (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     category TEXT DEFAULT 'Custom',
@@ -131,6 +154,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL,
     key TEXT NOT NULL UNIQUE,
     created_at TEXT DEFAULT (datetime('now')),
@@ -145,6 +169,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS quotes (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT '',
     quote_number TEXT NOT NULL,
     contact_id TEXT,
     contact_name TEXT DEFAULT '',
@@ -181,28 +206,57 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_quote_items_quote ON quote_items(quote_id);
 `);
 
-// Migrációk - meglévő contacts táblához cím mezők hozzáadása
-const contactCols = db.prepare("PRAGMA table_info(contacts)").all().map(c => c.name);
-const newCols = [
-  ['company', 'TEXT DEFAULT \'\''],
-  ['vat_id', 'TEXT DEFAULT \'\''],
-  ['street', 'TEXT DEFAULT \'\''],
-  ['street_number', 'TEXT DEFAULT \'\''],
-  ['city', 'TEXT DEFAULT \'\''],
-  ['zip', 'TEXT DEFAULT \'\''],
-  ['country', 'TEXT DEFAULT \'\''],
-  ['region', 'TEXT DEFAULT \'\''],
-];
-for (const [col, def] of newCols) {
-  if (!contactCols.includes(col)) {
-    db.exec(`ALTER TABLE contacts ADD COLUMN ${col} ${def}`);
+// ─── MIGRÁCIÓK ───
+
+// Segéd: oszlop hozzáadása ha nem létezik
+function addColumnIfMissing(table, col, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name);
+  if (!cols.includes(col)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
   }
 }
 
-// Migrációk - quotes táblához title mező
-const quoteCols = db.prepare("PRAGMA table_info(quotes)").all().map(c => c.name);
-if (!quoteCols.includes('title')) {
-  db.exec("ALTER TABLE quotes ADD COLUMN title TEXT DEFAULT ''");
+// Contacts cím mezők
+const addressCols = [
+  ['company', "TEXT DEFAULT ''"], ['vat_id', "TEXT DEFAULT ''"],
+  ['street', "TEXT DEFAULT ''"], ['street_number', "TEXT DEFAULT ''"],
+  ['city', "TEXT DEFAULT ''"], ['zip', "TEXT DEFAULT ''"],
+  ['country', "TEXT DEFAULT ''"], ['region', "TEXT DEFAULT ''"],
+];
+for (const [col, def] of addressCols) addColumnIfMissing('contacts', col, def);
+
+// Quotes title mező
+addColumnIfMissing('quotes', 'title', "TEXT DEFAULT ''");
+
+// Multi-tenant migráció: user_id hozzáadása meglévő táblákhoz
+const tenantTables = ['contacts', 'email_log', 'inbox', 'sent_imap', 'custom_templates', 'api_keys', 'quotes'];
+for (const table of tenantTables) {
+  addColumnIfMissing(table, 'user_id', "TEXT NOT NULL DEFAULT ''");
 }
+
+// user_id indexek
+const userIdIndexes = [
+  ['idx_contacts_user', 'contacts', 'user_id'],
+  ['idx_email_log_user', 'email_log', 'user_id'],
+  ['idx_inbox_user', 'inbox', 'user_id'],
+  ['idx_sent_imap_user', 'sent_imap', 'user_id'],
+  ['idx_custom_templates_user', 'custom_templates', 'user_id'],
+  ['idx_api_keys_user', 'api_keys', 'user_id'],
+  ['idx_quotes_user', 'quotes', 'user_id'],
+];
+for (const [name, table, col] of userIdIndexes) {
+  db.exec(`CREATE INDEX IF NOT EXISTS ${name} ON ${table}(${col})`);
+}
+
+// inbox uid is unique per user, not globally — replace old unique index
+// (safe to run even if old index doesn't exist)
+try { db.exec('DROP INDEX IF EXISTS idx_inbox_uid'); } catch {}
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_user_uid ON inbox(user_id, uid)');
+try { db.exec('DROP INDEX IF EXISTS idx_sent_imap_uid'); } catch {}
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_imap_user_uid ON sent_imap(user_id, uid)');
+
+// contacts email is unique per user, not globally
+try { db.exec('DROP INDEX IF EXISTS sqlite_autoindex_contacts_1'); } catch {}
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_user_email ON contacts(user_id, email)');
 
 export default db;

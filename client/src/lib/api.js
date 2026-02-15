@@ -385,6 +385,75 @@ export async function toggleApiKey(id) {
   return data
 }
 
+// ─── ADMIN: USER MANAGEMENT ─────────────────────────────────
+
+export async function getUsers() {
+  const res = await fetch(`${API_BASE}/admin/users`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch users')
+  return data
+}
+
+export async function createUser({ email, password, name }) {
+  const res = await fetch(`${API_BASE}/admin/users`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, name })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create user')
+  return data
+}
+
+export async function updateUser(id, updates) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update user')
+  return data
+}
+
+export async function deleteUser(id) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete user')
+  return data
+}
+
+export async function impersonateUser(id) {
+  const res = await fetch(`${API_BASE}/admin/impersonate/${id}`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to impersonate user')
+  return data
+}
+
+export async function getUserSettingsAdmin(id) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}/settings`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch user settings')
+  return data
+}
+
+export async function updateUserSettingsAdmin(id, settings) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}/settings`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update user settings')
+  return data
+}
+
 export async function replyToEmail({ to, subject, html, cc, bcc, inReplyTo, attachments }) {
   const formData = new FormData()
   formData.append('to', to)

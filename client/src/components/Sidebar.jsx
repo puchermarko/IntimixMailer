@@ -1,10 +1,10 @@
 // Na ez itt az oldalsáv, innen navigálsz mindenhova
 import { useAuth, useBranding } from '../App'
 import {
-  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X
+  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X, Users
 } from 'lucide-react'
 
-const navItems = [
+const baseNavItems = [
   { id: 'mail', label: 'Levelezés', icon: Mail },
   { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
   { id: 'quotes', label: 'Árajánlatok', icon: FileText },
@@ -12,8 +12,12 @@ const navItems = [
   { id: 'settings', label: 'Beállítások', icon: Settings },
 ]
 
+const adminNavItems = [
+  { id: 'users', label: 'Felhasználók', icon: Users },
+]
+
 export default function Sidebar({ activeView, setActiveView, isOpen, setIsOpen }) {
-  const { logout, email } = useAuth()
+  const { logout, email, isAdmin, impersonating } = useAuth()
   const { app_name, app_subtitle, app_logo } = useBranding()
 
   const handleNav = (id) => {
@@ -56,7 +60,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, setIsOpen }
 
         {/* Navigáció */}
         <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(item => {
+          {(isAdmin && !impersonating ? [...adminNavItems, ...baseNavItems] : baseNavItems).map(item => {
             const Icon = item.icon
             const isActive = activeView === item.id
             return (
@@ -84,7 +88,7 @@ export default function Sidebar({ activeView, setActiveView, isOpen, setIsOpen }
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-gray-300 truncate">{email}</p>
-              <p className="text-[10px] text-gray-500">Adminisztrátor</p>
+              <p className="text-[10px] text-gray-500">{isAdmin ? 'Admin' : 'Felhasználó'}</p>
             </div>
           </div>
           <button
