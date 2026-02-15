@@ -43,7 +43,7 @@ export default function Login() {
       <div className="glass glow rounded-2xl p-8 w-full max-w-md fade-in relative z-10">
         {/* Generic header — no company branding */}
         <div className="text-center mb-8">
-          <img src="/pultify-logo.png" alt="Pultify" className="h-10 object-contain mx-auto mb-4" />
+          <img src="/pultify-logo.png" alt="Pultify" className="h-12 object-contain mx-auto mb-5" />
           <h1 className="text-xl font-bold text-white">Bejelentkezés</h1>
           <p className="text-sm text-gray-400 mt-1">Lépj be a fiókodba</p>
         </div>

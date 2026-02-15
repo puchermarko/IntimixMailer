@@ -154,7 +154,7 @@ export default function SetupWizard({ onComplete }) {
       <div className="w-full max-w-2xl relative z-10 fade-in">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src="/pultify-logo.png" alt="Pultify" className="h-10 object-contain mx-auto mb-4" />
+          <img src="/pultify-logo.png" alt="Pultify" className="h-12 object-contain mx-auto mb-5" />
           <h1 className="text-2xl font-bold text-white">Üdvözlünk! Állítsd be a fiókodat</h1>
           <p className="text-sm text-gray-400 mt-1">Néhány lépés és máris használhatod a rendszert</p>
         </div>

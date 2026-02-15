@@ -248,7 +248,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/pultify-logo.png" alt="Pultify" className="h-8 object-contain" />
+              <img src="/pultify-logo.png" alt="Pultify" className="h-9 object-contain" />
             </div>
             <div className="hidden md:flex items-center gap-8">
               {[
@@ -611,7 +611,7 @@ export default function Landing() {
       <footer className="border-t border-white/5 py-8 px-4">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 group cursor-default">
-            <img src="/pultify-logo.png" alt="Pultify" className="h-6 object-contain" />
+            <img src="/pultify-logo.png" alt="Pultify" className="h-7 object-contain" />
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-600">
             Készítette a <Heart className="w-3 h-3 text-[#1AA19C] mx-0.5" /> <span className="text-gray-500 font-medium">TM Infotech Kft.</span> — Magyarország, {new Date().getFullYear()}
