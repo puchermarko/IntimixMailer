@@ -974,6 +974,9 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
 
 // ─── ÁRAJÁNLATOK - CRUD, PDF generálás, email küldés ────
 
+const BRANDING_DIR = path.join(__dirname, 'branding');
+if (!fs.existsSync(BRANDING_DIR)) fs.mkdirSync(BRANDING_DIR, { recursive: true });
+
 const QUOTES_DIR = path.join(__dirname, 'quotes');
 if (!fs.existsSync(QUOTES_DIR)) fs.mkdirSync(QUOTES_DIR, { recursive: true });
 
@@ -983,6 +986,28 @@ function getCompanyInfo() {
   const info = {};
   for (const r of rows) info[r.key] = r.value;
   return info;
+}
+
+// Logó fájl keresése a branding mappából (PDF generáláshoz)
+function findLogoPath(companyInfo) {
+  // 1) Uploaded logo from app_settings
+  if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
+    const logoFilename = companyInfo.app_logo.split('/').pop();
+    const lp = path.join(BRANDING_DIR, logoFilename);
+    // Skip SVG – PDFKit cannot render it
+    if (fs.existsSync(lp) && !lp.endsWith('.svg')) return lp;
+  }
+  // 2) Fallback: any image file in branding dir
+  if (fs.existsSync(BRANDING_DIR)) {
+    const supported = ['.png', '.jpg', '.jpeg', '.webp', '.gif'];
+    const files = fs.readdirSync(BRANDING_DIR);
+    for (const f of files) {
+      if (supported.includes(path.extname(f).toLowerCase())) {
+        return path.join(BRANDING_DIR, f);
+      }
+    }
+  }
+  return null;
 }
 
 // Következő árajánlat szám generálása
@@ -1294,13 +1319,7 @@ app.get('/api/quotes/:id/pdf', authenticate, async (req, res) => {
     const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
     const companyInfo = getCompanyInfo();
 
-    // Logó fájl keresése
-    let logoPath = null;
-    if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
-      const logoFilename = companyInfo.app_logo.split('/').pop();
-      const lp = path.join(BRANDING_DIR, logoFilename);
-      if (fs.existsSync(lp)) logoPath = lp;
-    }
+    const logoPath = findLogoPath(companyInfo);
 
     const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
     res.setHeader('Content-Type', 'application/pdf');
@@ -1320,12 +1339,7 @@ app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
     const items = db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY sort_order').all(req.params.id);
     const companyInfo = getCompanyInfo();
 
-    let logoPath = null;
-    if (companyInfo.app_logo && companyInfo.app_logo.includes('logo-file')) {
-      const logoFilename = companyInfo.app_logo.split('/').pop();
-      const lp = path.join(BRANDING_DIR, logoFilename);
-      if (fs.existsSync(lp)) logoPath = lp;
-    }
+    const logoPath = findLogoPath(companyInfo);
 
     const pdfPath = await generateQuotePdf(quote, items, companyInfo, logoPath);
 
@@ -1383,9 +1397,6 @@ app.post('/api/quotes/:id/send', authenticate, async (req, res) => {
 });
 
 // ─── BRANDING - alkalmazás neve és logó testreszabása ────
-
-const BRANDING_DIR = path.join(__dirname, 'branding');
-if (!fs.existsSync(BRANDING_DIR)) fs.mkdirSync(BRANDING_DIR, { recursive: true });
 
 app.get('/api/branding', (req, res) => {
   try {
