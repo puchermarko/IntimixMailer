@@ -1582,7 +1582,7 @@ app.post('/api/branding/logo', authenticate, upload.single('logo'), (req, res) =
     const filepath = path.join(userBrandingDir, filename);
     fs.writeFileSync(filepath, req.file.buffer);
 
-    const logoUrl = `/api/branding/logo-file/${filename}`;
+    const logoUrl = `/api/branding/logo-file/${req.userId}/${filename}`;
     setUserSetting(req.userId, 'app_logo', logoUrl);
 
     res.json({ success: true, logo: logoUrl });
@@ -1591,8 +1591,8 @@ app.post('/api/branding/logo', authenticate, upload.single('logo'), (req, res) =
   }
 });
 
-app.get('/api/branding/logo-file/:filename', authenticate, (req, res) => {
-  const userBrandingDir = path.join(BRANDING_DIR, req.userId);
+app.get('/api/branding/logo-file/:userId/:filename', (req, res) => {
+  const userBrandingDir = path.join(BRANDING_DIR, req.params.userId);
   const fp = path.join(userBrandingDir, path.basename(req.params.filename));
   if (!fs.existsSync(fp)) return res.status(404).json({ error: 'Logo not found' });
   res.sendFile(fp);
