@@ -10,7 +10,7 @@ const TOUR_STEPS = [
     target: null,
     view: null,
     icon: Sparkles,
-    title: 'Üdvözlünk az IntimixMailerben!',
+    title: 'Üdvözlünk a Pultifyban!',
     description: 'Interaktív bemutató a legfontosabb funkciókról. Végigvezetünk a rendszeren — kattints a „Tovább" gombra!',
     tips: ['A bemutató bármikor kihagyható', 'A Beállításokban újra elindíthatod'],
     position: 'center',

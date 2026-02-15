@@ -46,7 +46,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -91,7 +91,7 @@ export const emailTemplates = [
             <p>K&ouml;sz&ouml;nj&uuml;k a rendel&eacute;s&eacute;t! Az al&aacute;bbi rendel&eacute;s&eacute;t sikeresen r&ouml;gz&iacute;tett&uuml;k.</p>
             <p>Amint a csomagja felad&aacute;sra ker&uuml;l, &eacute;rtes&iacute;tj&uuml;k &Ouml;nt a nyomk&ouml;vet&eacute;si sz&aacute;mmal.</p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -105,7 +105,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -136,13 +136,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -154,7 +154,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -214,7 +214,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -260,7 +260,7 @@ export const emailTemplates = [
             <p>📦 <strong>Nyomk&ouml;vet&eacute;si sz&aacute;m:</strong> {{tracking_number}}</p>
             <p>A csomag v&aacute;rhat&oacute;an 1-3 munkanapon bel&uuml;l meg&eacute;rkezik. A csomagol&aacute;s diszkr&eacute;t, nem utal a tartalm&aacute;ra.</p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -274,7 +274,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -305,13 +305,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -323,7 +323,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -341,7 +341,7 @@ export const emailTemplates = [
     name: 'Welcome Email',
     description: 'Welcome a new customer to the shop',
     category: 'Marketing',
-    subject: 'Üdvözöljük az Intimix Shopban!',
+    subject: 'Üdvözöljük a Pultifyban!',
     html: `<!DOCTYPE html>
 <html>
 <head>
@@ -383,7 +383,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -415,7 +415,7 @@ export const emailTemplates = [
         <td style="padding:10px 40px;">
           <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:30px;line-height:1.2;text-align:center;">
             <p style="margin:0;"><span style="color:#2b303a;"><strong>&Uuml;dv&ouml;z&ouml;lj&uuml;k!</strong></span></p>
-            <p style="margin:0;"><span style="color:#2d3748;font-size:22px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-weight:400;">K&ouml;sz&ouml;ntj&uuml;k az Intimix Shop csal&aacute;dj&aacute;ban</span></p>
+            <p style="margin:0;"><span style="color:#2d3748;font-size:22px;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-weight:400;">K&ouml;sz&ouml;ntj&uuml;k a Pultify csal&aacute;dj&aacute;ban</span></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -425,10 +425,10 @@ export const emailTemplates = [
         <td style="padding:10px 40px;">
           <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:15px;line-height:1.5;text-align:center;">
             <p style="margin:0;">Kedves <strong>{{name}}</strong>!</p>
-            <p>K&ouml;sz&ouml;nj&uuml;k, hogy regisztr&aacute;lt az Intimix Shopban! N&aacute;lunk megtal&aacute;lja a legjobb minős&eacute;gű term&eacute;keket, diszkr&eacute;t csomagol&aacute;ssal &eacute;s gyors sz&aacute;ll&iacute;t&aacute;ssal.</p>
-            <p style="margin:25px 0;"><a href="https://intimix.hu" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#1aa19c;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">B&ouml;ng&eacute;sszen term&eacute;keink k&ouml;z&ouml;tt</a></p>
+            <p>K&ouml;sz&ouml;nj&uuml;k, hogy regisztr&aacute;lt a Pultifyban! N&aacute;lunk megtal&aacute;lja a legjobb minős&eacute;gű term&eacute;keket, diszkr&eacute;t csomagol&aacute;ssal &eacute;s gyors sz&aacute;ll&iacute;t&aacute;ssal.</p>
+            <p style="margin:25px 0;"><a href="https://pultify.hu" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#1aa19c;color:#fff;padding:12px 30px;border-radius:6px;text-decoration:none;font-weight:600;font-size:14px;">B&ouml;ng&eacute;sszen term&eacute;keink k&ouml;z&ouml;tt</a></p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -442,7 +442,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -473,13 +473,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -491,7 +491,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -551,7 +551,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -597,7 +597,7 @@ export const emailTemplates = [
             <p>&#10003; <strong>Fizet&eacute;s sikeres</strong></p>
             <p>Rendel&eacute;s&eacute;t hamarosan feldolgozzuk &eacute;s sz&aacute;ll&iacute;tjuk.</p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -611,7 +611,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -642,13 +642,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -660,7 +660,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -729,7 +729,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -774,7 +774,7 @@ export const emailTemplates = [
             <p>&Ouml;r&ouml;mmel &eacute;rtes&iacute;tj&uuml;k, hogy rendel&eacute;s&eacute;t elk&uuml;ldt&uuml;k, a csomagot a fut&aacute;rszolg&aacute;lat hamarosan &aacute;tveszi &eacute;s k&eacute;zbes&iacute;ti &Ouml;nnek.</p>
             <p>📦 <strong>Csomagsz&aacute;m:</strong> {{tracking_number}}<br />🔗 <strong>K&ouml;vet&eacute;si link:</strong> <a href="{{tracking_url}}" target="_blank" rel="noopener noreferrer">Csomag k&ouml;vet&eacute;se</a></p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -788,7 +788,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -822,7 +822,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -830,7 +830,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -846,7 +846,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -915,7 +915,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -975,7 +975,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1009,7 +1009,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1017,7 +1017,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1033,7 +1033,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1102,7 +1102,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1145,7 +1145,7 @@ export const emailTemplates = [
             <p style="margin:0;">Kedves <strong>{{name}}</strong>!</p>
             <p>K&ouml;sz&ouml;nj&uuml;k, hogy az Intimix.hu web&aacute;ruh&aacute;zban v&aacute;s&aacute;rolt!<br />Ez&uacute;ton k&uuml;ldj&uuml;k &Ouml;nnek a v&aacute;s&aacute;rl&aacute;s&aacute;r&oacute;l k&eacute;sz&uuml;lt sz&aacute;ml&aacute;t csatolt f&aacute;jl form&aacute;j&aacute;ban.</p>
             <p>Amennyiben b&aacute;rmilyen k&eacute;rd&eacute;se mer&uuml;lne fel a rendel&eacute;s&eacute;vel kapcsolatban, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br />Az Intimix.hu csapata</p>
+            <p>&Uuml;dv&ouml;zlettel:<br />A Pultify csapata</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1159,7 +1159,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1193,7 +1193,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1201,7 +1201,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1217,7 +1217,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1286,7 +1286,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1332,7 +1332,7 @@ export const emailTemplates = [
             <p>K&eacute;zbes&iacute;t&ouml; telefonsz&aacute;ma: <strong>{{delivery_phone}}</strong></p>
             <p>V&aacute;rhat&oacute; &eacute;rkez&eacute;s: <strong>{{delivery_time}}</strong></p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1346,7 +1346,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1380,7 +1380,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1388,7 +1388,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1404,7 +1404,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1473,7 +1473,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1520,7 +1520,7 @@ export const emailTemplates = [
             <p>✅ Ha el&eacute;gedett, k&eacute;rj&uuml;k, v&aacute;laszoljon erre az emailre egy r&ouml;vid &uuml;zenettel, p&eacute;ld&aacute;ul:<br />&bdquo;Minden rendben volt, a term&eacute;kekkel el&eacute;gedett vagyok, &eacute;s a Google-ben tal&aacute;ltam &Ouml;n&ouml;kre.&rdquo;</p>
             <p>🎁 A rendszer automatikusan feldolgozza a v&aacute;lasz&aacute;t, &eacute;s <strong>7% kedvezm&eacute;nyre jogos&iacute;t&oacute; kuponk&oacute;dot</strong> k&uuml;ld &Ouml;nnek a k&ouml;vetkező v&aacute;s&aacute;rl&aacute;shoz.</p>
             <p>K&ouml;sz&ouml;nj&uuml;k, hogy v&aacute;s&aacute;rl&oacute;nk lett &ndash; szeretettel v&aacute;rjuk vissza!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1534,7 +1534,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1568,7 +1568,7 @@ export const emailTemplates = [
       <!-- Footer logo -->
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
 
@@ -1576,7 +1576,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1592,7 +1592,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1652,7 +1652,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1685,7 +1685,7 @@ export const emailTemplates = [
           <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:15px;line-height:1.5;text-align:center;">
             <p style="margin:0;">Kedves <strong>{{name}}</strong>!</p>
             <p>&Iacute;rja ide az &uuml;zenet&eacute;t...</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1699,7 +1699,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1730,13 +1730,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1748,7 +1748,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1808,7 +1808,7 @@ export const emailTemplates = [
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding-bottom:25px;padding-top:22px;width:100%;">
           <div align="center"><div style="max-width:500px;">
-            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+            <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
           </div></div>
         </td>
       </tr></tbody></table>
@@ -1853,7 +1853,7 @@ export const emailTemplates = [
             <p>Ez&uacute;ton &eacute;rtes&iacute;tj&uuml;k, hogy a visszat&eacute;r&iacute;t&eacute;s&eacute;t feldolgoztuk.</p>
             <p>Az &ouml;sszeg 3-5 munkanapon bel&uuml;l visszaker&uuml;l a banksz&aacute;ml&aacute;j&aacute;ra.</p>
             <p>Ha b&aacute;rmilyen k&eacute;rd&eacute;se lenne, forduljon hozz&aacute;nk bizalommal!</p>
-            <p>&Uuml;dv&ouml;zlettel:<br /><strong>Az Intimix.hu csapata</strong></p>
+            <p>&Uuml;dv&ouml;zlettel:<br /><strong>A Pultify csapata</strong></p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1867,7 +1867,7 @@ export const emailTemplates = [
     <tbody><tr><td style="border-left:30px solid #fff;border-right:30px solid #fff;padding:15px 10px;" width="100%">
       <div style="color:#555;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:13px;line-height:1.6;">
         &Uuml;gyf&eacute;lszolg&aacute;lat el&eacute;rhetős&eacute;ge:<br />
-        Email: <a href="mailto:info@intimix.hu" style="color:#1aa19c;">info@intimix.hu</a><br />
+        Email: <a href="mailto:info@tm-it.hu" style="color:#1aa19c;">info@tm-it.hu</a><br />
         Telefon: +36 (21) 202-57-07
       </div>
     </td></tr></tbody></table>
@@ -1898,13 +1898,13 @@ export const emailTemplates = [
       </td></tr></tbody></table>
       <table border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="width:100%;"><div align="center"><div style="max-width:500px;">
-          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Intimix" width="500" height="auto" />
+          <img style="display:block;height:auto;border:0;width:100%;" src="cid:intimix-logo-png" alt="Pultify" width="500" height="auto" />
         </div></div></td>
       </tr></tbody></table>
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:15px 40px 10px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.5;">
-            <p style="margin:0;">Ez egy automatikus e-mail. Az IntimiX webshop egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
+            <p style="margin:0;">Ez egy automatikus e-mail. A Pultify egy a TM Infotech Kft &aacute;ltal &uuml;zemeltetett webshop.</p>
           </div>
         </td>
       </tr></tbody></table>
@@ -1916,7 +1916,7 @@ export const emailTemplates = [
       <table style="word-break:break-word;" border="0" width="100%" cellspacing="0" cellpadding="0"><tbody><tr>
         <td style="padding:20px 40px 30px;">
           <div style="color:#95979c;font-family:Montserrat,Trebuchet MS,Lucida Grande,sans-serif;font-size:12px;line-height:1.2;">
-            <p style="margin:0;">IntimiX - TM Infotech Kft @2026</p>
+            <p style="margin:0;">Pultify - TM Infotech Kft @2026</p>
           </div>
         </td>
       </tr></tbody></table>

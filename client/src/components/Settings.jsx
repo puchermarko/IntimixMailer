@@ -222,7 +222,7 @@ export default function Settings({ onStartTour }) {
     { id: 'expert', label: 'Haladó' },
   ]
 
-  const baseUrl = 'https://marketing.intimix.hu'
+  const baseUrl = 'https://pultify.hu'
 
   return (
     <div>
@@ -345,7 +345,7 @@ export default function Settings({ onStartTour }) {
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Név (pl. cég neve)</label>
                     <input type="text" value={brandName} onChange={(e) => { setBrandName(e.target.value); setBrandDirty(true) }}
-                      placeholder="Intimix" className="input-field w-full px-3 py-2 text-sm" />
+                      placeholder="Pultify" className="input-field w-full px-3 py-2 text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Alcím</label>
@@ -362,7 +362,7 @@ export default function Settings({ onStartTour }) {
                     <div className="h-5 w-px bg-white/10" />
                     <p className="text-[11px] text-gray-400 font-medium tracking-wide uppercase">{brandSubtitle || 'Mailer'}</p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">{brandName || 'Intimix'} — {brandSubtitle || 'Mailer'}</p>
+                  <p className="text-xs text-gray-400 mt-2">{brandName || 'Pultify'} — {brandSubtitle || 'Management'}</p>
                 </div>
               </div>
 
@@ -824,7 +824,7 @@ export default function Settings({ onStartTour }) {
             <Endpoint method="POST" path="/api/v1/send"
               desc={docLang === 'en' ? 'Send an email' : 'Email küldése'}
               body={`{\n  "to": "customer@example.com",  // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "subject": "Your order",       // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "html": "<h1>Hello</h1>",      // ${docLang === 'en' ? 'required if no template_id' : 'kötelező ha nincs template_id'}\n  "template_id": "uuid",         // ${docLang === 'en' ? 'optional, uses template HTML' : 'opcionális, sablon HTML-t használ'}\n  "variables": {                  // ${docLang === 'en' ? 'optional, replaces {{key}}' : 'opcionális, {{key}} cserélése'}\n    "name": "Kiss Anna",\n    "order_id": "10042"\n  },\n  "cc": "cc@ex.com",             // ${docLang === 'en' ? 'optional' : 'opcionális'}\n  "bcc": "bcc@ex.com"            // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
-              response={`{\n  "success": true,\n  "messageId": "<msg-id@mail.intimix.hu>"\n}`}
+              response={`{\n  "success": true,\n  "messageId": "<msg-id@mail.pultify.hu>"\n}`}
               copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
           </ApiSection>
 

@@ -124,7 +124,7 @@ export default function SetupWizard({ onComplete }) {
       await fetch('/api/setup-complete', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
       setSetupCompleted(true)
       localStorage.setItem('intimix_setup_completed', 'true')
-      toast.success('Beállítás kész! Üdvözlünk az IntimixMailerben!')
+      toast.success('Beállítás kész! Üdvözlünk a Pultifyban!')
       onComplete()
     } catch (err) { toast.error(err.message) }
     finally { setSaving(false) }

@@ -62,7 +62,7 @@ export default function Landing() {
               <div className="w-9 h-9 rounded-xl bg-[#1AA19C]/15 flex items-center justify-center">
                 <Send className="w-5 h-5 text-[#2EC4BE]" />
               </div>
-              <span className="text-lg font-bold text-white tracking-tight">Intimix<span className="text-[#2EC4BE]">Mailer</span></span>
+              <span className="text-lg font-bold text-white tracking-tight">Pult<span className="text-[#2EC4BE]">ify</span></span>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <button onClick={() => scrollTo('features')} className="text-sm text-gray-400 hover:text-white transition-colors">Funkciók</button>
@@ -96,7 +96,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-8 fade-in">
             <Sparkles className="w-3.5 h-3.5" />
-            Professzionális email & CRM platform
+            Professzionális üzleti management platform
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-white leading-tight tracking-tight fade-in">
@@ -108,7 +108,7 @@ export default function Landing() {
           </h1>
 
           <p className="mt-6 sm:mt-8 text-base sm:text-lg md:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed fade-in">
-            Email küldés, kapcsolatkezelés, árajánlat készítés — egyetlen modern, biztonságos platformon.
+            Email, CRM, árajánlatok és teljes irodai menedzsment — egyetlen modern, biztonságos platformon.
             Tervezve kisvállalkozásoknak és szabadúszóknak.
           </p>
 
@@ -368,7 +368,7 @@ export default function Landing() {
             <div className="w-7 h-7 rounded-lg bg-[#1AA19C]/15 flex items-center justify-center">
               <Send className="w-4 h-4 text-[#2EC4BE]" />
             </div>
-            <span className="text-sm font-semibold text-gray-400">Intimix<span className="text-[#2EC4BE]">Mailer</span></span>
+            <span className="text-sm font-semibold text-gray-400">Pult<span className="text-[#2EC4BE]">ify</span></span>
           </div>
           <div className="flex items-center gap-1 text-xs text-gray-600">
             Készítette a <Heart className="w-3 h-3 text-[#1AA19C] mx-0.5" /> <span className="text-gray-500 font-medium">TM Infotech Kft.</span> — Magyarország, {new Date().getFullYear()}
