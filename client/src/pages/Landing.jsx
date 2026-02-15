@@ -13,36 +13,42 @@ const features = [
     title: 'IMAP Szinkronizálás',
     desc: 'Bejövő és kimenő leveleid automatikus szinkronizálása IMAP protokollon keresztül. Minden egy helyen, valós időben.',
     color: '#2EC4BE',
+    highlights: ['Valós idejű szinkron', 'Bejövő & kimenő', 'Automatikus frissítés'],
   },
   {
     icon: PenLine,
     title: 'Email Szerkesztő',
     desc: 'Professzionális email szerkesztő beépített sablonokkal. Egyedi és tömeges levelek küldése pár kattintással.',
     color: '#6366f1',
+    highlights: ['Beépített sablonok', 'Tömeges küldés', 'HTML szerkesztő'],
   },
   {
     icon: BookUser,
     title: 'Kapcsolatkezelés (CRM)',
     desc: 'Ügyfeleid, partnered adatai egy helyen. Teljes levelezési előzmények, csatolmányok és megjegyzések kontaktonként.',
     color: '#f59e0b',
+    highlights: ['Levelezési előzmények', 'Csatolmányok', 'Megjegyzések'],
   },
   {
     icon: FileText,
     title: 'Árajánlat Készítő',
     desc: 'Professzionális PDF árajánlatok generálása és azonnali küldése emailben. Automatikus sorszámozás és nyomon követés.',
     color: '#ec4899',
+    highlights: ['PDF generálás', 'Automatikus sorszám', 'Email küldés'],
   },
   {
     icon: Shield,
     title: 'Biztonságos Platform',
     desc: 'JWT alapú hitelesítés, titkosított kapcsolat és felhasználónkénti elkülönített adattárolás a maximális biztonságért.',
     color: '#10b981',
+    highlights: ['Titkosított kapcsolat', 'JWT hitelesítés', 'Elkülönített adatok'],
   },
   {
     icon: Zap,
     title: 'Villámgyors & Modern',
     desc: 'Modern webes technológiákra épülő, reszponzív felület. Asztali gépen és mobilon egyaránt tökéletesen működik.',
     color: '#f97316',
+    highlights: ['Reszponzív design', 'Mobil kompatibilis', 'Azonnali betöltés'],
   },
 ]
 
@@ -367,39 +373,65 @@ export default function Landing() {
       </section>
 
       {/* ═══ FEATURES ═══ */}
-      <section id="features" className="py-20 sm:py-28 px-4 relative">
+      <section id="features" className="py-24 sm:py-32 px-4 relative">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/3 right-0 w-[400px] h-[400px] bg-[#1AA19C]/4 rounded-full blur-[120px] orb-animate-2" />
+          <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-[#1AA19C]/4 rounded-full blur-[150px] orb-animate-2" />
+          <div className="absolute bottom-1/4 left-0 w-[400px] h-[400px] bg-[#2EC4BE]/3 rounded-full blur-[130px] orb-animate" />
         </div>
         <div className="max-w-6xl mx-auto relative z-10">
-          <div ref={featuresHeaderRef} className="reveal text-center mb-14 sm:mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-4">
+          <div ref={featuresHeaderRef} className="reveal text-center mb-20 sm:mb-28">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-5">
               <Star className="w-3.5 h-3.5" /> Funkciók
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
               Minden, amire szükséged van
             </h2>
-            <p className="mt-4 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
+            <p className="mt-5 text-gray-400 text-base sm:text-lg max-w-2xl mx-auto">
               Egy komplett üzleti levelezési és ügyfélkezelő platform, ami egyszerűsíti a mindennapjaidat.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          {/* Alternating feature showcases */}
+          <div className="space-y-16 sm:space-y-24">
             {features.map((f, i) => {
               const Icon = f.icon
+              const isEven = i % 2 === 0
               return (
                 <div key={i} ref={featureRefs(i)}
-                  className={`reveal delay-${(i % 3) + 1} glass rounded-2xl p-6 sm:p-7 card-hover group relative overflow-hidden`}>
-                  {/* Hover glow effect */}
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ background: `radial-gradient(circle at 30% 30%, ${f.color}08 0%, transparent 70%)` }} />
-                  <div className="relative z-10">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-all duration-300 group-hover:scale-110"
-                      style={{ background: `${f.color}15` }}>
-                      <Icon className="w-6 h-6" style={{ color: f.color }} />
+                  className={`${isEven ? 'reveal-left' : 'reveal-right'} delay-${(i % 3) + 1} flex flex-col ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-8 md:gap-14`}>
+
+                  {/* Icon showcase */}
+                  <div className="shrink-0 relative">
+                    <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl glass flex items-center justify-center relative group cursor-default card-hover"
+                      style={{ borderColor: `${f.color}25` }}>
+                      {/* Animated glow ring */}
+                      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                        style={{ boxShadow: `0 0 40px ${f.color}20, inset 0 0 40px ${f.color}08` }} />
+                      {/* Background gradient */}
+                      <div className="absolute inset-0 rounded-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"
+                        style={{ background: `radial-gradient(circle at 50% 50%, ${f.color}15 0%, transparent 70%)` }} />
+                      <Icon className="w-12 h-12 sm:w-14 sm:h-14 relative z-10 transition-transform duration-500 group-hover:scale-110" style={{ color: f.color }} />
                     </div>
-                    <h3 className="text-lg font-bold text-white mb-2">{f.title}</h3>
-                    <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
+                    {/* Number badge */}
+                    <div className="absolute -top-3 -right-3 w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${f.color}, ${f.color}cc)`, boxShadow: `0 4px 15px ${f.color}40` }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className={`flex-1 ${isEven ? 'md:text-left' : 'md:text-right'} text-center`}>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">{f.title}</h3>
+                    <p className={`text-sm sm:text-base text-gray-400 leading-relaxed mb-5 max-w-lg ${isEven ? '' : 'md:ml-auto'}`}>{f.desc}</p>
+                    {/* Highlight pills */}
+                    <div className={`flex flex-wrap gap-2 ${isEven ? 'justify-center md:justify-start' : 'justify-center md:justify-end'}`}>
+                      {f.highlights.map((h, j) => (
+                        <span key={j} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 hover:scale-105"
+                          style={{ background: `${f.color}12`, color: f.color, border: `1px solid ${f.color}20` }}>
+                          <Check className="w-3 h-3" /> {h}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )
