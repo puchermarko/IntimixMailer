@@ -64,9 +64,7 @@ export default function Register() {
 
       <div className="glass glow rounded-2xl p-8 w-full max-w-md fade-in relative z-10">
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-[#1AA19C]/15 flex items-center justify-center mx-auto mb-4">
-            <Send className="w-7 h-7 text-[#2EC4BE]" />
-          </div>
+          <img src="/pultify-logo.png" alt="Pultify" className="h-10 object-contain mx-auto mb-4" />
           <h1 className="text-xl font-bold text-white">Regisztráció</h1>
           <p className="text-sm text-gray-400 mt-1">Hozd létre a fiókodat</p>
         </div>

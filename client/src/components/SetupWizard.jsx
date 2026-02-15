@@ -154,9 +154,7 @@ export default function SetupWizard({ onComplete }) {
       <div className="w-full max-w-2xl relative z-10 fade-in">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-[#1AA19C]/15 flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="w-7 h-7 text-[#2EC4BE]" />
-          </div>
+          <img src="/pultify-logo.png" alt="Pultify" className="h-10 object-contain mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white">Üdvözlünk! Állítsd be a fiókodat</h1>
           <p className="text-sm text-gray-400 mt-1">Néhány lépés és máris használhatod a rendszert</p>
         </div>
