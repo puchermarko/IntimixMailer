@@ -1,7 +1,7 @@
 // Na ez itt az oldalsáv, innen navigálsz mindenhova
 import { useAuth, useBranding } from '../App'
 import {
-  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X, Users
+  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X, Users, Globe
 } from 'lucide-react'
 
 const baseNavItems = [
@@ -14,6 +14,7 @@ const baseNavItems = [
 
 const adminNavItems = [
   { id: 'users', label: 'Felhasználók', icon: Users },
+  { id: 'global-settings', label: 'Globális Beállítások', icon: Globe },
 ]
 
 export default function Sidebar({ activeView, setActiveView, isOpen, setIsOpen }) {

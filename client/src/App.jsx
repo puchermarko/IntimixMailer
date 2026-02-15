@@ -1,7 +1,7 @@
 // Fő app komponens - autentikáció kontextus és routing itt van
 import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { getBranding } from './lib/api'
+import { getBranding, getSiteConfig } from './lib/api'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
@@ -90,10 +90,16 @@ function App() {
   const hasSubscription = isAdmin || subscriptionStatus === 'active' || subscriptionStatus === 'trial'
 
   const [branding, setBranding] = useState({ app_name: 'Mailer', app_subtitle: '', app_logo: '/logo-header.png' })
+  const [siteConfig, setSiteConfig] = useState({ landing_page_enabled: true, registration_enabled: true })
+  const [siteConfigLoaded, setSiteConfigLoaded] = useState(false)
 
   const refreshBranding = async () => {
     try { setBranding(await getBranding()) } catch {}
   }
+
+  useEffect(() => {
+    getSiteConfig().then(cfg => { setSiteConfig(cfg); setSiteConfigLoaded(true) }).catch(() => setSiteConfigLoaded(true))
+  }, [])
 
   useEffect(() => { if (isAuthenticated) refreshBranding() }, [token])
 
@@ -101,13 +107,21 @@ function App() {
     <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
       <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
         <Routes>
-          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/register" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Register />} />
+          <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login registrationEnabled={siteConfig.registration_enabled} />} />
+          <Route path="/register" element={
+            isAuthenticated ? <Navigate to="/dashboard" /> :
+            !siteConfig.registration_enabled ? <Navigate to="/login" /> :
+            <Register />
+          } />
           <Route path="/dashboard/*" element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} />
-          <Route path="/impressum" element={<Impressum />} />
-          <Route path="/adatvedelem" element={<Privacy />} />
-          <Route path="/aszf" element={<Terms />} />
-          <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Landing />} />
+          <Route path="/impressum" element={siteConfig.landing_page_enabled ? <Impressum /> : <Navigate to="/login" />} />
+          <Route path="/adatvedelem" element={siteConfig.landing_page_enabled ? <Privacy /> : <Navigate to="/login" />} />
+          <Route path="/aszf" element={siteConfig.landing_page_enabled ? <Terms /> : <Navigate to="/login" />} />
+          <Route path="/" element={
+            isAuthenticated ? <Navigate to="/dashboard" /> :
+            !siteConfig.landing_page_enabled ? <Navigate to="/login" /> :
+            <Landing />
+          } />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AuthContext.Provider>

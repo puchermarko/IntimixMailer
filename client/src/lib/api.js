@@ -496,6 +496,35 @@ export async function importBackup(backupData) {
   return data
 }
 
+// ─── PUBLIC SITE CONFIG ──────────────────────────────────────
+
+export async function getSiteConfig() {
+  const res = await fetch(`${API_BASE}/site-config`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch site config')
+  return data
+}
+
+// ─── ADMIN: GLOBAL SETTINGS ─────────────────────────────────
+
+export async function getGlobalSettings() {
+  const res = await fetch(`${API_BASE}/admin/global-settings`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch global settings')
+  return data
+}
+
+export async function updateGlobalSettings(settings) {
+  const res = await fetch(`${API_BASE}/admin/global-settings`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ settings })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update global settings')
+  return data
+}
+
 export async function replyToEmail({ to, subject, html, cc, bcc, inReplyTo, attachments }) {
   const formData = new FormData()
   formData.append('to', to)

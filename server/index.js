@@ -70,6 +70,17 @@ function requireSubscription(req, res, next) {
   return res.status(403).json({ error: 'Nincs aktív előfizetés. Kérjük, aktiváld az előfizetésed.' });
 }
 
+// ─── GLOBAL APP SETTINGS ─────────────────────────────────────
+
+function getAppSetting(key, defaultValue = '') {
+  const row = db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key);
+  return row ? row.value : defaultValue;
+}
+
+function setAppSetting(key, value) {
+  db.prepare('INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+}
+
 // ─── PER-USER HELPERS ───────────────────────────────────────
 
 // Get user settings as object
@@ -176,6 +187,11 @@ app.post('/api/login', (req, res) => {
 // ─── REGISTRATION ────────────────────────────────────────────
 
 app.post('/api/register', (req, res) => {
+  // Check if registration is enabled
+  if (getAppSetting('registration_enabled', 'true') !== 'true') {
+    return res.status(403).json({ error: 'A regisztráció jelenleg nem elérhető.' });
+  }
+
   const { name, email, password, formLoadedAt } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Név, email és jelszó megadása kötelező.' });
 
@@ -208,6 +224,33 @@ app.post('/api/register', (req, res) => {
 // Mark setup wizard as completed (or skipped)
 app.post('/api/setup-complete', authenticate, (req, res) => {
   db.prepare("UPDATE users SET setup_completed = 1, updated_at = datetime('now') WHERE id = ?").run(req.userId);
+  res.json({ success: true });
+});
+
+// ─── PUBLIC SITE CONFIG (no auth) ────────────────────────────
+// Returns settings needed by the frontend before login
+app.get('/api/site-config', (req, res) => {
+  res.json({
+    landing_page_enabled: getAppSetting('landing_page_enabled', 'true') === 'true',
+    registration_enabled: getAppSetting('registration_enabled', 'true') === 'true',
+  });
+});
+
+// ─── ADMIN: GLOBAL SETTINGS ────────────────────────────────
+
+app.get('/api/admin/global-settings', authenticate, adminOnly, (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM app_settings').all();
+  const settings = {};
+  for (const r of rows) settings[r.key] = r.value;
+  res.json(settings);
+});
+
+app.put('/api/admin/global-settings', authenticate, adminOnly, (req, res) => {
+  const { settings } = req.body;
+  if (!settings || typeof settings !== 'object') return res.status(400).json({ error: 'Settings object required' });
+  for (const [key, value] of Object.entries(settings)) {
+    setAppSetting(key, value);
+  }
   res.json({ success: true });
 });
 
