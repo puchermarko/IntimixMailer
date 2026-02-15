@@ -1,12 +1,11 @@
 // Bejelentkezés oldal - ide érkezel ha nincs token
 import { useState } from 'react'
-import { useAuth, useBranding } from '../App'
+import { useAuth } from '../App'
 import toast from 'react-hot-toast'
-import { Mail, Lock, Loader2 } from 'lucide-react'
+import { Mail, Lock, Loader2, Send } from 'lucide-react'
 
 export default function Login() {
   const { login } = useAuth()
-  const { app_name, app_subtitle, app_logo } = useBranding()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -40,14 +39,13 @@ export default function Login() {
       </div>
 
       <div className="glass glow rounded-2xl p-8 w-full max-w-md fade-in relative z-10">
-        {/* Logó */}
+        {/* Generic header — no company branding */}
         <div className="text-center mb-8">
-          <img
-            src={app_logo}
-            alt={app_name}
-            className="h-12 mx-auto mb-4"
-          />
-          <p className="text-sm text-gray-400 mt-2">{app_name} — {app_subtitle}</p>
+          <div className="w-14 h-14 rounded-2xl bg-[#1AA19C]/15 flex items-center justify-center mx-auto mb-4">
+            <Send className="w-7 h-7 text-[#2EC4BE]" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Bejelentkezés</h1>
+          <p className="text-sm text-gray-400 mt-1">Lépj be a fiókodba</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -98,7 +96,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-gray-500 mt-6">
-          Biztonságos email platform — {app_name}
+          Biztonságos email platform
         </p>
       </div>
     </div>

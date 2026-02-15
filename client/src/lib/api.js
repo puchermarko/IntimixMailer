@@ -60,7 +60,7 @@ export async function testSmtp() {
 // ─── BRANDING ────────────────────────────────────────────────
 
 export async function getBranding() {
-  const res = await fetch(`${API_BASE}/branding`)
+  const res = await fetch(`${API_BASE}/branding`, { headers: getHeaders() })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to fetch branding')
   return data
