@@ -196,11 +196,13 @@ app.post('/api/register', (req, res) => {
   if (existing) return res.status(409).json({ error: 'Ezzel az email címmel már létezik fiók.' });
 
   const id = randomUUID();
-  db.prepare('INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)').run(id, email, password, name);
+  const trialStart = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  db.prepare('INSERT INTO users (id, email, password, name, subscription_status, trial_start, trial_end) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, email, password, name, 'trial', trialStart, trialEnd);
 
   // Auto-login after registration
   const token = jwt.sign({ role: 'user', userId: id, email }, JWT_SECRET, { expiresIn: '24h' });
-  res.status(201).json({ token, email, role: 'user', name, userId: id, subscription_status: 'none', setup_completed: false });
+  res.status(201).json({ token, email, role: 'user', name, userId: id, subscription_status: 'trial', setup_completed: false });
 });
 
 // Mark setup wizard as completed (or skipped)
