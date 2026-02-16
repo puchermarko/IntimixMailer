@@ -189,22 +189,22 @@ export async function getContact(id) {
   return data
 }
 
-export async function createContact({ name, email, phone, notes }) {
+export async function createContact(contact) {
   const res = await fetch(`${API_BASE}/contacts`, {
     method: 'POST',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, phone, notes })
+    body: JSON.stringify(contact)
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to create contact')
   return data
 }
 
-export async function updateContact(id, { name, email, phone, notes }) {
+export async function updateContact(id, contact) {
   const res = await fetch(`${API_BASE}/contacts/${id}`, {
     method: 'PUT',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, phone, notes })
+    body: JSON.stringify(contact)
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to update contact')

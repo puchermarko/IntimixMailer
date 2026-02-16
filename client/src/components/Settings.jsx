@@ -50,10 +50,11 @@ export default function Settings({ onStartTour }) {
   const [companyCountry, setCompanyCountry] = useState('')
   const [companyBankName, setCompanyBankName] = useState('')
   const [companyBankIban, setCompanyBankIban] = useState('')
+  const [quotePrefix, setQuotePrefix] = useState('AJ')
 
   useEffect(() => {
     if (activeTab === 'expert') loadKeys()
-    if (activeTab === 'config' || activeTab === 'general') loadEnv()
+    if (activeTab === 'config' || activeTab === 'general' || activeTab === 'branding') loadEnv()
     if (activeTab === 'branding') loadBrand()
     if (activeTab === 'subscription') loadSubscription()
   }, [activeTab])
@@ -89,6 +90,7 @@ export default function Settings({ onStartTour }) {
       setCompanyCountry(data.company_country || '')
       setCompanyBankName(data.company_bank_name || '')
       setCompanyBankIban(data.company_bank_iban || '')
+      setQuotePrefix(data.quote_prefix || 'AJ')
       setBrandDirty(false)
     } catch (err) { toast.error(err.message) }
     finally { setBrandLoading(false) }
@@ -97,7 +99,7 @@ export default function Settings({ onStartTour }) {
   const handleBrandSave = async () => {
     setBrandSaving(true)
     try {
-      await updateBranding({ app_name: brandName, app_subtitle: brandSubtitle, company_name: companyName, company_vat: companyVat, company_email: companyEmail, company_phone: companyPhone, company_street: companyStreet, company_city: companyCity, company_zip: companyZip, company_country: companyCountry, company_bank_name: companyBankName, company_bank_iban: companyBankIban })
+      await updateBranding({ app_name: brandName, app_subtitle: brandSubtitle, company_name: companyName, company_vat: companyVat, company_email: companyEmail, company_phone: companyPhone, company_street: companyStreet, company_city: companyCity, company_zip: companyZip, company_country: companyCountry, company_bank_name: companyBankName, company_bank_iban: companyBankIban, quote_prefix: quotePrefix })
       toast.success('Márka beállítások mentve!')
       setBrandDirty(false)
       await refreshBranding()
@@ -413,6 +415,45 @@ export default function Settings({ onStartTour }) {
                   <div><label className="block text-xs text-gray-400 mb-1">IBAN / Számlaszám</label>
                     <input type="text" value={companyBankIban} onChange={(e) => { setCompanyBankIban(e.target.value); setBrandDirty(true) }}
                       placeholder="HU12 1234 5678 9112 1234 1234 1234" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* Árajánlat számozás */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center"><BookOpen className="w-5 h-5 text-amber-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Árajánlat számozás</h3><p className="text-xs text-gray-500">Egyedi számozási minta az árajánlatokhoz</p></div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Előtag (prefix)</label>
+                    <input type="text" value={quotePrefix} onChange={(e) => { setQuotePrefix(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setBrandDirty(true) }}
+                      placeholder="AJ" maxLength={6} className="input-field w-full px-3 py-2 text-sm font-mono uppercase" />
+                    <p className="text-[10px] text-gray-500 mt-1">Max 6 karakter, csak betűk és számok. Pl: AJ, INV, QT</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Domain (automatikus)</label>
+                    <div className="input-field w-full px-3 py-2 text-sm font-mono text-gray-500 bg-white/[0.02]">
+                      {(() => {
+                        const smtp = envConfig.smtp_user || ''
+                        return smtp.includes('@') ? smtp.split('@')[1].split('.')[0].toUpperCase() : '—'
+                      })()}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">Az SMTP email domain neve alapján automatikusan generálódik</p>
+                  </div>
+                  <div className="p-4 rounded-xl glass-light">
+                    <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Előnézet</p>
+                    <p className="text-lg font-mono text-[#2EC4BE] font-semibold">
+                      {(() => {
+                        const p = quotePrefix || 'AJ'
+                        const smtp = envConfig.smtp_user || ''
+                        const d = smtp.includes('@') ? smtp.split('@')[1].split('.')[0].toUpperCase() : ''
+                        const y = new Date().getFullYear()
+                        return d ? `${p}-${d}-${y}-0001` : `${p}-${y}-0001`
+                      })()}
+                    </p>
+                    <p className="text-[10px] text-gray-500 mt-2">A sorszám (0001, 0002...) automatikusan növekszik minden új árajánlatnál</p>
+                  </div>
                 </div>
               </div>
 

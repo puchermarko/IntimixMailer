@@ -1351,16 +1351,25 @@ function findLogoPath(companyInfo, userId) {
   return null;
 }
 
-// Következő árajánlat szám generálása (per user)
+// Következő árajánlat szám generálása (per user, with customizable prefix and domain)
 function nextQuoteNumber(userId) {
+  const settings = getUserSettings(userId);
+  const prefix = (settings.quote_prefix || 'AJ').toUpperCase();
+  const smtpUser = settings.smtp_user || '';
+  const domain = smtpUser.includes('@') ? smtpUser.split('@')[1].split('.')[0].toUpperCase() : '';
   const year = new Date().getFullYear();
-  const last = db.prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? AND user_id = ? ORDER BY created_at DESC LIMIT 1").get(`AJ-${year}-%`, userId);
+
+  // Build the base: PREFIX-DOMAIN-YEAR or PREFIX-YEAR (if no domain)
+  const base = domain ? `${prefix}-${domain}-${year}` : `${prefix}-${year}`;
+
+  // Find the highest sequence number for this user with this base pattern
+  const last = db.prepare("SELECT quote_number FROM quotes WHERE quote_number LIKE ? AND user_id = ? ORDER BY created_at DESC LIMIT 1").get(`${base}-%`, userId);
   let seq = 1;
   if (last) {
-    const parts = last.quote_number.split('-');
-    seq = parseInt(parts[2] || '0', 10) + 1;
+    const lastPart = last.quote_number.split('-').pop();
+    seq = parseInt(lastPart || '0', 10) + 1;
   }
-  return `AJ-${year}-${String(seq).padStart(4, '0')}`;
+  return `${base}-${String(seq).padStart(4, '0')}`;
 }
 
 // Összes árajánlat listázása
@@ -1766,7 +1775,7 @@ app.get('/api/branding', authenticate, (req, res) => {
 
 app.put('/api/branding', authenticate, (req, res) => {
   try {
-    const allowed = ['app_name', 'app_subtitle', 'company_name', 'company_vat', 'company_email', 'company_phone', 'company_street', 'company_city', 'company_zip', 'company_country', 'company_bank_name', 'company_bank_iban'];
+    const allowed = ['app_name', 'app_subtitle', 'company_name', 'company_vat', 'company_email', 'company_phone', 'company_street', 'company_city', 'company_zip', 'company_country', 'company_bank_name', 'company_bank_iban', 'quote_prefix'];
     for (const [key, val] of Object.entries(req.body)) {
       if (allowed.includes(key) && val !== undefined) setUserSetting(req.userId, key, val);
     }
