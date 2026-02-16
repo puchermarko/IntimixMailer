@@ -1992,7 +1992,7 @@ app.get('/api/branding/logo-file/:userId/:filename', (req, res) => {
 
 // ─── USER SETTINGS - per-user SMTP/IMAP/email beállítások ────
 
-const USER_SETTING_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'imap_host', 'imap_port', 'imap_user', 'imap_pass'];
+const USER_SETTING_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'imap_host', 'imap_port', 'imap_user', 'imap_pass', 'auto_sync'];
 
 app.get('/api/env', authenticate, (req, res) => {
   try {

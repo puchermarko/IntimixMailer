@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
-  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink
+  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink, RefreshCw
 } from 'lucide-react'
 
 export default function Settings({ onStartTour }) {
@@ -575,6 +575,24 @@ export default function Settings({ onStartTour }) {
                   <div><label className="block text-xs text-gray-400 mb-1">IMAP jelszó</label>
                     <input type="password" value={envConfig.imap_pass || ''} onChange={(e) => handleEnvChange('imap_pass', e.target.value)}
                       placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm" /></div>
+                </div>
+              </div>
+
+              {/* Automatikus szinkronizálás */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><RefreshCw className="w-5 h-5 text-green-400" /></div>
+                  <div><h3 className="text-base font-semibold text-white">Automatikus szinkronizálás</h3><p className="text-xs text-gray-500">Bejövő és kimenő levelek automatikus szinkronizálása megnyitáskor</p></div>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3 rounded-lg glass-light">
+                  <div>
+                    <p className="text-sm text-gray-200">Automatikus szinkronizálás</p>
+                    <p className="text-[10px] text-gray-500">Ha be van kapcsolva, a bejövő és kimenő levelek automatikusan szinkronizálódnak az oldal megnyitásakor</p>
+                  </div>
+                  <button onClick={() => handleEnvChange('auto_sync', envConfig.auto_sync === 'true' ? 'false' : 'true')}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${envConfig.auto_sync === 'true' ? 'bg-[#1AA19C]' : 'bg-gray-600'}`}>
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow ${envConfig.auto_sync === 'true' ? 'translate-x-5' : ''}`} />
+                  </button>
                 </div>
               </div>
 

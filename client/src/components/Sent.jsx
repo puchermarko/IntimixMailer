@@ -3,7 +3,7 @@ import {
   Send as SendIcon, Search, Paperclip, ChevronLeft, ChevronRight,
   ArrowLeft, Download, User, Clock, FileText, X, RefreshCw, Loader2
 } from 'lucide-react'
-import { getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent } from '../lib/api'
+import { getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent, getEnvConfig } from '../lib/api'
 
 export default function SentView() {
   const [emails, setEmails] = useState([])
@@ -41,7 +41,24 @@ export default function SentView() {
     }
   }
 
-  useEffect(() => { fetchEmails() }, [])
+  useEffect(() => {
+    fetchEmails()
+    // Auto-sync if user has it enabled
+    getEnvConfig().then(cfg => {
+      if (cfg.auto_sync === 'true') {
+        setSyncing(true)
+        syncSent()
+          .then(result => {
+            let msg = `Synced! ${result.newEmails} new email${result.newEmails !== 1 ? 's' : ''} fetched.`
+            if (result.linked > 0) msg += ` ${result.linked} email${result.linked !== 1 ? 's' : ''} linked to contacts.`
+            showToast(msg)
+            fetchEmails(1, '')
+          })
+          .catch(() => {})
+          .finally(() => setSyncing(false))
+      }
+    }).catch(() => {})
+  }, [])
 
   const handleSync = async () => {
     setSyncing(true)

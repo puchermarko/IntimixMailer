@@ -9,7 +9,7 @@ import {
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
   getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent,
-  replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates
+  replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig
 } from '../lib/api'
 import { emailTemplates as builtinTemplates } from '../lib/templates'
 import { useBranding, useAuth } from '../App'
@@ -106,7 +106,24 @@ function InboxTab() {
     }
   }
 
-  useEffect(() => { fetchEmails() }, [])
+  useEffect(() => {
+    fetchEmails()
+    // Auto-sync if user has it enabled
+    getEnvConfig().then(cfg => {
+      if (cfg.auto_sync === 'true') {
+        setSyncing(true)
+        syncInbox()
+          .then(result => {
+            let msg = `Szinkronizálva! ${result.newEmails} új levél érkezett.`
+            if (result.linked > 0) msg += ` ${result.linked} kapcsolathoz rendelve.`
+            toast.success(msg)
+            fetchEmails(1, '')
+          })
+          .catch(() => {})
+          .finally(() => setSyncing(false))
+      }
+    }).catch(() => {})
+  }, [])
 
   const handleSync = async () => {
     setSyncing(true)
@@ -463,7 +480,24 @@ function SentTab() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchEmails() }, [])
+  useEffect(() => {
+    fetchEmails()
+    // Auto-sync if user has it enabled
+    getEnvConfig().then(cfg => {
+      if (cfg.auto_sync === 'true') {
+        setSyncing(true)
+        syncSent()
+          .then(result => {
+            let msg = `Szinkronizálva! ${result.newEmails} új kimenő levél letöltve.`
+            if (result.linked > 0) msg += ` ${result.linked} kapcsolathoz rendelve.`
+            toast.success(msg)
+            fetchEmails(1, '')
+          })
+          .catch(() => {})
+          .finally(() => setSyncing(false))
+      }
+    }).catch(() => {})
+  }, [])
 
   const handleSync = async () => {
     setSyncing(true)

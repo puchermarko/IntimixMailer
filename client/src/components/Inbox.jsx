@@ -4,7 +4,7 @@ import {
   ChevronRight, ArrowLeft, Download, User, Clock, FileText, X,
   Reply, Send, Loader2
 } from 'lucide-react'
-import { syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl, replyToEmail } from '../lib/api'
+import { syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl, replyToEmail, getEnvConfig } from '../lib/api'
 
 export default function InboxView() {
   const [emails, setEmails] = useState([])
@@ -43,7 +43,24 @@ export default function InboxView() {
     }
   }
 
-  useEffect(() => { fetchEmails() }, [])
+  useEffect(() => {
+    fetchEmails()
+    // Auto-sync if user has it enabled
+    getEnvConfig().then(cfg => {
+      if (cfg.auto_sync === 'true') {
+        setSyncing(true)
+        syncInbox()
+          .then(result => {
+            let msg = `Synced! ${result.newEmails} new email${result.newEmails !== 1 ? 's' : ''} fetched.`
+            if (result.linked > 0) msg += ` ${result.linked} email${result.linked !== 1 ? 's' : ''} linked to contacts.`
+            showToast(msg)
+            fetchEmails(1, '')
+          })
+          .catch(() => {})
+          .finally(() => setSyncing(false))
+      }
+    }).catch(() => {})
+  }, [])
 
   const handleSync = async () => {
     setSyncing(true)
