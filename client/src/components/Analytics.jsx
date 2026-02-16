@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   Loader2, Send, Inbox, BookUser, FileText, TrendingUp, TrendingDown, Minus,
-  BarChart3, Users, ArrowUpRight
+  BarChart3, Users, ArrowUpRight, Download, FileSpreadsheet
 } from 'lucide-react'
 
 export default function Analytics() {
@@ -79,20 +79,42 @@ export default function Analytics() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Analitika</h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">Levelezési statisztikák és trendek</p>
         </div>
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
-          {[7, 30, 90].map(d => (
-            <button key={d} onClick={() => setRange(d)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                range === d ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'
-              }`}>
-              {d}n
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <button onClick={() => {
+            const token = localStorage.getItem('intimix_token')
+            fetch(`/api/analytics/export/csv?days=${range}`, { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.blob()).then(blob => {
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+                a.download = `analitika-${range}nap.csv`; a.click(); URL.revokeObjectURL(a.href)
+              })
+          }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-light text-xs text-gray-300 hover:text-white transition-all" title="CSV exportálás">
+            <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
+          </button>
+          <button onClick={() => {
+            const token = localStorage.getItem('intimix_token')
+            fetch(`/api/analytics/export/pdf?days=${range}`, { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.blob()).then(blob => {
+                const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
+                a.download = `analitika-${range}nap.pdf`; a.click(); URL.revokeObjectURL(a.href)
+              })
+          }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-light text-xs text-gray-300 hover:text-white transition-all" title="PDF exportálás">
+            <Download className="w-3.5 h-3.5" /> PDF
+          </button>
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            {[7, 30, 90].map(d => (
+              <button key={d} onClick={() => setRange(d)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                  range === d ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}>
+                {d}n
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

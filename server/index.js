@@ -2013,120 +2013,270 @@ app.get('/api/branding/logo-file/:userId/:filename', (req, res) => {
 });
 
 // ─── ANALYTICS ─────────────────────────────────────────────
-app.get('/api/analytics', authenticate, (req, res) => {
-  try {
-    const uid = req.userId;
-    const days = parseInt(req.query.days) || 30;
 
-    // Emails sent per day (local email_log + sent_imap)
-    const sentPerDay = db.prepare(`
-      SELECT date(d) as day, SUM(cnt) as count FROM (
-        SELECT sent_at as d, 1 as cnt FROM email_log WHERE user_id = ?
-        UNION ALL
-        SELECT date as d, 1 as cnt FROM sent_imap WHERE user_id = ?
-      ) WHERE d >= date('now', ?)
-      GROUP BY date(d) ORDER BY day
-    `).all(uid, uid, `-${days} days`);
+function getAnalyticsData(uid, days) {
+  const sentPerDay = db.prepare(`
+    SELECT date(d) as day, SUM(cnt) as count FROM (
+      SELECT sent_at as d, 1 as cnt FROM email_log WHERE user_id = ?
+      UNION ALL
+      SELECT date as d, 1 as cnt FROM sent_imap WHERE user_id = ?
+    ) WHERE d >= date('now', ?)
+    GROUP BY date(d) ORDER BY day
+  `).all(uid, uid, `-${days} days`);
 
-    // Emails received per day
-    const receivedPerDay = db.prepare(`
-      SELECT date(date) as day, COUNT(*) as count FROM inbox
-      WHERE user_id = ? AND date >= date('now', ?)
-      GROUP BY date(date) ORDER BY day
-    `).all(uid, `-${days} days`);
+  const receivedPerDay = db.prepare(`
+    SELECT date(date) as day, COUNT(*) as count FROM inbox
+    WHERE user_id = ? AND date >= date('now', ?)
+    GROUP BY date(date) ORDER BY day
+  `).all(uid, `-${days} days`);
 
-    // Merge into a single timeline
-    const dayMap = {};
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      dayMap[key] = { day: key, sent: 0, received: 0 };
-    }
-    for (const r of sentPerDay) { if (dayMap[r.day]) dayMap[r.day].sent = r.count; }
-    for (const r of receivedPerDay) { if (dayMap[r.day]) dayMap[r.day].received = r.count; }
-    const timeline = Object.values(dayMap);
+  const dayMap = {};
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    dayMap[key] = { day: key, sent: 0, received: 0 };
+  }
+  for (const r of sentPerDay) { if (dayMap[r.day]) dayMap[r.day].sent = r.count; }
+  for (const r of receivedPerDay) { if (dayMap[r.day]) dayMap[r.day].received = r.count; }
+  const timeline = Object.values(dayMap);
 
-    const dateFilter = `-${days} days`;
+  const dateFilter = `-${days} days`;
 
-    // Top contacts by email activity (within selected period)
-    const topContacts = db.prepare(`
-      SELECT c.id, c.name, c.email,
-        (SELECT COUNT(*) FROM email_log WHERE contact_id = c.id AND user_id = ? AND sent_at >= date('now', ?))
-          + (SELECT COUNT(*) FROM sent_imap WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as sent_count,
-        (SELECT COUNT(*) FROM inbox WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as received_count
-      FROM contacts c
-      WHERE c.user_id = ?
-      ORDER BY (sent_count + received_count) DESC
-      LIMIT 10
-    `).all(uid, dateFilter, uid, dateFilter, uid, dateFilter, uid);
+  const topContacts = db.prepare(`
+    SELECT c.id, c.name, c.email,
+      (SELECT COUNT(*) FROM email_log WHERE contact_id = c.id AND user_id = ? AND sent_at >= date('now', ?))
+        + (SELECT COUNT(*) FROM sent_imap WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as sent_count,
+      (SELECT COUNT(*) FROM inbox WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as received_count
+    FROM contacts c
+    WHERE c.user_id = ?
+    ORDER BY (sent_count + received_count) DESC
+    LIMIT 10
+  `).all(uid, dateFilter, uid, dateFilter, uid, dateFilter, uid);
 
-    // Summary totals (within selected period)
-    const totalSent = db.prepare(`
-      SELECT (SELECT COUNT(*) FROM email_log WHERE user_id = ? AND sent_at >= date('now', ?))
-           + (SELECT COUNT(*) FROM sent_imap WHERE user_id = ? AND date >= date('now', ?)) as total
-    `).get(uid, dateFilter, uid, dateFilter).total;
+  const totalSent = db.prepare(`
+    SELECT (SELECT COUNT(*) FROM email_log WHERE user_id = ? AND sent_at >= date('now', ?))
+         + (SELECT COUNT(*) FROM sent_imap WHERE user_id = ? AND date >= date('now', ?)) as total
+  `).get(uid, dateFilter, uid, dateFilter).total;
 
-    const totalReceived = db.prepare("SELECT COUNT(*) as total FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, dateFilter).total;
-    const totalContacts = db.prepare('SELECT COUNT(*) as total FROM contacts WHERE user_id = ?').get(uid).total;
-    const totalQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND created_at >= date('now', ?)").get(uid, dateFilter).total;
+  const totalReceived = db.prepare("SELECT COUNT(*) as total FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, dateFilter).total;
+  const totalContacts = db.prepare('SELECT COUNT(*) as total FROM contacts WHERE user_id = ?').get(uid).total;
+  const totalQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND created_at >= date('now', ?)").get(uid, dateFilter).total;
 
-    // Response rate within selected period
-    const contactsWeEmailed = db.prepare(`
-      SELECT DISTINCT contact_id FROM (
+  const contactsWeEmailed = db.prepare(`
+    SELECT DISTINCT contact_id FROM (
+      SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL AND sent_at >= date('now', ?)
+      UNION
+      SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL AND date >= date('now', ?)
+    )
+  `).all(uid, dateFilter, uid, dateFilter).length;
+
+  const contactsWhoReplied = db.prepare(`
+    SELECT COUNT(DISTINCT i.contact_id) as cnt FROM inbox i
+    WHERE i.user_id = ? AND i.contact_id IS NOT NULL AND i.date >= date('now', ?)
+      AND i.contact_id IN (
         SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL AND sent_at >= date('now', ?)
         UNION
         SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL AND date >= date('now', ?)
       )
-    `).all(uid, dateFilter, uid, dateFilter).length;
+  `).get(uid, dateFilter, uid, dateFilter, uid, dateFilter).cnt;
 
-    const contactsWhoReplied = db.prepare(`
-      SELECT COUNT(DISTINCT i.contact_id) as cnt FROM inbox i
-      WHERE i.user_id = ? AND i.contact_id IS NOT NULL AND i.date >= date('now', ?)
-        AND i.contact_id IN (
-          SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL AND sent_at >= date('now', ?)
-          UNION
-          SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL AND date >= date('now', ?)
-        )
-    `).get(uid, dateFilter, uid, dateFilter, uid, dateFilter).cnt;
+  const responseRate = contactsWeEmailed > 0 ? Math.round((contactsWhoReplied / contactsWeEmailed) * 100) : 0;
 
-    const responseRate = contactsWeEmailed > 0 ? Math.round((contactsWhoReplied / contactsWeEmailed) * 100) : 0;
+  const halfDays = Math.floor(days / 2);
+  const sentThisHalf = db.prepare(`
+    SELECT COUNT(*) as cnt FROM (
+      SELECT sent_at as d FROM email_log WHERE user_id = ?
+      UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
+    ) WHERE d >= date('now', ?)
+  `).get(uid, uid, `-${halfDays} days`).cnt;
 
-    // This half vs previous half of the selected period (for trend arrows)
-    const halfDays = Math.floor(days / 2);
-    const sentThisHalf = db.prepare(`
-      SELECT COUNT(*) as cnt FROM (
-        SELECT sent_at as d FROM email_log WHERE user_id = ?
-        UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
-      ) WHERE d >= date('now', ?)
-    `).get(uid, uid, `-${halfDays} days`).cnt;
+  const sentLastHalf = db.prepare(`
+    SELECT COUNT(*) as cnt FROM (
+      SELECT sent_at as d FROM email_log WHERE user_id = ?
+      UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
+    ) WHERE d >= date('now', ?) AND d < date('now', ?)
+  `).get(uid, uid, `-${days} days`, `-${halfDays} days`).cnt;
 
-    const sentLastHalf = db.prepare(`
-      SELECT COUNT(*) as cnt FROM (
-        SELECT sent_at as d FROM email_log WHERE user_id = ?
-        UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
-      ) WHERE d >= date('now', ?) AND d < date('now', ?)
-    `).get(uid, uid, `-${days} days`, `-${halfDays} days`).cnt;
+  const receivedThisHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, `-${halfDays} days`).cnt;
+  const receivedLastHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?) AND date < date('now', ?)").get(uid, `-${days} days`, `-${halfDays} days`).cnt;
 
-    const receivedThisHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, `-${halfDays} days`).cnt;
-    const receivedLastHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?) AND date < date('now', ?)").get(uid, `-${days} days`, `-${halfDays} days`).cnt;
+  return {
+    timeline, topContacts, days,
+    summary: { totalSent, totalReceived, totalContacts, totalQuotes, responseRate, sentThisHalf, sentLastHalf, receivedThisHalf, receivedLastHalf }
+  };
+}
 
-    res.json({
-      timeline,
-      topContacts,
-      summary: {
-        totalSent,
-        totalReceived,
-        totalContacts,
-        totalQuotes,
-        responseRate,
-        sentThisHalf,
-        sentLastHalf,
-        receivedThisHalf,
-        receivedLastHalf,
-      }
-    });
+app.get('/api/analytics', authenticate, (req, res) => {
+  try {
+    res.json(getAnalyticsData(req.userId, parseInt(req.query.days) || 30));
   } catch (err) {
     console.error('Analytics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Analytics CSV export
+app.get('/api/analytics/export/csv', authenticate, (req, res) => {
+  try {
+    const data = getAnalyticsData(req.userId, parseInt(req.query.days) || 30);
+    const { timeline, topContacts, summary } = data;
+
+    let csv = 'Analitika riport\n';
+    csv += `Időszak: ${data.days} nap\n`;
+    csv += `Generálva: ${new Date().toLocaleDateString('hu-HU')}\n\n`;
+
+    csv += 'Összesítés\n';
+    csv += `Küldött;${summary.totalSent}\n`;
+    csv += `Fogadott;${summary.totalReceived}\n`;
+    csv += `Kapcsolatok;${summary.totalContacts}\n`;
+    csv += `Árajánlatok;${summary.totalQuotes}\n`;
+    csv += `Válaszadási arány;${summary.responseRate}%\n\n`;
+
+    csv += 'Napi forgalom\n';
+    csv += 'Dátum;Küldött;Fogadott\n';
+    for (const row of timeline) {
+      csv += `${row.day};${row.sent};${row.received}\n`;
+    }
+
+    if (topContacts.length > 0) {
+      csv += '\nLegaktívabb kapcsolatok\n';
+      csv += 'Név;Email;Küldött;Fogadott;Összesen\n';
+      for (const c of topContacts) {
+        csv += `${c.name || ''};${c.email};${c.sent_count};${c.received_count};${c.sent_count + c.received_count}\n`;
+      }
+    }
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="analitika-${data.days}nap-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send('\uFEFF' + csv); // BOM for Excel UTF-8
+  } catch (err) {
+    console.error('Analytics CSV error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Analytics PDF export
+app.get('/api/analytics/export/pdf', authenticate, (req, res) => {
+  try {
+    const data = getAnalyticsData(req.userId, parseInt(req.query.days) || 30);
+    const { timeline, topContacts, summary } = data;
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="analitika-${data.days}nap-${new Date().toISOString().slice(0, 10)}.pdf"`);
+    doc.pipe(res);
+
+    const fontDir = path.join(import.meta.dirname, 'fonts');
+    const notoRegular = path.join(fontDir, 'NotoSans-Regular.ttf');
+    const notoBold = path.join(fontDir, 'NotoSans-Bold.ttf');
+    const hasNoto = fs.existsSync(notoRegular);
+    if (hasNoto) {
+      doc.registerFont('Noto', notoRegular);
+      doc.registerFont('NotoB', fs.existsSync(notoBold) ? notoBold : notoRegular);
+    }
+    const font = hasNoto ? 'Noto' : 'Helvetica';
+    const fontB = hasNoto ? 'NotoB' : 'Helvetica-Bold';
+    const M = 50;
+    const W = 495;
+    const accent = '#1AA19C';
+    let y = M;
+
+    // Title
+    doc.font(fontB).fontSize(20).fillColor(accent).text('Analitika riport', M, y);
+    y += 28;
+    doc.font(font).fontSize(10).fillColor('#555').text(`Időszak: ${data.days} nap  |  Generálva: ${new Date().toLocaleDateString('hu-HU')}`, M, y);
+    y += 25;
+
+    // Divider
+    doc.moveTo(M, y).lineTo(M + W, y).strokeColor('#ddd').lineWidth(0.5).stroke();
+    y += 15;
+
+    // Summary cards
+    doc.font(fontB).fontSize(13).fillColor('#222').text('Összesítés', M, y);
+    y += 22;
+
+    const cards = [
+      { label: 'Küldött', value: summary.totalSent },
+      { label: 'Fogadott', value: summary.totalReceived },
+      { label: 'Kapcsolatok', value: summary.totalContacts },
+      { label: 'Árajánlatok', value: summary.totalQuotes },
+      { label: 'Válaszadási arány', value: `${summary.responseRate}%` },
+    ];
+    const cardW = Math.floor(W / cards.length);
+    for (let i = 0; i < cards.length; i++) {
+      const cx = M + i * cardW;
+      doc.roundedRect(cx, y, cardW - 8, 50, 4).fillAndStroke('#f7fafa', '#e0e0e0');
+      doc.font(fontB).fontSize(16).fillColor(accent).text(String(cards[i].value), cx + 8, y + 8, { width: cardW - 24 });
+      doc.font(font).fontSize(8).fillColor('#777').text(cards[i].label, cx + 8, y + 30, { width: cardW - 24 });
+    }
+    y += 65;
+
+    // Daily traffic table
+    doc.font(fontB).fontSize(13).fillColor('#222').text('Napi forgalom', M, y);
+    y += 20;
+
+    const colW = [200, 148, 147];
+    const headers = ['Dátum', 'Küldött', 'Fogadott'];
+    // Table header
+    doc.rect(M, y, W, 18).fill('#f0f0f0');
+    let tx = M;
+    for (let i = 0; i < headers.length; i++) {
+      doc.font(fontB).fontSize(8).fillColor('#444').text(headers[i], tx + 6, y + 5, { width: colW[i] - 12 });
+      tx += colW[i];
+    }
+    y += 18;
+
+    // Only show rows with activity to keep PDF compact, or last 14 days max
+    const activeRows = timeline.filter(r => r.sent > 0 || r.received > 0);
+    const rows = activeRows.length > 0 ? activeRows.slice(-30) : timeline.slice(-14);
+    for (const row of rows) {
+      if (y > 750) { doc.addPage(); y = M; }
+      const bg = rows.indexOf(row) % 2 === 0 ? '#fff' : '#fafafa';
+      doc.rect(M, y, W, 16).fill(bg);
+      tx = M;
+      const vals = [row.day, String(row.sent), String(row.received)];
+      for (let i = 0; i < vals.length; i++) {
+        doc.font(font).fontSize(8).fillColor('#333').text(vals[i], tx + 6, y + 4, { width: colW[i] - 12 });
+        tx += colW[i];
+      }
+      y += 16;
+    }
+    y += 15;
+
+    // Top contacts
+    if (topContacts.length > 0) {
+      if (y > 650) { doc.addPage(); y = M; }
+      doc.font(fontB).fontSize(13).fillColor('#222').text('Legaktívabb kapcsolatok', M, y);
+      y += 20;
+
+      const cColW = [160, 160, 60, 60, 55];
+      const cHeaders = ['Név', 'Email', 'Küldött', 'Fogadott', 'Összesen'];
+      doc.rect(M, y, W, 18).fill('#f0f0f0');
+      tx = M;
+      for (let i = 0; i < cHeaders.length; i++) {
+        doc.font(fontB).fontSize(8).fillColor('#444').text(cHeaders[i], tx + 6, y + 5, { width: cColW[i] - 12 });
+        tx += cColW[i];
+      }
+      y += 18;
+
+      for (let ci = 0; ci < topContacts.length; ci++) {
+        if (y > 750) { doc.addPage(); y = M; }
+        const c = topContacts[ci];
+        const bg = ci % 2 === 0 ? '#fff' : '#fafafa';
+        doc.rect(M, y, W, 16).fill(bg);
+        tx = M;
+        const cVals = [c.name || '-', c.email, String(c.sent_count), String(c.received_count), String(c.sent_count + c.received_count)];
+        for (let i = 0; i < cVals.length; i++) {
+          doc.font(font).fontSize(8).fillColor('#333').text(cVals[i], tx + 6, y + 4, { width: cColW[i] - 12 });
+          tx += cColW[i];
+        }
+        y += 16;
+      }
+    }
+
+    doc.end();
+  } catch (err) {
+    console.error('Analytics PDF error:', err);
     res.status(500).json({ error: err.message });
   }
 });
