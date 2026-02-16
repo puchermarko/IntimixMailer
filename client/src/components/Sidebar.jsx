@@ -6,9 +6,9 @@ import {
 
 const baseNavItems = [
   { id: 'mail', label: 'Levelezés', icon: Mail },
+   { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
   { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
   { id: 'quotes', label: 'Árajánlatok', icon: FileText },
-  { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
   { id: 'analytics', label: 'Analitika', icon: BarChart3 },
   { id: 'settings', label: 'Beállítások', icon: Settings },
 ]
