@@ -1744,7 +1744,6 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     doc.font(font).fontSize(8).fillColor('#666');
     drawText(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, M, y, { width: 150 });
     if (quote.valid_until) drawText(`\u00c9rv\u00e9nyes: ${quote.valid_until}`, M + 180, y, { width: 150 });
-    drawText(`P\u00e9nznem: ${quote.currency}`, M + 360, y, { width: 100 });
     y += 18;
 
     doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
@@ -1752,12 +1751,13 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
 
     // ─── Táblázat fejléc ───
     const cols = [
-      { key: 'num', label: '#', x: M, w: 25, align: 'right' },
-      { key: 'desc', label: 'Megnevez\u00e9s', x: M + 25, w: 220, align: 'left' },
-      { key: 'qty', label: 'Menny.', x: M + 245, w: 45, align: 'right' },
-      { key: 'unit', label: 'Egys\u00e9g', x: M + 290, w: 45, align: 'right' },
-      { key: 'price', label: 'Egys\u00e9g\u00e1r', x: M + 335, w: 75, align: 'right' },
-      { key: 'total', label: '\u00d6sszeg', x: M + 410, w: 85, align: 'right' },
+      { key: 'num', label: '#', x: M, w: 20, align: 'right' },
+      { key: 'desc', label: 'Megnevez\u00e9s', x: M + 20, w: 175, align: 'left' },
+      { key: 'qty', label: 'Menny.', x: M + 195, w: 40, align: 'right' },
+      { key: 'unit', label: 'Egys.', x: M + 235, w: 35, align: 'right' },
+      { key: 'price', label: 'Egys\u00e9g\u00e1r', x: M + 270, w: 70, align: 'right' },
+      { key: 'total', label: 'Nett\u00f3', x: M + 340, w: 75, align: 'right' },
+      { key: 'gross', label: 'Brutt\u00f3', x: M + 415, w: 80, align: 'right' },
     ];
 
     doc.font(fontB).fontSize(7).fillColor(accent);
@@ -1780,6 +1780,8 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
       drawText(item.unit, cols[3].x, y, { width: cols[3].w, align: 'right' });
       drawText(formatMoney(item.unit_price, quote.currency), cols[4].x, y, { width: cols[4].w, align: 'right' });
       drawText(formatMoney(item.total, quote.currency), cols[5].x, y, { width: cols[5].w, align: 'right' });
+      const itemGross = item.total * (1 + (quote.vat_rate || 0) / 100);
+      drawText(formatMoney(itemGross, quote.currency), cols[6].x, y, { width: cols[6].w, align: 'right' });
       y += 17;
     });
 
@@ -1788,20 +1790,21 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     y += 10;
 
     // ─── Összesítés ───
-    const sumX = M + 310;
-    const sumW = pageW - 310;
+    const sumX = M + 280;
+    const sumW = pageW - 280;
+    const sumLabelW = 100;
     doc.font(font).fontSize(9).fillColor('#666');
-    drawText('Nett\u00f3 \u00f6sszeg:', sumX, y, { width: 80 });
-    drawText(formatMoney(quote.subtotal, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    drawText('Nett\u00f3 \u00f6sszeg:', sumX, y, { width: sumLabelW });
+    drawText(formatMoney(quote.subtotal, quote.currency), sumX + sumLabelW, y, { width: sumW - sumLabelW, align: 'right' });
     y += 15;
-    drawText(`\u00c1FA (${quote.vat_rate}%):`, sumX, y, { width: 80 });
-    drawText(formatMoney(quote.vat_amount, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    drawText(`\u00c1FA (${quote.vat_rate}%):`, sumX, y, { width: sumLabelW });
+    drawText(formatMoney(quote.vat_amount, quote.currency), sumX + sumLabelW, y, { width: sumW - sumLabelW, align: 'right' });
     y += 15;
     doc.moveTo(sumX, y).lineTo(sumX + sumW, y).strokeColor(accent).lineWidth(1).stroke();
     y += 8;
     doc.font(fontB).fontSize(12).fillColor(accent);
-    drawText('\u00d6sszesen:', sumX, y, { width: 80 });
-    drawText(formatMoney(quote.total, quote.currency), sumX + 80, y, { width: sumW - 80, align: 'right' });
+    drawText('Brutt\u00f3 \u00f6sszesen:', sumX, y, { width: sumLabelW });
+    drawText(formatMoney(quote.total, quote.currency), sumX + sumLabelW, y, { width: sumW - sumLabelW, align: 'right' });
     y += 22;
 
     // ─── Megjegyzések ───
