@@ -58,6 +58,9 @@ export default function Quotes() {
     try {
       await updateQuoteStatus(id, status)
       toast.success(status === 'accepted' ? 'Elfogadva!' : status === 'rejected' ? 'Elutasítva!' : 'Státusz frissítve!')
+      if (editingQuote && editingQuote.id === id) {
+        setEditingQuote({ ...editingQuote, status })
+      }
       loadQuotes()
     } catch (err) { toast.error(err.message) }
   }
