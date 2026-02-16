@@ -9,6 +9,7 @@ import Contacts from '../components/Contacts'
 import Quotes from '../components/Quotes'
 import UserManagement from '../components/UserManagement'
 import GlobalSettings from '../components/GlobalSettings'
+import Analytics from '../components/Analytics'
 import SetupWizard from '../components/SetupWizard'
 import QuickTour from '../components/QuickTour'
 import { Eye, X } from 'lucide-react'
@@ -27,6 +28,7 @@ export default function Dashboard() {
     contacts: <Contacts />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
+    analytics: <Analytics />,
     settings: <Settings onStartTour={startTour} />,
     users: <UserManagement />,
     'global-settings': <GlobalSettings />,

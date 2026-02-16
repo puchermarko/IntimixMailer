@@ -1,7 +1,7 @@
 // Na ez itt az oldalsáv, innen navigálsz mindenhova
 import { useAuth, useBranding } from '../App'
 import {
-  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X, Users, Globe
+  Mail, LayoutGrid, Settings, LogOut, BookUser, FileText, Menu, X, Users, Globe, BarChart3
 } from 'lucide-react'
 
 const baseNavItems = [
@@ -9,6 +9,7 @@ const baseNavItems = [
   { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
   { id: 'quotes', label: 'Árajánlatok', icon: FileText },
   { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
+  { id: 'analytics', label: 'Analitika', icon: BarChart3 },
   { id: 'settings', label: 'Beállítások', icon: Settings },
 ]
 

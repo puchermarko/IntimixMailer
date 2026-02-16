@@ -576,3 +576,12 @@ export async function replyToEmail({ to, subject, html, cc, bcc, inReplyTo, atta
   if (!res.ok) throw new Error(data.error || 'Failed to send reply')
   return data
 }
+
+// ─── ANALYTICS ──────────────────────────────────────────────
+
+export async function getAnalytics(days = 30) {
+  const res = await fetch(`${API_BASE}/analytics?days=${days}`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics')
+  return data
+}

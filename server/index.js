@@ -1990,6 +1990,122 @@ app.get('/api/branding/logo-file/:userId/:filename', (req, res) => {
   res.sendFile(fp);
 });
 
+// ─── ANALYTICS ─────────────────────────────────────────────
+app.get('/api/analytics', authenticate, (req, res) => {
+  try {
+    const uid = req.userId;
+    const days = parseInt(req.query.days) || 30;
+
+    // Emails sent per day (local email_log + sent_imap)
+    const sentPerDay = db.prepare(`
+      SELECT date(d) as day, SUM(cnt) as count FROM (
+        SELECT sent_at as d, 1 as cnt FROM email_log WHERE user_id = ?
+        UNION ALL
+        SELECT date as d, 1 as cnt FROM sent_imap WHERE user_id = ?
+      ) WHERE d >= date('now', ?)
+      GROUP BY date(d) ORDER BY day
+    `).all(uid, uid, `-${days} days`);
+
+    // Emails received per day
+    const receivedPerDay = db.prepare(`
+      SELECT date(date) as day, COUNT(*) as count FROM inbox
+      WHERE user_id = ? AND date >= date('now', ?)
+      GROUP BY date(date) ORDER BY day
+    `).all(uid, `-${days} days`);
+
+    // Merge into a single timeline
+    const dayMap = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dayMap[key] = { day: key, sent: 0, received: 0 };
+    }
+    for (const r of sentPerDay) { if (dayMap[r.day]) dayMap[r.day].sent = r.count; }
+    for (const r of receivedPerDay) { if (dayMap[r.day]) dayMap[r.day].received = r.count; }
+    const timeline = Object.values(dayMap);
+
+    // Top contacts by email activity
+    const topContacts = db.prepare(`
+      SELECT c.id, c.name, c.email,
+        (SELECT COUNT(*) FROM email_log WHERE contact_id = c.id AND user_id = ?)
+          + (SELECT COUNT(*) FROM sent_imap WHERE contact_id = c.id AND user_id = ?) as sent_count,
+        (SELECT COUNT(*) FROM inbox WHERE contact_id = c.id AND user_id = ?) as received_count
+      FROM contacts c
+      WHERE c.user_id = ?
+      ORDER BY (sent_count + received_count) DESC
+      LIMIT 10
+    `).all(uid, uid, uid, uid);
+
+    // Summary totals
+    const totalSent = db.prepare(`
+      SELECT (SELECT COUNT(*) FROM email_log WHERE user_id = ?)
+           + (SELECT COUNT(*) FROM sent_imap WHERE user_id = ?) as total
+    `).get(uid, uid).total;
+
+    const totalReceived = db.prepare('SELECT COUNT(*) as total FROM inbox WHERE user_id = ?').get(uid).total;
+    const totalContacts = db.prepare('SELECT COUNT(*) as total FROM contacts WHERE user_id = ?').get(uid).total;
+    const totalQuotes = db.prepare('SELECT COUNT(*) as total FROM quotes WHERE user_id = ?').get(uid).total;
+
+    // Response rate: contacts who sent us email AND we sent them email
+    const contactsWeEmailed = db.prepare(`
+      SELECT DISTINCT contact_id FROM (
+        SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL
+        UNION
+        SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL
+      )
+    `).all(uid, uid).length;
+
+    const contactsWhoReplied = db.prepare(`
+      SELECT COUNT(DISTINCT i.contact_id) as cnt FROM inbox i
+      WHERE i.user_id = ? AND i.contact_id IS NOT NULL
+        AND i.contact_id IN (
+          SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL
+          UNION
+          SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL
+        )
+    `).get(uid, uid, uid).cnt;
+
+    const responseRate = contactsWeEmailed > 0 ? Math.round((contactsWhoReplied / contactsWeEmailed) * 100) : 0;
+
+    // This week vs last week
+    const sentThisWeek = db.prepare(`
+      SELECT COUNT(*) as cnt FROM (
+        SELECT sent_at as d FROM email_log WHERE user_id = ?
+        UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
+      ) WHERE d >= date('now', '-7 days')
+    `).get(uid, uid).cnt;
+
+    const sentLastWeek = db.prepare(`
+      SELECT COUNT(*) as cnt FROM (
+        SELECT sent_at as d FROM email_log WHERE user_id = ?
+        UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
+      ) WHERE d >= date('now', '-14 days') AND d < date('now', '-7 days')
+    `).get(uid, uid).cnt;
+
+    const receivedThisWeek = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', '-7 days')").get(uid).cnt;
+    const receivedLastWeek = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', '-14 days') AND date < date('now', '-7 days')").get(uid).cnt;
+
+    res.json({
+      timeline,
+      topContacts,
+      summary: {
+        totalSent,
+        totalReceived,
+        totalContacts,
+        totalQuotes,
+        responseRate,
+        sentThisWeek,
+        sentLastWeek,
+        receivedThisWeek,
+        receivedLastWeek,
+      }
+    });
+  } catch (err) {
+    console.error('Analytics error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── USER SETTINGS - per-user SMTP/IMAP/email beállítások ────
 
 const USER_SETTING_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass', 'smtp_from_name', 'imap_host', 'imap_port', 'imap_user', 'imap_pass', 'auto_sync'];
