@@ -1,12 +1,12 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, getSubscription } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, getSubscription, getStripePrices, createStripeCheckout, openStripePortal } from '../lib/api'
 import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
-  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play
+  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink
 } from 'lucide-react'
 
 export default function Settings({ onStartTour }) {
@@ -40,6 +40,10 @@ export default function Settings({ onStartTour }) {
   const backupInputRef = useRef(null)
   const [subscription, setSubscription] = useState(null)
   const [subLoading, setSubLoading] = useState(false)
+  const [stripePrices, setStripePrices] = useState([])
+  const [stripeLoading, setStripeLoading] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [portalLoading, setPortalLoading] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [companyVat, setCompanyVat] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
@@ -51,6 +55,21 @@ export default function Settings({ onStartTour }) {
   const [companyBankName, setCompanyBankName] = useState('')
   const [companyBankIban, setCompanyBankIban] = useState('')
   const [quotePrefix, setQuotePrefix] = useState('AJ')
+
+  // Handle Stripe redirect URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'subscription') {
+      setActiveTab('subscription')
+      if (params.get('stripe') === 'success') {
+        toast.success('Előfizetés sikeresen aktiválva!')
+        window.history.replaceState({}, '', window.location.pathname)
+      } else if (params.get('stripe') === 'cancelled') {
+        toast('Fizetés megszakítva', { icon: '⚠️' })
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (activeTab === 'expert') loadKeys()
@@ -69,8 +88,34 @@ export default function Settings({ onStartTour }) {
         setSubscriptionStatus(sub.status)
         localStorage.setItem('intimix_sub_status', sub.status)
       }
+      // Load Stripe prices if not admin and not already active
+      if (sub.status !== 'admin' && sub.status !== 'active') {
+        setStripeLoading(true)
+        try {
+          const prices = await getStripePrices()
+          setStripePrices(prices)
+        } catch {} finally { setStripeLoading(false) }
+      }
     } catch (err) { toast.error(err.message) }
     finally { setSubLoading(false) }
+  }
+
+  const handleStripeCheckout = async (priceId) => {
+    setCheckoutLoading(true)
+    try {
+      const { url } = await createStripeCheckout(priceId)
+      if (url) window.location.href = url
+    } catch (err) { toast.error(err.message) }
+    finally { setCheckoutLoading(false) }
+  }
+
+  const handleStripePortal = async () => {
+    setPortalLoading(true)
+    try {
+      const { url } = await openStripePortal()
+      if (url) window.location.href = url
+    } catch (err) { toast.error(err.message) }
+    finally { setPortalLoading(false) }
   }
 
   const loadBrand = async () => {
@@ -601,18 +646,71 @@ export default function Settings({ onStartTour }) {
                 </div>
               </div>
 
-              {/* Előfizetés placeholder */}
+              {/* Stripe előfizetés kezelése */}
               {subscription.status !== 'admin' && (
                 <div className="glass rounded-xl p-6">
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><CreditCard className="w-5 h-5 text-purple-400" /></div>
                     <div><h3 className="text-base font-semibold text-white">Előfizetés kezelése</h3><p className="text-xs text-gray-500">Fizetési lehetőségek</p></div>
                   </div>
-                  <div className="rounded-xl glass-light p-6 text-center">
-                    <CreditCard className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                    <p className="text-sm text-gray-300 font-medium">Hamarosan elérhető</p>
-                    <p className="text-xs text-gray-500 mt-1">Az online fizetési lehetőség még fejlesztés alatt áll. Kérjük, vedd fel a kapcsolatot az adminisztrátorral az előfizetés aktiválásához.</p>
-                  </div>
+
+                  {/* Active subscriber — show portal button */}
+                  {subscription.status === 'active' && subscription.has_stripe && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 px-4 py-3 rounded-lg glass-light">
+                        <CheckCircle className="w-5 h-5 text-green-400 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-200 font-medium">Aktív előfizetés</p>
+                          <p className="text-[10px] text-gray-500">Számlák, fizetési mód és lemondás kezelése a Stripe felületen</p>
+                        </div>
+                      </div>
+                      <button onClick={handleStripePortal} disabled={portalLoading}
+                        className="btn-primary w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50">
+                        {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+                        Előfizetés kezelése
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Not active — show available plans */}
+                  {subscription.status !== 'active' && (
+                    <div className="space-y-4">
+                      {stripeLoading ? (
+                        <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 text-[#1AA19C] animate-spin" /></div>
+                      ) : stripePrices.length > 0 ? (
+                        <div className="space-y-3">
+                          {stripePrices.map(price => (
+                            <div key={price.id} className="flex items-center justify-between px-4 py-4 rounded-xl glass-light">
+                              <div>
+                                <p className="text-sm font-medium text-gray-200">{price.product_name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {(price.unit_amount / 100).toLocaleString('hu-HU')} {price.currency.toUpperCase()} / {price.interval === 'month' ? 'hó' : price.interval === 'year' ? 'év' : price.interval}
+                                </p>
+                              </div>
+                              <button onClick={() => handleStripeCheckout(price.id)} disabled={checkoutLoading}
+                                className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                                {checkoutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                                Előfizetés
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl glass-light p-6 text-center">
+                          <CreditCard className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                          <p className="text-sm text-gray-300 font-medium">Nincs elérhető csomag</p>
+                          <p className="text-xs text-gray-500 mt-1">Kérjük, vedd fel a kapcsolatot az adminisztrátorral.</p>
+                        </div>
+                      )}
+                      {subscription.has_stripe && (
+                        <button onClick={handleStripePortal} disabled={portalLoading}
+                          className="w-full py-2.5 rounded-xl text-gray-400 hover:text-gray-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors glass-light">
+                          {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+                          Korábbi számlák megtekintése
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>

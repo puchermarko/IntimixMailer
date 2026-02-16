@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import PDFDocument from 'pdfkit';
+import Stripe from 'stripe';
 import db from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,9 +55,80 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(cors());
-app.use(express.json());
 
-const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
+const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY } = process.env;
+const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+
+// ─── STRIPE WEBHOOK (must be before express.json()) ─────────
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+  try {
+    if (endpointSecret && sig) {
+      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    } else {
+      // Without webhook secret, parse the event directly (dev mode)
+      event = JSON.parse(req.body.toString());
+    }
+  } catch (err) {
+    console.error('Stripe webhook signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
+  }
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const userId = session.metadata?.user_id;
+        if (userId && session.subscription) {
+          db.prepare(`UPDATE users SET 
+            subscription_status = 'active', 
+            subscription_type = 'paid', 
+            stripe_customer_id = ?, 
+            stripe_subscription_id = ?, 
+            subscription_start = datetime('now'), 
+            updated_at = datetime('now') 
+          WHERE id = ?`).run(session.customer, session.subscription, userId);
+        }
+        break;
+      }
+      case 'customer.subscription.updated': {
+        const sub = event.data.object;
+        const user = db.prepare('SELECT id FROM users WHERE stripe_subscription_id = ?').get(sub.id);
+        if (user) {
+          const status = sub.status === 'active' ? 'active' : sub.status === 'past_due' ? 'active' : 'inactive';
+          db.prepare(`UPDATE users SET subscription_status = ?, updated_at = datetime('now') WHERE id = ?`).run(status, user.id);
+        }
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object;
+        const user = db.prepare('SELECT id FROM users WHERE stripe_subscription_id = ?').get(sub.id);
+        if (user) {
+          db.prepare(`UPDATE users SET subscription_status = 'expired', stripe_subscription_id = '', updated_at = datetime('now') WHERE id = ?`).run(user.id);
+        }
+        break;
+      }
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const user = db.prepare('SELECT id FROM users WHERE stripe_customer_id = ?').get(invoice.customer);
+        if (user) {
+          db.prepare(`UPDATE users SET subscription_status = 'past_due', updated_at = datetime('now') WHERE id = ?`).run(user.id);
+        }
+        break;
+      }
+    }
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Stripe webhook processing error:', err);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+app.use(express.json());
 
 // ─── AUTH MIDDLEWARE ─────────────────────────────────────────
 
@@ -422,7 +494,99 @@ app.get('/api/subscription', authenticate, (req, res) => {
     trial_end: user.trial_end || '',
     subscription_start: user.subscription_start || '',
     subscription_end: user.subscription_end || '',
+    has_stripe: !!(db.prepare('SELECT stripe_customer_id FROM users WHERE id = ?').get(req.userId)?.stripe_customer_id),
   });
+});
+
+// ─── STRIPE FIZETÉS ─────────────────────────────────────────
+
+// Create Stripe Checkout Session for monthly subscription
+app.post('/api/stripe/create-checkout', authenticate, async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe nincs konfigurálva' });
+  try {
+    const user = db.prepare('SELECT id, email, name, stripe_customer_id FROM users WHERE id = ?').get(req.userId);
+    if (!user) return res.status(404).json({ error: 'Felhasználó nem található' });
+
+    // Reuse existing Stripe customer or create new one
+    let customerId = user.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.name || undefined,
+        metadata: { user_id: user.id },
+      });
+      customerId = customer.id;
+      db.prepare("UPDATE users SET stripe_customer_id = ?, updated_at = datetime('now') WHERE id = ?").run(customerId, user.id);
+    }
+
+    // Look up or create a monthly price for the product
+    const { price_id } = req.body;
+    if (!price_id) return res.status(400).json({ error: 'price_id szükséges' });
+
+    const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'http://localhost:5173';
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [{ price: price_id, quantity: 1 }],
+      success_url: `${origin}/dashboard/settings?tab=subscription&stripe=success`,
+      cancel_url: `${origin}/dashboard/settings?tab=subscription&stripe=cancelled`,
+      metadata: { user_id: user.id },
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('Stripe checkout error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Open Stripe Customer Portal for managing subscription
+app.post('/api/stripe/portal', authenticate, async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe nincs konfigurálva' });
+  try {
+    const user = db.prepare('SELECT stripe_customer_id FROM users WHERE id = ?').get(req.userId);
+    if (!user?.stripe_customer_id) return res.status(400).json({ error: 'Nincs Stripe fiók társítva' });
+
+    const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'http://localhost:5173';
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripe_customer_id,
+      return_url: `${origin}/dashboard/settings?tab=subscription`,
+    });
+
+    res.json({ url: portalSession.url });
+  } catch (err) {
+    console.error('Stripe portal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List available Stripe prices for subscription
+app.get('/api/stripe/prices', authenticate, async (req, res) => {
+  if (!stripe) return res.status(500).json({ error: 'Stripe nincs konfigurálva' });
+  try {
+    const prices = await stripe.prices.list({
+      active: true,
+      type: 'recurring',
+      expand: ['data.product'],
+      limit: 10,
+    });
+    const items = prices.data
+      .filter(p => p.product?.active !== false)
+      .map(p => ({
+        id: p.id,
+        product_name: p.product?.name || 'Előfizetés',
+        unit_amount: p.unit_amount,
+        currency: p.currency,
+        interval: p.recurring?.interval,
+        interval_count: p.recurring?.interval_count,
+      }));
+    res.json({ prices: items });
+  } catch (err) {
+    console.error('Stripe prices error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ─── KAPCSOLATOK CRUD - itt kezeled a kontaktokat ───────────────────

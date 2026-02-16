@@ -270,6 +270,8 @@ const subscriptionCols = [
   ['trial_end', "TEXT DEFAULT ''"],
   ['subscription_start', "TEXT DEFAULT ''"],
   ['subscription_end', "TEXT DEFAULT ''"],
+  ['stripe_customer_id', "TEXT DEFAULT ''"],
+  ['stripe_subscription_id', "TEXT DEFAULT ''"],
 ];
 for (const [col, def] of subscriptionCols) addColumnIfMissing('users', col, def);
 

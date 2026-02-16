@@ -474,6 +474,36 @@ export async function getSubscription() {
   return data
 }
 
+// ─── STRIPE ─────────────────────────────────────────────────
+
+export async function getStripePrices() {
+  const res = await fetch(`${API_BASE}/stripe/prices`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch prices')
+  return data.prices
+}
+
+export async function createStripeCheckout(priceId) {
+  const res = await fetch(`${API_BASE}/stripe/create-checkout`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ price_id: priceId })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to create checkout')
+  return data
+}
+
+export async function openStripePortal() {
+  const res = await fetch(`${API_BASE}/stripe/portal`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to open portal')
+  return data
+}
+
 // ─── BACKUP ─────────────────────────────────────────────────
 
 export async function exportBackup() {
