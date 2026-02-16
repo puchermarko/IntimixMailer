@@ -305,57 +305,63 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all shrink-0">
-            <ChevronLeft className="w-5 h-5 text-gray-400" />
-          </button>
-          <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-bold text-white truncate">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
-            <p className="text-xs text-gray-500 hidden sm:block">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
+      <div className="mb-6 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all shrink-0">
+              <ChevronLeft className="w-5 h-5 text-gray-400" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-white truncate">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
+              <p className="text-xs text-gray-500 hidden sm:block">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
+            </div>
+          </div>
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full sm:max-w-xs px-3 py-1.5 text-sm rounded-lg" />
+          <div className="flex items-center gap-2 flex-wrap">
+            {quote?.id && (
+              <>
+                <button onClick={handleDownload} disabled={downloading}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-gray-300 hover:text-white transition-all disabled:opacity-50">
+                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} PDF
+                </button>
+                <button onClick={() => setShowSendModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-[#1AA19C] hover:text-[#2EC4BE] transition-all">
+                  <Send className="w-4 h-4" /> Küldés
+                </button>
+              </>
+            )}
+            <button onClick={handleSave} disabled={saving}
+              className="btn-primary px-5 py-2 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Mentés
+            </button>
           </div>
         </div>
-        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-          placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full sm:max-w-xs px-3 py-1.5 text-sm rounded-lg" />
-        <div className="flex items-center gap-2 flex-wrap">
-          {quote?.id && (
-            <>
-              <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${statusColors[quote.status] || statusColors.draft}`}>
-                {statusLabels[quote.status] || quote.status}
-              </span>
-              {quote.status !== 'accepted' && (
-                <button onClick={() => onStatusChange(quote.id, 'accepted')} title="Elfogadás"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-green-400 hover:bg-green-500/10 transition-all">
-                  <ThumbsUp className="w-4 h-4" /> Elfogadás
-                </button>
-              )}
-              {quote.status !== 'rejected' && (
-                <button onClick={() => onStatusChange(quote.id, 'rejected')} title="Elutasítás"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-red-400 hover:bg-red-500/10 transition-all">
-                  <ThumbsDown className="w-4 h-4" /> Elutasítás
-                </button>
-              )}
-              {(quote.status === 'accepted' || quote.status === 'rejected') && (
-                <button onClick={() => onStatusChange(quote.id, 'draft')} title="Visszaállítás"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-amber-400 hover:bg-amber-500/10 transition-all">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <button onClick={handleDownload} disabled={downloading}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-gray-300 hover:text-white transition-all disabled:opacity-50">
-                {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} PDF
+        {quote?.id && (
+          <div className="flex items-center gap-2 flex-wrap pl-12">
+            <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${statusColors[quote.status] || statusColors.draft}`}>
+              {statusLabels[quote.status] || quote.status}
+            </span>
+            {quote.status !== 'accepted' && (
+              <button onClick={() => onStatusChange(quote.id, 'accepted')} title="Elfogadás"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-green-400 hover:bg-green-500/10 transition-all">
+                <ThumbsUp className="w-3.5 h-3.5" /> Elfogadás
               </button>
-              <button onClick={() => setShowSendModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-[#1AA19C] hover:text-[#2EC4BE] transition-all">
-                <Send className="w-4 h-4" /> Küldés
+            )}
+            {quote.status !== 'rejected' && (
+              <button onClick={() => onStatusChange(quote.id, 'rejected')} title="Elutasítás"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-red-400 hover:bg-red-500/10 transition-all">
+                <ThumbsDown className="w-3.5 h-3.5" /> Elutasítás
               </button>
-            </>
-          )}
-          <button onClick={handleSave} disabled={saving}
-            className="btn-primary px-5 py-2 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Mentés
-          </button>
-        </div>
+            )}
+            {(quote.status === 'accepted' || quote.status === 'rejected') && (
+              <button onClick={() => onStatusChange(quote.id, 'draft')} title="Visszaállítás piszkozatba"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-amber-400 hover:bg-amber-500/10 transition-all">
+                <RotateCcw className="w-3.5 h-3.5" /> Visszaállítás
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
