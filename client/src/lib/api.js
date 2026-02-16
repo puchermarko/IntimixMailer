@@ -148,6 +148,17 @@ export async function updateQuote(id, quote) {
   return data
 }
 
+export async function updateQuoteStatus(id, status) {
+  const res = await fetch(`${API_BASE}/quotes/${id}/status`, {
+    method: 'PATCH',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update quote status')
+  return data
+}
+
 export async function deleteQuote(id) {
   const res = await fetch(`${API_BASE}/quotes/${id}`, {
     method: 'DELETE',

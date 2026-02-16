@@ -1,11 +1,12 @@
 // Árajánlat kezelő - lista, szerkesztő, PDF letöltés, email küldés
 import { useState, useEffect } from 'react'
-import { getQuotes, getQuote, createQuote, updateQuote, deleteQuote, getQuotePdfUrl, sendQuoteEmail, getContacts } from '../lib/api'
+import { getQuotes, getQuote, createQuote, updateQuote, updateQuoteStatus, deleteQuote, getQuotePdfUrl, sendQuoteEmail, getContacts } from '../lib/api'
 import { useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, FileText, Send, Download, Loader2, ChevronLeft, Search,
-  User, Building2, MapPin, Phone, Mail, Hash, Calendar, StickyNote, X, Check, Lock
+  User, Building2, MapPin, Phone, Mail, Hash, Calendar, StickyNote, X, Check, Lock,
+  ThumbsUp, ThumbsDown, RotateCcw
 } from 'lucide-react'
 
 const statusLabels = { draft: 'Piszkozat', sent: 'Elküldve', accepted: 'Elfogadva', rejected: 'Elutasítva' }
@@ -52,6 +53,15 @@ export default function Quotes() {
     catch (err) { toast.error(err.message) }
   }
 
+  const handleStatusChange = async (id, status, e) => {
+    if (e) e.stopPropagation()
+    try {
+      await updateQuoteStatus(id, status)
+      toast.success(status === 'accepted' ? 'Elfogadva!' : status === 'rejected' ? 'Elutasítva!' : 'Státusz frissítve!')
+      loadQuotes()
+    } catch (err) { toast.error(err.message) }
+  }
+
   const handleSaved = () => {
     setView('list')
     setEditingQuote(null)
@@ -82,7 +92,7 @@ export default function Quotes() {
   }
 
   if (view === 'editor') {
-    return <QuoteEditor quote={editingQuote} onBack={() => { setView('list'); loadQuotes() }} onSaved={handleSaved} token={token} />
+    return <QuoteEditor quote={editingQuote} onBack={() => { setView('list'); loadQuotes() }} onSaved={handleSaved} onStatusChange={handleStatusChange} token={token} />
   }
 
   return (
@@ -132,10 +142,30 @@ export default function Quotes() {
                 <p className="text-sm font-semibold text-[#2EC4BE]">{formatMoney(q.total, q.currency)}</p>
                 <p className="text-[10px] text-gray-500">{new Date(q.created_at).toLocaleDateString('hu-HU')}</p>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); handleDelete(q.id) }}
-                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                {q.status !== 'accepted' && (
+                  <button onClick={(e) => handleStatusChange(q.id, 'accepted', e)} title="Elfogadás"
+                    className="p-2 rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-500/10 transition-all">
+                    <ThumbsUp className="w-4 h-4" />
+                  </button>
+                )}
+                {q.status !== 'rejected' && (
+                  <button onClick={(e) => handleStatusChange(q.id, 'rejected', e)} title="Elutasítás"
+                    className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                    <ThumbsDown className="w-4 h-4" />
+                  </button>
+                )}
+                {(q.status === 'accepted' || q.status === 'rejected') && (
+                  <button onClick={(e) => handleStatusChange(q.id, 'draft', e)} title="Visszaállítás piszkozatba"
+                    className="p-2 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button onClick={(e) => { e.stopPropagation(); handleDelete(q.id) }}
+                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -146,7 +176,7 @@ export default function Quotes() {
 
 // ─── Árajánlat szerkesztő ────
 
-function QuoteEditor({ quote, onBack, onSaved, token }) {
+function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
   const [contacts, setContacts] = useState([])
   const [contactSearch, setContactSearch] = useState('')
   const [showContactPicker, setShowContactPicker] = useState(false)
@@ -290,6 +320,27 @@ function QuoteEditor({ quote, onBack, onSaved, token }) {
         <div className="flex items-center gap-2 flex-wrap">
           {quote?.id && (
             <>
+              <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${statusColors[quote.status] || statusColors.draft}`}>
+                {statusLabels[quote.status] || quote.status}
+              </span>
+              {quote.status !== 'accepted' && (
+                <button onClick={() => onStatusChange(quote.id, 'accepted')} title="Elfogadás"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-green-400 hover:bg-green-500/10 transition-all">
+                  <ThumbsUp className="w-4 h-4" /> Elfogadás
+                </button>
+              )}
+              {quote.status !== 'rejected' && (
+                <button onClick={() => onStatusChange(quote.id, 'rejected')} title="Elutasítás"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-red-400 hover:bg-red-500/10 transition-all">
+                  <ThumbsDown className="w-4 h-4" /> Elutasítás
+                </button>
+              )}
+              {(quote.status === 'accepted' || quote.status === 'rejected') && (
+                <button onClick={() => onStatusChange(quote.id, 'draft')} title="Visszaállítás"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass-light text-sm text-amber-400 hover:bg-amber-500/10 transition-all">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
               <button onClick={handleDownload} disabled={downloading}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-gray-300 hover:text-white transition-all disabled:opacity-50">
                 {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} PDF

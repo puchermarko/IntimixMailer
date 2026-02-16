@@ -1536,11 +1536,33 @@ function nextQuoteNumber(userId) {
   return `${base}-${String(seq).padStart(4, '0')}`;
 }
 
-// Összes árajánlat listázása
+// Összes árajánlat listázása (auto-link unlinked quotes to contacts by email)
 app.get('/api/quotes', authenticate, requireSubscription, (req, res) => {
   try {
+    // Auto-link: find quotes without contact_id but with contact_email matching an existing contact
+    const unlinked = db.prepare("SELECT id, contact_email FROM quotes WHERE user_id = ? AND (contact_id IS NULL OR contact_id = '') AND contact_email != ''").all(req.userId);
+    if (unlinked.length > 0) {
+      const linkStmt = db.prepare('UPDATE quotes SET contact_id = ? WHERE id = ?');
+      for (const q of unlinked) {
+        const cid = findContactByEmail(q.contact_email, req.userId);
+        if (cid) linkStmt.run(cid, q.id);
+      }
+    }
     const quotes = db.prepare('SELECT * FROM quotes WHERE user_id = ? ORDER BY created_at DESC').all(req.userId);
     res.json({ quotes });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Árajánlat státusz frissítése (accepted / rejected / draft / sent)
+app.patch('/api/quotes/:id/status', authenticate, requireSubscription, (req, res) => {
+  try {
+    const existing = db.prepare('SELECT * FROM quotes WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!existing) return res.status(404).json({ error: 'Quote not found' });
+    const { status } = req.body;
+    const allowed = ['draft', 'sent', 'accepted', 'rejected'];
+    if (!allowed.includes(status)) return res.status(400).json({ error: `Invalid status. Allowed: ${allowed.join(', ')}` });
+    db.prepare("UPDATE quotes SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, req.params.id);
+    res.json({ success: true, status });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
