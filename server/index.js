@@ -1741,10 +1741,18 @@ function generateQuotePdf(quote, items, companyInfo, logoPath) {
     y = Math.max(y, yR) + 12;
 
     // ─── Dátum sor ───
-    doc.font(font).fontSize(8).fillColor('#666');
-    drawText(`Kelt: ${new Date(quote.created_at).toLocaleDateString('hu-HU')}`, M, y, { width: 150 });
-    if (quote.valid_until) drawText(`\u00c9rv\u00e9nyes: ${quote.valid_until}`, M + 180, y, { width: 150 });
-    y += 18;
+    doc.rect(M, y - 4, pageW, 22).fill('#f0fafa');
+    doc.font(fontB).fontSize(7).fillColor(accent);
+    drawText('KELT:', M + 8, y, { width: 30 });
+    doc.font(font).fontSize(9).fillColor('#333');
+    drawText(new Date(quote.created_at).toLocaleDateString('hu-HU'), M + 38, y, { width: 100 });
+    if (quote.valid_until) {
+      doc.font(fontB).fontSize(7).fillColor(accent);
+      drawText('\u00c9RV\u00c9NYES:', M + 200, y, { width: 55 });
+      doc.font(font).fontSize(9).fillColor('#333');
+      drawText(quote.valid_until, M + 255, y, { width: 100 });
+    }
+    y += 24;
 
     doc.moveTo(M, y).lineTo(M + pageW, y).strokeColor('#ddd').lineWidth(0.5).stroke();
     y += 8;
