@@ -2226,9 +2226,9 @@ app.get('/api/analytics/export/pdf', authenticate, (req, res) => {
     }
     y += 18;
 
-    // Only show rows with activity to keep PDF compact, or last 14 days max
+    // Show rows with activity, or full timeline if none
     const activeRows = timeline.filter(r => r.sent > 0 || r.received > 0);
-    const rows = activeRows.length > 0 ? activeRows.slice(-30) : timeline.slice(-14);
+    const rows = activeRows.length > 0 ? activeRows : timeline;
     for (const row of rows) {
       if (y > 750) { doc.addPage(); y = M; }
       const bg = rows.indexOf(row) % 2 === 0 ? '#fff' : '#fafafa';
