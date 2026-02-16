@@ -151,9 +151,14 @@ export default function TemplateGallery() {
           {/* Live preview */}
           <div className="glass rounded-xl p-4 sticky top-8">
             <h3 className="text-sm font-semibold text-gray-300 mb-3">Előnézet</h3>
-            <div className="bg-white rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+            <div className="rounded-lg overflow-hidden max-h-[500px]">
               {form.html ? (
-                <div dangerouslySetInnerHTML={{ __html: sampleHtml(form.html) }} />
+                <iframe
+                  srcDoc={sampleHtml(form.html)}
+                  className="w-full h-[500px] border-0 bg-white rounded-lg"
+                  sandbox="allow-same-origin"
+                  title="Template preview"
+                />
               ) : (
                 <div className="p-8 text-center text-gray-400 text-sm">Írj HTML-t az előnézethez</div>
               )}
@@ -279,8 +284,13 @@ export default function TemplateGallery() {
               </div>
 
               {viewMode === 'preview' ? (
-                <div className="bg-white rounded-lg overflow-hidden">
-                  <div dangerouslySetInnerHTML={{ __html: sampleHtml(selectedTemplate.html) }} />
+                <div className="rounded-lg overflow-hidden">
+                  <iframe
+                    srcDoc={sampleHtml(selectedTemplate.html)}
+                    className="w-full h-[600px] border-0 bg-white rounded-lg"
+                    sandbox="allow-same-origin"
+                    title="Template preview"
+                  />
                 </div>
               ) : (
                 <pre className="input-field rounded-lg p-4 text-xs font-mono overflow-auto max-h-[600px] whitespace-pre-wrap">

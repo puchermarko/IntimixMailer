@@ -416,9 +416,11 @@ export default function ComposeEmail() {
               </button>
             </div>
             {showPreview ? (
-              <div
-                className="bg-white rounded-lg p-4 min-h-[300px] max-h-[500px] overflow-auto"
-                dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+              <iframe
+                srcDoc={getPreviewHtml()}
+                className="w-full rounded-lg min-h-[300px] max-h-[500px] border-0 bg-white"
+                sandbox="allow-same-origin"
+                title="Email preview"
               />
             ) : (
               <textarea
@@ -477,11 +479,14 @@ export default function ComposeEmail() {
           {/* Live preview card */}
           <div className="glass rounded-xl p-5 sticky top-8">
             <h3 className="text-sm font-semibold text-gray-300 mb-3">Live Preview</h3>
-            <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+            <div className="rounded-lg overflow-hidden max-h-[400px]">
               {html ? (
-                <div
-                  className="transform scale-[0.6] origin-top-left w-[166%]"
-                  dangerouslySetInnerHTML={{ __html: getPreviewHtml() }}
+                <iframe
+                  srcDoc={getPreviewHtml()}
+                  className="w-full h-[400px] border-0 bg-white rounded-lg"
+                  sandbox="allow-same-origin"
+                  title="Live preview"
+                  style={{ transform: 'scale(0.6)', transformOrigin: 'top left', width: '166%', height: '666px' }}
                 />
               ) : (
                 <div className="p-8 text-center text-gray-400 text-sm">

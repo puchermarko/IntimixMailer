@@ -316,13 +316,16 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                           <div>
                             <div className="p-4">
                               {(isLocal ? detail.html : detail.html_body) ? (
-                                <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                                  <div
-                                    className="transform scale-[0.5] origin-top-left w-[200%]"
-                                    dangerouslySetInnerHTML={{ __html: (isLocal ? detail.html : detail.html_body)
+                                <div className="rounded-lg overflow-hidden max-h-[400px]">
+                                  <iframe
+                                    srcDoc={(isLocal ? detail.html : detail.html_body)
                                       .replace(/cid:intimix-logo-header/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/nyl/588/ikm/IntimiX2.svg')
                                       .replace(/cid:intimix-logo-png/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/mwf/5mo/xol/IntimiX.png')
-                                    }}
+                                    }
+                                    className="w-full h-[400px] border-0 bg-white rounded-lg"
+                                    sandbox="allow-same-origin"
+                                    title="Email content"
+                                    style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', height: '800px' }}
                                   />
                                 </div>
                               ) : (
@@ -418,10 +421,13 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                       <div>
                         <div className="p-4">
                           {receivedDetail.html_body ? (
-                            <div className="bg-white rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                              <div
-                                className="transform scale-[0.5] origin-top-left w-[200%]"
-                                dangerouslySetInnerHTML={{ __html: receivedDetail.html_body }}
+                            <div className="rounded-lg overflow-hidden max-h-[400px]">
+                              <iframe
+                                srcDoc={receivedDetail.html_body}
+                                className="w-full h-[400px] border-0 bg-white rounded-lg"
+                                sandbox="allow-same-origin"
+                                title="Email content"
+                                style={{ transform: 'scale(0.5)', transformOrigin: 'top left', width: '200%', height: '800px' }}
                               />
                             </div>
                           ) : (

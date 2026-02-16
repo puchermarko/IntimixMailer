@@ -873,7 +873,12 @@ function ComposeTab() {
             </button>
           </div>
           {showPreview ? (
-            <div className="bg-white rounded-lg p-4 min-h-[250px] max-h-[400px] overflow-auto" dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+            <iframe
+              srcDoc={getPreviewHtml()}
+              className="w-full rounded-lg min-h-[250px] max-h-[400px] border-0 bg-white"
+              sandbox="allow-same-origin"
+              title="Email preview"
+            />
           ) : (
             <textarea value={html} onChange={(e) => setHtml(e.target.value)} placeholder="HTML tartalom..."
               className="input-field w-full px-3 py-2 text-sm font-mono min-h-[250px] resize-y" spellCheck={false} />
@@ -906,9 +911,15 @@ function ComposeTab() {
       <div className="space-y-4">
         <div className="glass rounded-xl p-4 sticky top-8">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Előnézet</h3>
-          <div className="bg-white rounded-lg overflow-hidden max-h-[350px] overflow-y-auto">
+          <div className="rounded-lg overflow-hidden max-h-[350px]">
             {html ? (
-              <div className="transform scale-[0.55] origin-top-left w-[182%]" dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+              <iframe
+                srcDoc={getPreviewHtml()}
+                className="w-full h-[350px] border-0 bg-white rounded-lg"
+                sandbox="allow-same-origin"
+                title="Live preview"
+                style={{ transform: 'scale(0.55)', transformOrigin: 'top left', width: '182%', height: '636px' }}
+              />
             ) : (
               <div className="p-6 text-center text-gray-400 text-sm">Válassz sablont vagy írj HTML-t</div>
             )}
