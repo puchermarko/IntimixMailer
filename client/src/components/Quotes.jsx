@@ -311,73 +311,73 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
       
       {/* GROK */}
 
-      <div className="mb-6 sm:mb-8 space-y-4 sm:space-y-5">
-  {/* Row 1: Back + Title + subtitle */}
-  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
-    <button
-      onClick={onBack}
-      className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
-      aria-label="Vissza"
-    >
-      <ChevronLeft className="w-5 h-5 text-gray-400" />
-    </button>
+ <div className="mb-6 sm:mb-8 space-y-4 sm:space-y-6">
+  {/* Row 1: Back + Title + Actions (Mentés top-right) */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+    {/* Left: Back + Title */}
+    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+      <button
+        onClick={onBack}
+        className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+        aria-label="Vissza"
+      >
+        <ChevronLeft className="w-5 h-5 text-gray-400" />
+      </button>
 
-    <div className="min-w-0">
-      <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
-        {quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}
-      </h2>
-      <p className="text-sm text-gray-400 mt-0.5 hidden sm:block">
-        {quote
-          ? 'Módosítsd a tételeket, árat, leírást és mentsd el'
-          : 'Add meg az alapadatokat és kezdd el a tételsorok felvitelét'}
-      </p>
+      <div className="min-w-0">
+        <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
+          {quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}
+        </h2>
+        <p className="text-sm text-gray-400 mt-0.5 hidden sm:block">
+          {quote
+            ? 'Módosítsd a tételeket, árat, leírást és mentsd el'
+            : 'Add meg az alapadatokat és kezdd el a tételsorok felvitelét'}
+        </p>
+      </div>
+    </div>
+
+    {/* Right: Main actions – top-right corner placement */}
+    <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+      {quote?.id && (
+        <>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-white/6 hover:bg-white/12 text-gray-200 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            PDF letöltés
+          </button>
+
+          <button
+            onClick={() => setShowSendModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-teal-600/40 text-teal-300 hover:bg-teal-950/30 hover:border-teal-500/50 transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            Küldés
+          </button>
+        </>
+      )}
+
+      {/* The prominent Mentés button – top right */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className={`
+          flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg
+          bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500
+          text-white shadow-md hover:shadow-lg transition-all
+          disabled:opacity-60 disabled:pointer-events-none
+          min-w-[110px] justify-center
+        `}
+      >
+        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+        {saving ? 'Mentés...' : 'Mentés'}
+      </button>
     </div>
   </div>
 
-  {/* Row 2: Main actions – full width, new line */}
-  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-    {quote?.id && (
-      <>
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg bg-white/6 hover:bg-white/12 text-gray-200 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none min-w-[110px]"
-        >
-          {downloading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Download className="w-4 h-4" />
-          )}
-          PDF letöltés
-        </button>
-
-        <button
-          onClick={() => setShowSendModal(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border border-teal-600/40 text-teal-300 hover:bg-teal-950/30 hover:border-teal-500/50 transition-colors min-w-[100px]"
-        >
-          <Send className="w-4 h-4" />
-          Küldés
-        </button>
-      </>
-    )}
-
-    <button
-      onClick={handleSave}
-      disabled={saving}
-      className={`
-        flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg
-        bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500
-        text-white shadow-sm hover:shadow transition-all flex-1 sm:flex-none
-        min-w-[110px] justify-center
-        disabled:opacity-60 disabled:pointer-events-none
-      `}
-    >
-      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-      {saving ? 'Mentés...' : 'Mentés'}
-    </button>
-  </div>
-
-  {/* Row 3: Status + status actions */}
+  {/* Row 2: Status + status change buttons */}
   {quote?.id && (
     <div className="flex flex-wrap items-center gap-3">
       <span
@@ -426,8 +426,8 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
     </div>
   )}
 
-  {/* Row 4: Quote title / name input */}
-  <div className="max-w-3xl pt-1">
+  {/* Row 3: Quote name input */}
+  <div className="max-w-3xl pt-2">
     <input
       type="text"
       value={title}
@@ -437,7 +437,6 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
     />
   </div>
 </div>
-
 
      {  /* <div className="mb-6 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
