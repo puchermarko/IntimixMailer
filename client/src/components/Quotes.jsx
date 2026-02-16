@@ -305,7 +305,138 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
 
   return (
     <div>
-      <div className="mb-6 space-y-3">
+      
+      {/* GROK */}
+
+      <div className="mb-6 sm:mb-8 space-y-4 sm:space-y-5">
+  {/* Row 1: Back + Title + subtitle */}
+  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+    <button
+      onClick={onBack}
+      className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors shrink-0"
+      aria-label="Vissza"
+    >
+      <ChevronLeft className="w-5 h-5 text-gray-400" />
+    </button>
+
+    <div className="min-w-0">
+      <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
+        {quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}
+      </h2>
+      <p className="text-sm text-gray-400 mt-0.5 hidden sm:block">
+        {quote
+          ? 'Módosítsd a tételeket, árat, leírást és mentsd el'
+          : 'Add meg az alapadatokat és kezdd el a tételsorok felvitelét'}
+      </p>
+    </div>
+  </div>
+
+  {/* Row 2: Main actions – full width, new line */}
+  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+    {quote?.id && (
+      <>
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg bg-white/6 hover:bg-white/12 text-gray-200 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none min-w-[110px]"
+        >
+          {downloading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          PDF letöltés
+        </button>
+
+        <button
+          onClick={() => setShowSendModal(true)}
+          className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border border-teal-600/40 text-teal-300 hover:bg-teal-950/30 hover:border-teal-500/50 transition-colors min-w-[100px]"
+        >
+          <Send className="w-4 h-4" />
+          Küldés
+        </button>
+      </>
+    )}
+
+    <button
+      onClick={handleSave}
+      disabled={saving}
+      className={`
+        flex items-center gap-2 px-6 py-2.5 text-sm font-semibold rounded-lg
+        bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500
+        text-white shadow-sm hover:shadow transition-all flex-1 sm:flex-none
+        min-w-[110px] justify-center
+        disabled:opacity-60 disabled:pointer-events-none
+      `}
+    >
+      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+      {saving ? 'Mentés...' : 'Mentés'}
+    </button>
+  </div>
+
+  {/* Row 3: Status + status actions */}
+  {quote?.id && (
+    <div className="flex flex-wrap items-center gap-3">
+      <span
+        className={`
+          inline-flex items-center px-3 py-1 text-xs font-medium rounded-full
+          ${statusColors[quote.status] || 'bg-gray-700 text-gray-300'}
+        `}
+      >
+        {statusLabels[quote.status] || quote.status}
+      </span>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {quote.status !== 'accepted' && (
+          <button
+            onClick={() => onStatusChange(quote.id, 'accepted')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-lg bg-green-950/40 hover:bg-green-900/50 text-green-300 border border-green-800/50 transition-colors"
+            title="Elfogadás"
+          >
+            <ThumbsUp className="w-3.5 h-3.5" />
+            Elfogadás
+          </button>
+        )}
+
+        {quote.status !== 'rejected' && (
+          <button
+            onClick={() => onStatusChange(quote.id, 'rejected')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-lg bg-red-950/40 hover:bg-red-900/50 text-red-300 border border-red-800/50 transition-colors"
+            title="Elutasítás"
+          >
+            <ThumbsDown className="w-3.5 h-3.5" />
+            Elutasítás
+          </button>
+        )}
+
+        {(quote.status === 'accepted' || quote.status === 'rejected') && (
+          <button
+            onClick={() => onStatusChange(quote.id, 'draft')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-lg bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/50 transition-colors"
+            title="Visszaállítás piszkozatba"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Visszaállítás
+          </button>
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* Row 4: Quote title / name input */}
+  <div className="max-w-3xl pt-1">
+    <input
+      type="text"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+      placeholder="Árajánlat neve (pl. Webáruház fejlesztés – 2026 Q1)"
+      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all text-base"
+    />
+  </div>
+</div>
+
+
+     {  /* <div className="mb-6 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all shrink-0">
@@ -362,7 +493,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
             )}
           </div>
         )}
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bal oldal: Vevő adatok */}
