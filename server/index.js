@@ -2046,66 +2046,69 @@ app.get('/api/analytics', authenticate, (req, res) => {
     for (const r of receivedPerDay) { if (dayMap[r.day]) dayMap[r.day].received = r.count; }
     const timeline = Object.values(dayMap);
 
-    // Top contacts by email activity
+    const dateFilter = `-${days} days`;
+
+    // Top contacts by email activity (within selected period)
     const topContacts = db.prepare(`
       SELECT c.id, c.name, c.email,
-        (SELECT COUNT(*) FROM email_log WHERE contact_id = c.id AND user_id = ?)
-          + (SELECT COUNT(*) FROM sent_imap WHERE contact_id = c.id AND user_id = ?) as sent_count,
-        (SELECT COUNT(*) FROM inbox WHERE contact_id = c.id AND user_id = ?) as received_count
+        (SELECT COUNT(*) FROM email_log WHERE contact_id = c.id AND user_id = ? AND sent_at >= date('now', ?))
+          + (SELECT COUNT(*) FROM sent_imap WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as sent_count,
+        (SELECT COUNT(*) FROM inbox WHERE contact_id = c.id AND user_id = ? AND date >= date('now', ?)) as received_count
       FROM contacts c
       WHERE c.user_id = ?
       ORDER BY (sent_count + received_count) DESC
       LIMIT 10
-    `).all(uid, uid, uid, uid);
+    `).all(uid, dateFilter, uid, dateFilter, uid, dateFilter, uid);
 
-    // Summary totals
+    // Summary totals (within selected period)
     const totalSent = db.prepare(`
-      SELECT (SELECT COUNT(*) FROM email_log WHERE user_id = ?)
-           + (SELECT COUNT(*) FROM sent_imap WHERE user_id = ?) as total
-    `).get(uid, uid).total;
+      SELECT (SELECT COUNT(*) FROM email_log WHERE user_id = ? AND sent_at >= date('now', ?))
+           + (SELECT COUNT(*) FROM sent_imap WHERE user_id = ? AND date >= date('now', ?)) as total
+    `).get(uid, dateFilter, uid, dateFilter).total;
 
-    const totalReceived = db.prepare('SELECT COUNT(*) as total FROM inbox WHERE user_id = ?').get(uid).total;
+    const totalReceived = db.prepare("SELECT COUNT(*) as total FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, dateFilter).total;
     const totalContacts = db.prepare('SELECT COUNT(*) as total FROM contacts WHERE user_id = ?').get(uid).total;
-    const totalQuotes = db.prepare('SELECT COUNT(*) as total FROM quotes WHERE user_id = ?').get(uid).total;
+    const totalQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND created_at >= date('now', ?)").get(uid, dateFilter).total;
 
-    // Response rate: contacts who sent us email AND we sent them email
+    // Response rate within selected period
     const contactsWeEmailed = db.prepare(`
       SELECT DISTINCT contact_id FROM (
-        SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL
+        SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL AND sent_at >= date('now', ?)
         UNION
-        SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL
+        SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL AND date >= date('now', ?)
       )
-    `).all(uid, uid).length;
+    `).all(uid, dateFilter, uid, dateFilter).length;
 
     const contactsWhoReplied = db.prepare(`
       SELECT COUNT(DISTINCT i.contact_id) as cnt FROM inbox i
-      WHERE i.user_id = ? AND i.contact_id IS NOT NULL
+      WHERE i.user_id = ? AND i.contact_id IS NOT NULL AND i.date >= date('now', ?)
         AND i.contact_id IN (
-          SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL
+          SELECT contact_id FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL AND sent_at >= date('now', ?)
           UNION
-          SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL
+          SELECT contact_id FROM sent_imap WHERE user_id = ? AND contact_id IS NOT NULL AND date >= date('now', ?)
         )
-    `).get(uid, uid, uid).cnt;
+    `).get(uid, dateFilter, uid, dateFilter, uid, dateFilter).cnt;
 
     const responseRate = contactsWeEmailed > 0 ? Math.round((contactsWhoReplied / contactsWeEmailed) * 100) : 0;
 
-    // This week vs last week
-    const sentThisWeek = db.prepare(`
+    // This half vs previous half of the selected period (for trend arrows)
+    const halfDays = Math.floor(days / 2);
+    const sentThisHalf = db.prepare(`
       SELECT COUNT(*) as cnt FROM (
         SELECT sent_at as d FROM email_log WHERE user_id = ?
         UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
-      ) WHERE d >= date('now', '-7 days')
-    `).get(uid, uid).cnt;
+      ) WHERE d >= date('now', ?)
+    `).get(uid, uid, `-${halfDays} days`).cnt;
 
-    const sentLastWeek = db.prepare(`
+    const sentLastHalf = db.prepare(`
       SELECT COUNT(*) as cnt FROM (
         SELECT sent_at as d FROM email_log WHERE user_id = ?
         UNION ALL SELECT date as d FROM sent_imap WHERE user_id = ?
-      ) WHERE d >= date('now', '-14 days') AND d < date('now', '-7 days')
-    `).get(uid, uid).cnt;
+      ) WHERE d >= date('now', ?) AND d < date('now', ?)
+    `).get(uid, uid, `-${days} days`, `-${halfDays} days`).cnt;
 
-    const receivedThisWeek = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', '-7 days')").get(uid).cnt;
-    const receivedLastWeek = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', '-14 days') AND date < date('now', '-7 days')").get(uid).cnt;
+    const receivedThisHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, `-${halfDays} days`).cnt;
+    const receivedLastHalf = db.prepare("SELECT COUNT(*) as cnt FROM inbox WHERE user_id = ? AND date >= date('now', ?) AND date < date('now', ?)").get(uid, `-${days} days`, `-${halfDays} days`).cnt;
 
     res.json({
       timeline,
@@ -2116,10 +2119,10 @@ app.get('/api/analytics', authenticate, (req, res) => {
         totalContacts,
         totalQuotes,
         responseRate,
-        sentThisWeek,
-        sentLastWeek,
-        receivedThisWeek,
-        receivedLastWeek,
+        sentThisHalf,
+        sentLastHalf,
+        receivedThisHalf,
+        receivedLastHalf,
       }
     });
   } catch (err) {

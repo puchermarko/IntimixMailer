@@ -41,15 +41,15 @@ export default function Analytics() {
 
   const weekTrend = (current, previous) => {
     if (previous === 0 && current === 0) return { icon: Minus, color: 'text-gray-500', text: 'Nincs változás' }
-    if (previous === 0) return { icon: TrendingUp, color: 'text-green-400', text: `+${current} ez a hét` }
+    if (previous === 0) return { icon: TrendingUp, color: 'text-green-400', text: `+${current} ebben az időszakban` }
     const pct = Math.round(((current - previous) / previous) * 100)
-    if (pct > 0) return { icon: TrendingUp, color: 'text-green-400', text: `+${pct}% az előző héthez képest` }
-    if (pct < 0) return { icon: TrendingDown, color: 'text-red-400', text: `${pct}% az előző héthez képest` }
+    if (pct > 0) return { icon: TrendingUp, color: 'text-green-400', text: `+${pct}% az előző időszakhoz képest` }
+    if (pct < 0) return { icon: TrendingDown, color: 'text-red-400', text: `${pct}% az előző időszakhoz képest` }
     return { icon: Minus, color: 'text-gray-500', text: 'Nincs változás' }
   }
 
-  const sentTrend = weekTrend(summary.sentThisWeek, summary.sentLastWeek)
-  const receivedTrend = weekTrend(summary.receivedThisWeek, summary.receivedLastWeek)
+  const sentTrend = weekTrend(summary.sentThisHalf, summary.sentLastHalf)
+  const receivedTrend = weekTrend(summary.receivedThisHalf, summary.receivedLastHalf)
 
   const formatDay = (day) => {
     const d = new Date(day + 'T00:00:00')
