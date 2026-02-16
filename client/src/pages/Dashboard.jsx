@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [showTour, setShowTour] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('intimix_sidebar_collapsed') === 'true')
 
   const startTour = () => setShowTour(true)
 
@@ -59,8 +60,8 @@ export default function Dashboard() {
         </div>
       )}
       {showTour && <QuickTour onComplete={() => setShowTour(false)} setActiveView={setActiveView} setSidebarOpen={setSidebarOpen} />}
-      <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} />
-      <main className={`lg:ml-64 pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen ${impersonating ? 'mt-10' : ''}`}>
+      <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      <main className={`pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-64'} ${impersonating ? 'mt-10' : ''}`}>
         <div className="max-w-5xl mx-auto fade-in" key={activeView}>
           {views[activeView]}
         </div>
