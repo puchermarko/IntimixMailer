@@ -18,6 +18,38 @@ const __dirname = path.dirname(__filename);
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
+const ASSETS_DIR = path.join(__dirname, 'assets');
+
+// Map of known CID names to their file paths and allowed domain
+const CID_IMAGE_MAP = {
+  'intimix-logo-png': { path: path.join(ASSETS_DIR, 'logo-header.png'), contentType: 'image/png', domain: 'intimix.hu' },
+};
+
+// Scan HTML for cid: references and return inline attachments for nodemailer
+// Only attaches images whose domain matches the user's SMTP domain
+function getCidAttachments(html, smtpDomain) {
+  const cidRefs = html.match(/cid:([a-zA-Z0-9_-]+)/g) || [];
+  const seen = new Set();
+  const inlineAttachments = [];
+  const userDomain = (smtpDomain || '').toLowerCase();
+  for (const ref of cidRefs) {
+    const cid = ref.replace('cid:', '');
+    if (seen.has(cid)) continue;
+    seen.add(cid);
+    const mapping = CID_IMAGE_MAP[cid];
+    if (!mapping || !fs.existsSync(mapping.path)) continue;
+    if (mapping.domain && mapping.domain !== userDomain) continue;
+    inlineAttachments.push({
+      filename: path.basename(mapping.path),
+      path: mapping.path,
+      cid: cid,
+      contentType: mapping.contentType,
+      contentDisposition: 'inline',
+    });
+  }
+  return inlineAttachments;
+}
+
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -777,12 +809,16 @@ app.post('/api/send-email', authenticate, requireSubscription, upload.array('att
       contentType: file.mimetype
     }));
 
+    // Auto-attach inline CID images referenced in the HTML (domain-gated)
+    const smtpDomain = (userSettings.smtp_user || '').includes('@') ? userSettings.smtp_user.split('@')[1] : '';
+    const cidAttachments = getCidAttachments(html, smtpDomain);
+
     const mailOptions = {
       from: `"${fromName}" <${userSettings.smtp_user}>`,
       to,
       subject,
       html,
-      attachments
+      attachments: [...attachments, ...cidAttachments]
     };
 
     if (cc) mailOptions.cc = cc;
@@ -836,6 +872,10 @@ app.post('/api/send-bulk', authenticate, requireSubscription, upload.array('atta
       contentType: file.mimetype
     }));
 
+    // Auto-attach inline CID images referenced in the HTML (domain-gated)
+    const smtpDomain = (userSettings.smtp_user || '').includes('@') ? userSettings.smtp_user.split('@')[1] : '';
+    const cidAttachments = getCidAttachments(html, smtpDomain);
+
     const results = [];
     for (const recipient of parsed) {
       try {
@@ -858,7 +898,7 @@ app.post('/api/send-bulk', authenticate, requireSubscription, upload.array('atta
           to: recipient.email,
           subject: personalizedSubject,
           html: personalizedHtml,
-          attachments
+          attachments: [...attachments, ...cidAttachments]
         });
 
         // Log email per recipient
@@ -1256,9 +1296,14 @@ app.post('/api/v1/send', authenticateApiKey, (req, res) => {
   const userSettings = getUserSettings(req.userId);
   const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
 
+  // Auto-attach inline CID images referenced in the HTML (domain-gated)
+  const smtpDomain = (userSettings.smtp_user || '').includes('@') ? userSettings.smtp_user.split('@')[1] : '';
+  const cidAttachments = getCidAttachments(emailHtml, smtpDomain);
+
   const mailOptions = {
     from: `"${fromName}" <${userSettings.smtp_user}>`,
     to, subject, html: emailHtml,
+    attachments: cidAttachments,
     ...(cc && { cc }), ...(bcc && { bcc })
   };
 
