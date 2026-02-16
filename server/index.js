@@ -2061,6 +2061,8 @@ function getAnalyticsData(uid, days) {
   const totalReceived = db.prepare("SELECT COUNT(*) as total FROM inbox WHERE user_id = ? AND date >= date('now', ?)").get(uid, dateFilter).total;
   const totalContacts = db.prepare('SELECT COUNT(*) as total FROM contacts WHERE user_id = ?').get(uid).total;
   const totalQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND created_at >= date('now', ?)").get(uid, dateFilter).total;
+  const acceptedQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND status = 'accepted' AND created_at >= date('now', ?)").get(uid, dateFilter).total;
+  const rejectedQuotes = db.prepare("SELECT COUNT(*) as total FROM quotes WHERE user_id = ? AND status = 'rejected' AND created_at >= date('now', ?)").get(uid, dateFilter).total;
 
   const contactsWeEmailed = db.prepare(`
     SELECT DISTINCT contact_id FROM (
@@ -2102,7 +2104,7 @@ function getAnalyticsData(uid, days) {
 
   return {
     timeline, topContacts, days,
-    summary: { totalSent, totalReceived, totalContacts, totalQuotes, responseRate, sentThisHalf, sentLastHalf, receivedThisHalf, receivedLastHalf }
+    summary: { totalSent, totalReceived, totalContacts, totalQuotes, acceptedQuotes, rejectedQuotes, responseRate, sentThisHalf, sentLastHalf, receivedThisHalf, receivedLastHalf }
   };
 }
 
@@ -2130,6 +2132,8 @@ app.get('/api/analytics/export/csv', authenticate, (req, res) => {
     csv += `Fogadott;${summary.totalReceived}\n`;
     csv += `Kapcsolatok;${summary.totalContacts}\n`;
     csv += `Árajánlatok;${summary.totalQuotes}\n`;
+    csv += `Elfogadott árajánlatok;${summary.acceptedQuotes}\n`;
+    csv += `Elutasított árajánlatok;${summary.rejectedQuotes}\n`;
     csv += `Válaszadási arány;${summary.responseRate}%\n\n`;
 
     csv += 'Napi forgalom\n';
@@ -2195,19 +2199,31 @@ app.get('/api/analytics/export/pdf', authenticate, (req, res) => {
     doc.font(fontB).fontSize(13).fillColor('#222').text('Összesítés', M, y);
     y += 22;
 
-    const cards = [
+    const cardsRow1 = [
       { label: 'Küldött', value: summary.totalSent },
       { label: 'Fogadott', value: summary.totalReceived },
       { label: 'Kapcsolatok', value: summary.totalContacts },
-      { label: 'Árajánlatok', value: summary.totalQuotes },
       { label: 'Válaszadási arány', value: `${summary.responseRate}%` },
     ];
-    const cardW = Math.floor(W / cards.length);
-    for (let i = 0; i < cards.length; i++) {
-      const cx = M + i * cardW;
-      doc.roundedRect(cx, y, cardW - 8, 50, 4).fillAndStroke('#f7fafa', '#e0e0e0');
-      doc.font(fontB).fontSize(16).fillColor(accent).text(String(cards[i].value), cx + 8, y + 8, { width: cardW - 24 });
-      doc.font(font).fontSize(8).fillColor('#777').text(cards[i].label, cx + 8, y + 30, { width: cardW - 24 });
+    const cardsRow2 = [
+      { label: 'Árajánlatok', value: summary.totalQuotes },
+      { label: 'Elfogadva', value: summary.acceptedQuotes, color: '#16a34a' },
+      { label: 'Elutasítva', value: summary.rejectedQuotes, color: '#dc2626' },
+    ];
+    const cardW1 = Math.floor(W / cardsRow1.length);
+    for (let i = 0; i < cardsRow1.length; i++) {
+      const cx = M + i * cardW1;
+      doc.roundedRect(cx, y, cardW1 - 8, 50, 4).fillAndStroke('#f7fafa', '#e0e0e0');
+      doc.font(fontB).fontSize(16).fillColor(accent).text(String(cardsRow1[i].value), cx + 8, y + 8, { width: cardW1 - 24 });
+      doc.font(font).fontSize(8).fillColor('#777').text(cardsRow1[i].label, cx + 8, y + 30, { width: cardW1 - 24 });
+    }
+    y += 58;
+    const cardW2 = Math.floor(W / cardsRow2.length);
+    for (let i = 0; i < cardsRow2.length; i++) {
+      const cx = M + i * cardW2;
+      doc.roundedRect(cx, y, cardW2 - 8, 50, 4).fillAndStroke('#f7fafa', '#e0e0e0');
+      doc.font(fontB).fontSize(16).fillColor(cardsRow2[i].color || accent).text(String(cardsRow2[i].value), cx + 8, y + 8, { width: cardW2 - 24 });
+      doc.font(font).fontSize(8).fillColor('#777').text(cardsRow2[i].label, cx + 8, y + 30, { width: cardW2 - 24 });
     }
     y += 65;
 

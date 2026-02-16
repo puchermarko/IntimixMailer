@@ -5,7 +5,7 @@ import {
 } from 'recharts'
 import {
   Loader2, Send, Inbox, BookUser, FileText, TrendingUp, TrendingDown, Minus,
-  BarChart3, Users, ArrowUpRight, Download, FileSpreadsheet
+  BarChart3, Users, ArrowUpRight, Download, FileSpreadsheet, ThumbsUp, ThumbsDown
 } from 'lucide-react'
 
 export default function Analytics() {
@@ -75,6 +75,8 @@ export default function Analytics() {
     { label: 'Fogadott', value: summary.totalReceived, icon: Inbox, color: 'bg-blue-500/10', iconColor: 'text-blue-400', trend: receivedTrend },
     { label: 'Kapcsolatok', value: summary.totalContacts, icon: BookUser, color: 'bg-purple-500/10', iconColor: 'text-purple-400' },
     { label: 'Árajánlatok', value: summary.totalQuotes, icon: FileText, color: 'bg-amber-500/10', iconColor: 'text-amber-400' },
+    { label: 'Elfogadva', value: summary.acceptedQuotes, icon: ThumbsUp, color: 'bg-green-500/10', iconColor: 'text-green-400' },
+    { label: 'Elutasítva', value: summary.rejectedQuotes, icon: ThumbsDown, color: 'bg-red-500/10', iconColor: 'text-red-400' },
   ]
 
   return (
@@ -119,7 +121,7 @@ export default function Analytics() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
         {statCards.map(card => {
           const Icon = card.icon
           const TrendIcon = card.trend?.icon
