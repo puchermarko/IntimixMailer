@@ -27,6 +27,15 @@ export default function Quotes() {
 
   useEffect(() => { if (hasSubscription) loadQuotes() }, [])
 
+  // Auto-open a quote if navigated from ContactDetail
+  useEffect(() => {
+    const pendingId = localStorage.getItem('intimix_open_quote')
+    if (pendingId && hasSubscription) {
+      localStorage.removeItem('intimix_open_quote')
+      handleEdit(pendingId)
+    }
+  }, [])
+
   const loadQuotes = async () => {
     setLoading(true)
     try { const data = await getQuotes(); setQuotes(data.quotes || []) }

@@ -1,12 +1,17 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken } from '../lib/api'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
-  Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt
+  Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
+  TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink
 } from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -33,7 +38,7 @@ function isPreviewable(mimetype) {
   return mimetype?.startsWith('image/') || mimetype?.includes('pdf')
 }
 
-export default function ContactDetail({ contactId, onBack, onEdit }) {
+export default function ContactDetail({ contactId, onBack, onEdit, onNavigate }) {
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('emails')
@@ -279,6 +284,19 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
           <span className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
             Árajánlatok ({contact.quotes?.length || 0})
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('journey')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === 'journey'
+              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
+              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Útja
           </span>
         </button>
       </div>
@@ -592,7 +610,10 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
               contact.quotes.map(quote => {
                 const st = statusColors[quote.status] || statusColors.draft
                 return (
-                  <div key={quote.id} className="glass rounded-xl p-4 hover:border-[#1AA19C]/20 transition-all">
+                  <div key={quote.id} onClick={() => {
+                      localStorage.setItem('intimix_open_quote', quote.id)
+                      onNavigate?.('quotes')
+                    }} className="glass rounded-xl p-4 hover:border-[#1AA19C]/20 transition-all cursor-pointer group">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -618,10 +639,11 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="text-right shrink-0 flex items-center gap-2">
                         <p className="text-sm font-bold text-white">
                           {Number(quote.total).toLocaleString('hu-HU')} {quote.currency}
                         </p>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-600 group-hover:text-[#2EC4BE] transition-colors" />
                       </div>
                     </div>
                   </div>
@@ -631,6 +653,9 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
           </div>
         )
       })()}
+
+      {/* Kapcsolat útja fül */}
+      {activeTab === 'journey' && <ContactJourney contact={contact} />}
 
       {/* Csatolmány előnézet modal */}
       {previewAttachment && (
@@ -685,6 +710,379 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Contact Journey Sub-Component ──────────────────────────
+const CHART_COLORS = ['#1AA19C', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+const PIE_COLORS = { draft: '#6B7280', sent: '#3B82F6', accepted: '#22C55E', rejected: '#EF4444' }
+const STATUS_LABELS = { draft: 'Piszkozat', sent: 'Elküldve', accepted: 'Elfogadva', rejected: 'Elutasítva' }
+
+function ContactJourney({ contact }) {
+  const sentCount = (contact.emails?.length || 0) + (contact.sentImap?.length || 0)
+  const receivedCount = contact.received?.length || 0
+  const totalEmails = sentCount + receivedCount
+  const quotes = contact.quotes || []
+  const accepted = quotes.filter(q => q.status === 'accepted').length
+  const rejected = quotes.filter(q => q.status === 'rejected').length
+  const sent = quotes.filter(q => q.status === 'sent').length
+  const draft = quotes.filter(q => q.status === 'draft').length
+  const totalQuotes = quotes.length
+  const decidedQuotes = accepted + rejected
+
+  // ─── Possibility Score ───
+  const calcPossibility = () => {
+    let score = 50 // base
+
+    // Quote history factor (strongest signal)
+    if (decidedQuotes > 0) {
+      const acceptRate = accepted / decidedQuotes
+      score = score + (acceptRate - 0.5) * 40
+    }
+
+    // Email engagement factor
+    if (sentCount > 0 && receivedCount > 0) {
+      const responseRate = Math.min(receivedCount / sentCount, 1)
+      score += responseRate * 15
+    } else if (sentCount > 0 && receivedCount === 0) {
+      score -= 10
+    }
+
+    // Volume factor — more interaction = more trust
+    if (totalEmails > 20) score += 8
+    else if (totalEmails > 10) score += 5
+    else if (totalEmails > 5) score += 2
+
+    // Pending quotes factor
+    if (sent > 0) score += 3
+
+    // No history at all
+    if (totalEmails === 0 && totalQuotes === 0) score = 50
+
+    return Math.max(5, Math.min(95, Math.round(score)))
+  }
+
+  const possibility = calcPossibility()
+  const possibilityColor = possibility >= 70 ? 'text-green-400' : possibility >= 40 ? 'text-amber-400' : 'text-red-400'
+  const possibilityBg = possibility >= 70 ? 'from-green-500/20 to-green-500/5' : possibility >= 40 ? 'from-amber-500/20 to-amber-500/5' : 'from-red-500/20 to-red-500/5'
+  const possibilityGradient = possibility >= 70 ? 'from-green-500 to-emerald-400' : possibility >= 40 ? 'from-amber-500 to-yellow-400' : 'from-red-500 to-orange-400'
+  const possibilityLabel = possibility >= 70 ? 'Magas esély' : possibility >= 40 ? 'Közepes esély' : 'Alacsony esély'
+  const possibilityHint = possibility >= 70
+    ? 'A kapcsolat aktív és pozitív előzményekkel rendelkezik. Jó esély van az elfogadásra.'
+    : possibility >= 40
+    ? 'Vegyes előzmények. Érdemes személyre szabott ajánlatot küldeni.'
+    : 'Kevés interakció vagy negatív előzmények. Fontolja meg a kapcsolat újraépítését.'
+
+  // ─── Email Activity Chart Data (last 30 days) ───
+  const emailChartData = useMemo(() => {
+    const days = 30
+    const now = new Date()
+    const data = []
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().split('T')[0]
+      data.push({ day: key, sent: 0, received: 0 })
+    }
+
+    const localEmails = (contact.emails || []).map(e => ({ date: e.sent_at }))
+    const imapEmails = (contact.sentImap || []).map(e => ({ date: e.date }))
+    const allSent = [...localEmails, ...imapEmails]
+    const allReceived = (contact.received || []).map(e => ({ date: e.date }))
+
+    allSent.forEach(e => {
+      if (!e.date) return
+      const key = new Date(e.date).toISOString().split('T')[0]
+      const entry = data.find(d => d.day === key)
+      if (entry) entry.sent++
+    })
+    allReceived.forEach(e => {
+      if (!e.date) return
+      const key = new Date(e.date).toISOString().split('T')[0]
+      const entry = data.find(d => d.day === key)
+      if (entry) entry.received++
+    })
+    return data
+  }, [contact])
+
+  // ─── Quote Status Pie Data ───
+  const quoteStatusData = useMemo(() => {
+    const counts = { draft, sent, accepted, rejected }
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([key, value]) => ({ name: STATUS_LABELS[key], value, fill: PIE_COLORS[key] }))
+  }, [draft, sent, accepted, rejected])
+
+  // ─── Quote Value Chart ───
+  const quoteValueData = useMemo(() => {
+    return quotes
+      .filter(q => q.total > 0)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      .map(q => ({
+        name: `#${q.quote_number}`,
+        total: Number(q.total),
+        status: STATUS_LABELS[q.status] || q.status,
+        fill: PIE_COLORS[q.status] || '#6B7280'
+      }))
+  }, [quotes])
+
+  // ─── Timeline Events ───
+  const timeline = useMemo(() => {
+    const events = []
+
+    // Contact created
+    if (contact.created_at) {
+      events.push({ date: contact.created_at, type: 'created', icon: UserPlus, color: 'bg-[#1AA19C]', label: 'Kapcsolat létrehozva' })
+    }
+
+    // First email sent
+    const allSentDates = [
+      ...(contact.emails || []).map(e => e.sent_at),
+      ...(contact.sentImap || []).map(e => e.date)
+    ].filter(Boolean).sort()
+    if (allSentDates.length > 0) {
+      events.push({ date: allSentDates[0], type: 'first_sent', icon: SendHorizontal, color: 'bg-green-500', label: 'Első email küldve' })
+    }
+
+    // First email received
+    const allRecvDates = (contact.received || []).map(e => e.date).filter(Boolean).sort()
+    if (allRecvDates.length > 0) {
+      events.push({ date: allRecvDates[0], type: 'first_received', icon: Inbox, color: 'bg-blue-500', label: 'Első válasz érkezett' })
+    }
+
+    // Quotes
+    quotes.forEach(q => {
+      events.push({
+        date: q.created_at,
+        type: 'quote',
+        icon: FileText,
+        color: q.status === 'accepted' ? 'bg-green-500' : q.status === 'rejected' ? 'bg-red-500' : 'bg-amber-500',
+        label: `Árajánlat #${q.quote_number} — ${STATUS_LABELS[q.status] || q.status}`,
+        extra: `${Number(q.total).toLocaleString('hu-HU')} ${q.currency}`
+      })
+    })
+
+    return events.sort((a, b) => new Date(a.date) - new Date(b.date))
+  }, [contact, quotes])
+
+  const formatDay = (day) => {
+    const d = new Date(day + 'T00:00:00')
+    return d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })
+  }
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null
+    return (
+      <div className="glass rounded-lg px-3 py-2 text-xs border border-white/10 shadow-xl">
+        <p className="text-gray-400 mb-1">{formatDay(label)}</p>
+        {payload.map((p, i) => (
+          <p key={i} style={{ color: p.color }} className="font-medium">
+            {p.name}: {p.value}
+          </p>
+        ))}
+      </div>
+    )
+  }
+
+  const BarTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null
+    const d = payload[0].payload
+    return (
+      <div className="glass rounded-lg px-3 py-2 text-xs border border-white/10 shadow-xl">
+        <p className="text-gray-300 font-medium">{d.name}</p>
+        <p className="text-gray-400">{d.status}</p>
+        <p className="text-white font-bold">{d.total.toLocaleString('hu-HU')} Ft</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5 fade-in">
+      {/* Possibility Card */}
+      <div className={`glass rounded-2xl p-6 bg-gradient-to-br ${possibilityBg} relative overflow-hidden`}>
+        <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
+          <Target className="w-full h-full" />
+        </div>
+        <div className="flex items-start gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+            <div className="text-center">
+              <p className={`text-2xl font-black ${possibilityColor}`}>{possibility}%</p>
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap className={`w-4 h-4 ${possibilityColor}`} />
+              <h3 className="text-sm font-bold text-white">{possibilityLabel}</h3>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">{possibilityHint}</p>
+            <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${possibilityGradient} transition-all duration-1000`}
+                style={{ width: `${possibility}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-1.5">
+              <span className="text-[10px] text-gray-600">Alacsony</span>
+              <span className="text-[10px] text-gray-600">Magas</span>
+            </div>
+          </div>
+        </div>
+        {/* Factor breakdown */}
+        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/5">
+          <div className="text-center">
+            <p className="text-lg font-bold text-white">{totalEmails}</p>
+            <p className="text-[10px] text-gray-500">Email váltás</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-white">{decidedQuotes > 0 ? Math.round((accepted / decidedQuotes) * 100) : '—'}%</p>
+            <p className="text-[10px] text-gray-500">Elfogadási arány</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-white">{sentCount > 0 ? Math.round((receivedCount / sentCount) * 100) : '—'}%</p>
+            <p className="text-[10px] text-gray-500">Válaszadási arány</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Email Activity Chart */}
+      <div className="glass rounded-xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-lg bg-[#1AA19C]/10 flex items-center justify-center">
+            <BarChart3 className="w-4 h-4 text-[#2EC4BE]" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Email aktivitás</p>
+            <p className="text-[10px] text-gray-500">Küldött és fogadott levelek az elmúlt 30 napban</p>
+          </div>
+        </div>
+        <div className="h-[200px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={emailChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="cjSentGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#1AA19C" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#1AA19C" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="cjRecvGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 10, color: '#9ca3af' }} />
+              <Area type="monotone" dataKey="sent" name="Küldött" stroke="#1AA19C" fill="url(#cjSentGrad)" strokeWidth={2} />
+              <Area type="monotone" dataKey="received" name="Fogadott" stroke="#3B82F6" fill="url(#cjRecvGrad)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Quote charts row */}
+      {totalQuotes > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Quote Status Pie */}
+          <div className="glass rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Árajánlat státuszok</p>
+                <p className="text-[10px] text-gray-500">{totalQuotes} árajánlat összesen</p>
+              </div>
+            </div>
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={quoteStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                    {quoteStatusData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [`${value} db`, name]} contentStyle={{ background: 'rgba(30,33,40,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} />
+                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Quote Values Bar */}
+          {quoteValueData.length > 0 && (
+            <div className="glass rounded-xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white">Árajánlat értékek</p>
+                  <p className="text-[10px] text-gray-500">Összeg árajánlatonként</p>
+                </div>
+              </div>
+              <div className="h-[180px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={quoteValueData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                    <Tooltip content={<BarTooltip />} />
+                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                      {quoteValueData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div className="glass rounded-xl p-5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+            <Clock className="w-4 h-4 text-purple-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Kapcsolat idővonal</p>
+            <p className="text-[10px] text-gray-500">Fontos események időrendben</p>
+          </div>
+        </div>
+        {timeline.length === 0 ? (
+          <div className="text-center py-8">
+            <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-500">Még nincs esemény</p>
+          </div>
+        ) : (
+          <div className="relative">
+            <div className="absolute left-[18px] top-2 bottom-2 w-px bg-white/10" />
+            <div className="space-y-4">
+              {timeline.map((event, i) => {
+                const Icon = event.icon
+                return (
+                  <div key={i} className="flex items-start gap-4 relative">
+                    <div className={`w-9 h-9 rounded-full ${event.color} flex items-center justify-center shrink-0 z-10 shadow-lg`}>
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1 pt-1.5">
+                      <p className="text-sm text-gray-200 font-medium">{event.label}</p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-[10px] text-gray-500">{formatDate(event.date)}</p>
+                        {event.extra && <p className="text-[10px] text-gray-400 font-medium">{event.extra}</p>}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

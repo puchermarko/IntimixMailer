@@ -26,7 +26,7 @@ export default function Dashboard() {
 
   const views = {
     mail: <MailView />,
-    contacts: <Contacts />,
+    contacts: <Contacts onNavigate={setActiveView} />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,
