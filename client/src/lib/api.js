@@ -613,3 +613,29 @@ export async function getAnalytics(days = 30) {
   if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics')
   return data
 }
+
+export async function changePassword(currentPassword, newPassword) {
+  const res = await fetch(`${API_BASE}/change-password`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to change password')
+  return data
+}
+
+export async function deleteAccount(password) {
+  const res = await fetch(`${API_BASE}/account`, {
+    method: 'DELETE',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  })
+  const data = await res.json()
+  if (!res.ok) {
+    const err = new Error(data.error || 'Failed to delete account')
+    err.hasActiveSubscription = data.has_active_subscription || false
+    throw err
+  }
+  return data
+}

@@ -1,12 +1,13 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount } from '../lib/api'
 import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
-  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink, RefreshCw
+  Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink, RefreshCw,
+  Lock, UserX
 } from 'lucide-react'
 
 export default function Settings({ onStartTour }) {
@@ -33,7 +34,7 @@ export default function Settings({ onStartTour }) {
   const [logoUploading, setLogoUploading] = useState(false)
   const logoInputRef = useRef(null)
   const { refreshBranding } = useBranding()
-  const { isAdmin, setSubscriptionStatus } = useAuth()
+  const { isAdmin, setSubscriptionStatus, logout } = useAuth()
   const [backupExporting, setBackupExporting] = useState(false)
   const [backupImporting, setBackupImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
@@ -57,6 +58,16 @@ export default function Settings({ onStartTour }) {
   const [companyBankName, setCompanyBankName] = useState('')
   const [companyBankIban, setCompanyBankIban] = useState('')
   const [quotePrefix, setQuotePrefix] = useState('AJ')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [showDeletePw, setShowDeletePw] = useState(false)
 
   // Handle Stripe redirect URL params
   useEffect(() => {
@@ -263,6 +274,7 @@ export default function Settings({ onStartTour }) {
   }
 
   const tabs = [
+    { id: 'account', label: 'Fiók' },
     { id: 'general', label: 'Általános' },
     { id: 'branding', label: 'Márka' },
     { id: 'config', label: 'Konfiguráció' },
@@ -289,6 +301,129 @@ export default function Settings({ onStartTour }) {
             }`}>{tab.label}</button>
         ))}
       </div>
+
+      {/* ═══ FIÓK FÜL ═══ */}
+      {activeTab === 'account' && (
+        <div className="space-y-6 max-w-2xl fade-in">
+          {/* Jelszó változtatás */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Lock className="w-5 h-5 text-[#1AA19C]" /></div>
+              <div><h3 className="text-base font-semibold text-white">Jelszó változtatás</h3><p className="text-xs text-gray-500">Változtasd meg a jelenlegi jelszavadat</p></div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Jelenlegi jelszó</label>
+                <div className="relative">
+                  <input type={showCurrentPw ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                  <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                    {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Új jelszó</label>
+                <div className="relative">
+                  <input type={showNewPw ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Legalább 6 karakter" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                  <button type="button" onClick={() => setShowNewPw(!showNewPw)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Új jelszó megerősítése</label>
+                <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Írd be újra az új jelszót" className="input-field w-full px-3 py-2 text-sm" />
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-xs text-red-400 mt-1">A jelszavak nem egyeznek</p>
+                )}
+              </div>
+              <button
+                onClick={async () => {
+                  if (!currentPassword || !newPassword) return toast.error('Töltsd ki az összes mezőt')
+                  if (newPassword.length < 6) return toast.error('Az új jelszónak legalább 6 karakter hosszúnak kell lennie')
+                  if (newPassword !== confirmPassword) return toast.error('A jelszavak nem egyeznek')
+                  setChangingPassword(true)
+                  try {
+                    await changePassword(currentPassword, newPassword)
+                    toast.success('Jelszó sikeresen megváltoztatva!')
+                    setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+                  } catch (err) { toast.error(err.message) }
+                  finally { setChangingPassword(false) }
+                }}
+                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+                className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                Jelszó változtatás
+              </button>
+            </div>
+          </div>
+
+          {/* Fiók törlés */}
+          {!isAdmin && (
+            <div className="glass rounded-xl p-6 border border-red-500/20">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center"><UserX className="w-5 h-5 text-red-400" /></div>
+                <div><h3 className="text-base font-semibold text-white">Fiók törlése</h3><p className="text-xs text-gray-500">Véglegesen töröld a fiókodat és minden adatodat</p></div>
+              </div>
+
+              <div className="glass rounded-lg p-4 flex items-start gap-3 border border-red-500/20 mb-5">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-red-300 font-medium">Figyelem — ez a művelet visszavonhatatlan!</p>
+                  <p className="text-xs text-gray-500 mt-1">A fiók törlésével az összes adatod véglegesen törlődik: kapcsolatok, emailek, árajánlatok, sablonok és beállítások. Ez a művelet nem vonható vissza.</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Írd be: <span className="font-mono text-red-400">TÖRLÉS</span> a megerősítéshez</label>
+                  <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="TÖRLÉS" className="input-field w-full px-3 py-2 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Jelszó megerősítés</label>
+                  <div className="relative">
+                    <input type={showDeletePw ? 'text' : 'password'} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)}
+                      placeholder="Add meg a jelszavadat" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                    <button type="button" onClick={() => setShowDeletePw(!showDeletePw)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                      {showDeletePw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (deleteConfirmText !== 'TÖRLÉS') return toast.error('Írd be pontosan: TÖRLÉS')
+                    if (!deletePassword) return toast.error('Add meg a jelszavadat')
+                    setDeletingAccount(true)
+                    try {
+                      await deleteAccount(deletePassword)
+                      toast.success('Fiók sikeresen törölve')
+                      logout()
+                    } catch (err) {
+                      if (err.hasActiveSubscription) {
+                        toast.error('Aktív előfizetéssel rendelkezel. Először mondd le az előfizetésed az Előfizetés fülön, majd próbáld újra.', { duration: 6000 })
+                      } else {
+                        toast.error(err.message)
+                      }
+                    }
+                    finally { setDeletingAccount(false) }
+                  }}
+                  disabled={deletingAccount || deleteConfirmText !== 'TÖRLÉS' || !deletePassword}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-sm text-red-400 font-medium transition-all disabled:opacity-50">
+                  {deletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Fiók végleges törlése
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ═══ ÁLTALÁNOS FÜL ═══ */}
       {activeTab === 'general' && (

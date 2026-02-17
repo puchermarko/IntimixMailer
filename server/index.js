@@ -578,6 +578,68 @@ app.get('/api/subscription', authenticate, (req, res) => {
   });
 });
 
+// ─── FIÓK KEZELÉS (jelszó változtatás, fiók törlés) ─────────
+
+// Change own password
+app.post('/api/change-password', authenticate, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Jelenlegi és új jelszó megadása kötelező' });
+  if (newPassword.length < 6) return res.status(400).json({ error: 'Az új jelszónak legalább 6 karakter hosszúnak kell lennie' });
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'Felhasználó nem található' });
+
+  if (!bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(401).json({ error: 'A jelenlegi jelszó helytelen' });
+  }
+
+  const hashed = bcrypt.hashSync(newPassword, 10);
+  db.prepare("UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?").run(hashed, req.userId);
+  res.json({ success: true, message: 'Jelszó sikeresen megváltoztatva' });
+});
+
+// Delete own account
+app.delete('/api/account', authenticate, (req, res) => {
+  const { password } = req.body;
+  if (!password) return res.status(400).json({ error: 'A jelszó megadása kötelező a fiók törléséhez' });
+
+  // Admins cannot delete themselves via this endpoint
+  if (req.user.role === 'admin') return res.status(403).json({ error: 'Admin fiók nem törölhető ezen az úton' });
+
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'Felhasználó nem található' });
+
+  if (!bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ error: 'Helytelen jelszó' });
+  }
+
+  // Check for active subscription — block deletion
+  const subStatus = user.subscription_status || 'none';
+  if (subStatus === 'active') {
+    return res.status(400).json({
+      error: 'Aktív előfizetéssel rendelkezel. Kérjük, először mondd le az előfizetésed a Stripe ügyfélportálon, majd próbáld újra.',
+      has_active_subscription: true
+    });
+  }
+
+  // Delete all user data (same as admin delete)
+  const uid = req.userId;
+  db.prepare('DELETE FROM quote_items WHERE quote_id IN (SELECT id FROM quotes WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM quotes WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM attachments WHERE email_log_id IN (SELECT id FROM email_log WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM email_log WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM inbox_attachments WHERE inbox_id IN (SELECT id FROM inbox WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM inbox WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM sent_imap_attachments WHERE sent_id IN (SELECT id FROM sent_imap WHERE user_id = ?)').run(uid);
+  db.prepare('DELETE FROM sent_imap WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM contacts WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM custom_templates WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM api_keys WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM user_settings WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+  res.json({ success: true, message: 'Fiók és minden adat sikeresen törölve' });
+});
+
 // ─── STRIPE FIZETÉS ─────────────────────────────────────────
 
 // Create Stripe Checkout Session for monthly subscription
