@@ -234,7 +234,7 @@ export default function Contacts() {
               <div>
                 <label className="block text-xs font-medium text-gray-400 mb-1.5">Email *</label>
                 <input
-                  type="email"
+                  type="text"
                   value={form.email}
                   onChange={(e) => setForm(f => ({ ...f, email: e.target.value.trim() }))}
                   placeholder="anna@example.com"
@@ -293,12 +293,14 @@ export default function Contacts() {
 
             <div className="flex items-center gap-3 mt-6">
               <button
+                type="button"
                 onClick={() => setShowForm(false)}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 glass-light transition-all"
               >
                 Mégse
               </button>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={saving || !form.name || !form.email}
                 className="flex-1 btn-primary py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
