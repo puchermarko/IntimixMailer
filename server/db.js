@@ -255,9 +255,13 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_user_uid ON inbox(user_id, 
 try { db.exec('DROP INDEX IF EXISTS idx_sent_imap_uid'); } catch {}
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_imap_user_uid ON sent_imap(user_id, uid)');
 
-// contacts email is unique per user, not globally
+// contacts email is unique per user, not globally — drop any old global indexes
 try { db.exec('DROP INDEX IF EXISTS sqlite_autoindex_contacts_1'); } catch {}
-db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_contacts_user_email ON contacts(user_id, email)');
+try { db.exec('DROP INDEX IF EXISTS idx_contacts_email'); } catch {}
+try { db.exec('DROP INDEX IF EXISTS idx_contacts_unique_email'); } catch {}
+// Drop and recreate to ensure the correct composite unique index
+try { db.exec('DROP INDEX IF EXISTS idx_contacts_user_email'); } catch {}
+db.exec('CREATE UNIQUE INDEX idx_contacts_user_email ON contacts(user_id, email)');
 
 // Setup wizard completed flag
 addColumnIfMissing('users', 'setup_completed', 'INTEGER DEFAULT 0');
