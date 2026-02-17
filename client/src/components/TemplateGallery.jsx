@@ -101,7 +101,7 @@ export default function TemplateGallery() {
     return (
       <div className="space-y-6 fade-in">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">{editingId ? 'Sablon szerkesztése' : 'Új sablon'}</h2>
+          <h2 className="text-lg sm:text-2xl font-bold text-white">{editingId ? 'Sablon szerkesztése' : 'Új sablon'}</h2>
           <button onClick={() => setShowEditor(false)} className="text-gray-400 hover:text-gray-200"><X className="w-5 h-5" /></button>
         </div>
 

@@ -213,7 +213,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
       )}
 
       {/* Statisztikák */}
-      <div className="grid grid-cols-4 gap-2 sm:gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
         <div className="glass rounded-xl p-3 sm:p-4 text-center">
           <p className="text-lg sm:text-2xl font-bold text-white">{(contact.emails?.length || 0) + (contact.sentImap?.length || 0)}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Küldött</p>
@@ -233,72 +233,30 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
       </div>
 
       {/* Fülek */}
-      <div className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setActiveTab('emails')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'emails'
-              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <SendHorizontal className="w-4 h-4" />
-            Küldött ({(contact.emails?.length || 0) + (contact.sentImap?.length || 0)})
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('received')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'received'
-              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <Inbox className="w-4 h-4" />
-            Fogadott ({contact.received?.length || 0})
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('files')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'files'
-              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <Paperclip className="w-4 h-4" />
-            Fájlok ({contact.attachments?.length || 0})
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('quotes')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'quotes'
-              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <Receipt className="w-4 h-4" />
-            Árajánlatok ({contact.quotes?.length || 0})
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('journey')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'journey'
-              ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-              : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Útja
-          </span>
-        </button>
+      <div className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide -mx-1 px-1">
+        {[
+          { id: 'emails', icon: SendHorizontal, label: 'Küldött', count: (contact.emails?.length || 0) + (contact.sentImap?.length || 0) },
+          { id: 'received', icon: Inbox, label: 'Fogadott', count: contact.received?.length || 0 },
+          { id: 'files', icon: Paperclip, label: 'Fájlok', count: contact.attachments?.length || 0 },
+          { id: 'quotes', icon: Receipt, label: 'Árajánlatok', count: contact.quotes?.length || 0 },
+          { id: 'journey', icon: TrendingUp, label: 'Útja', count: null },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+              activeTab === tab.id
+                ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <span className="flex items-center gap-1.5 sm:gap-2">
+              <tab.icon className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{tab.label}</span>
+              {tab.count !== null && <span className="text-[10px] sm:text-xs">({tab.count})</span>}
+            </span>
+          </button>
+        ))}
       </div>
 
       {/* Küldött levelek fül (helyi + IMAP összefésülve) */}
@@ -900,17 +858,17 @@ function ContactJourney({ contact }) {
   return (
     <div className="space-y-5 fade-in">
       {/* Possibility Card */}
-      <div className={`glass rounded-2xl p-6 bg-gradient-to-br ${possibilityBg} relative overflow-hidden`}>
+      <div className={`glass rounded-2xl p-4 sm:p-6 bg-gradient-to-br ${possibilityBg} relative overflow-hidden`}>
         <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
           <Target className="w-full h-full" />
         </div>
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
             <div className="text-center">
-              <p className={`text-2xl font-black ${possibilityColor}`}>{possibility}%</p>
+              <p className={`text-xl sm:text-2xl font-black ${possibilityColor}`}>{possibility}%</p>
             </div>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Zap className={`w-4 h-4 ${possibilityColor}`} />
               <h3 className="text-sm font-bold text-white">{possibilityLabel}</h3>
@@ -946,7 +904,7 @@ function ContactJourney({ contact }) {
       </div>
 
       {/* Email Activity Chart */}
-      <div className="glass rounded-xl p-5">
+      <div className="glass rounded-xl p-3 sm:p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-lg bg-[#1AA19C]/10 flex items-center justify-center">
             <BarChart3 className="w-4 h-4 text-[#2EC4BE]" />
@@ -956,9 +914,9 @@ function ContactJourney({ contact }) {
             <p className="text-[10px] text-gray-500">Küldött és fogadott levelek az elmúlt 30 napban</p>
           </div>
         </div>
-        <div className="h-[200px]">
+        <div className="h-[180px] sm:h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={emailChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <AreaChart data={emailChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
               <defs>
                 <linearGradient id="cjSentGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#1AA19C" stopOpacity={0.3} />
@@ -983,9 +941,9 @@ function ContactJourney({ contact }) {
 
       {/* Quote charts row */}
       {totalQuotes > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
           {/* Quote Status Pie */}
-          <div className="glass rounded-xl p-5">
+          <div className="glass rounded-xl p-3 sm:p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
                 <Receipt className="w-4 h-4 text-amber-400" />
@@ -1012,7 +970,7 @@ function ContactJourney({ contact }) {
 
           {/* Quote Values Bar */}
           {quoteValueData.length > 0 && (
-            <div className="glass rounded-xl p-5">
+            <div className="glass rounded-xl p-3 sm:p-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-purple-400" />
@@ -1043,7 +1001,7 @@ function ContactJourney({ contact }) {
       )}
 
       {/* Timeline */}
-      <div className="glass rounded-xl p-5">
+      <div className="glass rounded-xl p-3 sm:p-5">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
             <Clock className="w-4 h-4 text-purple-400" />

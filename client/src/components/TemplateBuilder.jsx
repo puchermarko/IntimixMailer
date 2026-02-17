@@ -493,11 +493,11 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
   return (
     <div className="space-y-4">
       {/* Mode tabs */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass-light w-fit">
+      <div className="flex items-center gap-1 p-1 rounded-xl glass-light w-fit overflow-x-auto scrollbar-hide">
         {[
           { id: 'visual', label: 'Vizuális', icon: Columns },
           { id: 'html', label: 'HTML', icon: Code },
-          { id: 'plaintext', label: 'Sima szöveg', icon: FileText },
+          { id: 'plaintext', label: 'Szöveg', icon: FileText },
           { id: 'preview', label: 'Előnézet', icon: Eye },
         ].map(tab => (
           <button key={tab.id} type="button"
@@ -505,32 +505,34 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               if (tab.id === 'plaintext') setPlainText(generatePlainText())
               setMode(tab.id)
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${mode === tab.id ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-400 hover:text-gray-200'}`}>
+            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${mode === tab.id ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-400 hover:text-gray-200'}`}>
             <tab.icon className="w-3.5 h-3.5" />
-            {tab.label}
+            <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
 
       {/* ─── Visual Builder ─── */}
       {mode === 'visual' && (
-        <div className="grid grid-cols-12 gap-4">
-          {/* Block palette (left) */}
-          <div className="col-span-2 space-y-2">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4">
+          {/* Block palette — horizontal scroll on mobile, vertical sidebar on desktop */}
+          <div className="lg:col-span-2 space-y-2">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Blokkok</p>
-            {BLOCK_TYPES.map(bt => (
-              <button key={bt.type} type="button" onClick={() => addBlock(bt.type)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg glass-light hover:border-[#1AA19C]/20 border border-transparent text-left transition-all group">
-                <bt.icon className="w-4 h-4 text-gray-500 group-hover:text-[#2EC4BE] transition-colors" />
-                <div>
-                  <p className="text-xs text-gray-300 font-medium">{bt.label}</p>
-                  <p className="text-[10px] text-gray-600">{bt.desc}</p>
-                </div>
-              </button>
-            ))}
+            <div className="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide pb-1 lg:pb-0">
+              {BLOCK_TYPES.map(bt => (
+                <button key={bt.type} type="button" onClick={() => addBlock(bt.type)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg glass-light hover:border-[#1AA19C]/20 border border-transparent text-left transition-all group shrink-0 lg:w-full">
+                  <bt.icon className="w-4 h-4 text-gray-500 group-hover:text-[#2EC4BE] transition-colors" />
+                  <div>
+                    <p className="text-xs text-gray-300 font-medium whitespace-nowrap">{bt.label}</p>
+                    <p className="text-[10px] text-gray-600 whitespace-nowrap hidden lg:block">{bt.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
 
-            {/* Global settings */}
-            <div className="pt-3 border-t border-white/5 space-y-3">
+            {/* Global settings — hidden on mobile to save space */}
+            <div className="hidden lg:block pt-3 border-t border-white/5 space-y-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Beállítások</p>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Háttér</label>
@@ -558,8 +560,8 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               </div>
             </div>
 
-            {/* Variables */}
-            <div className="pt-3 border-t border-white/5">
+            {/* Variables — hidden on mobile */}
+            <div className="hidden lg:block pt-3 border-t border-white/5">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium mb-2">Változók</p>
               <div className="flex flex-wrap gap-1">
                 {['{{name}}', '{{email}}', '{{order_id}}'].map(v => (
@@ -573,12 +575,12 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
           </div>
 
           {/* Canvas (center) */}
-          <div className="col-span-6">
+          <div className="lg:col-span-6">
             <div className="glass rounded-xl p-4 min-h-[400px]">
               {blocks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Plus className="w-10 h-10 text-gray-600 mb-3" />
-                  <p className="text-sm text-gray-400">Adj hozzá blokkokat a bal oldali panelből</p>
+                  <p className="text-sm text-gray-400">Adj hozzá blokkokat a fenti panelből</p>
                   <p className="text-xs text-gray-600 mt-1">Húzd és ejtsd az átrendezéshez</p>
                 </div>
               ) : (
@@ -605,7 +607,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
                           <GripVertical className="w-3 h-3 text-gray-600 cursor-grab" />
                           {info && <info.icon className="w-3 h-3 text-gray-500" />}
                           <span className="text-[10px] text-gray-500 font-medium flex-1">{info?.label || block.type}</span>
-                          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, -1) }}
                               className="p-0.5 text-gray-600 hover:text-gray-300"><ChevronUp className="w-3 h-3" /></button>
                             <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(block.id, 1) }}
@@ -626,9 +628,9 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
             </div>
           </div>
 
-          {/* Settings panel (right) */}
-          <div className="col-span-4">
-            <div className="glass rounded-xl p-4 sticky top-4">
+          {/* Settings panel (right / bottom on mobile) */}
+          <div className="lg:col-span-4">
+            <div className="glass rounded-xl p-3 sm:p-4 sticky top-4">
               {selectedBlock ? (
                 <>
                   <div className="flex items-center justify-between mb-3">
