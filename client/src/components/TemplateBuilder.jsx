@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import {
   Type, Image, MousePointerClick, Minus, MoveVertical, Columns, GripVertical,
   Trash2, ChevronUp, ChevronDown, Copy, AlignLeft, AlignCenter, AlignRight,
-  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText
+  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText, X
 } from 'lucide-react'
 
 // ─── Block Types ─────────────────────────────────────────────
