@@ -7,51 +7,10 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
-    "build:portable": "electron-builder --win portable",
-    "build:nsis": "electron-builder --win nsis"
+    "build": "electron-packager . Pultify --platform=win32 --arch=x64 --out=dist --overwrite --asar --ignore=\"^/dist\" --ignore=\"^/\\.git\" --app-version=1.0.0"
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^25.1.8"
-  },
-  "build": {
-    "appId": "hu.pultify.app",
-    "productName": "Pultify",
-    "copyright": "Copyright © 2025 TM Infotech Kft.",
-    "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        },
-        {
-          "target": "portable",
-          "arch": ["x64"]
-        }
-      ],
-      "icon": "icon.ico",
-      "artifactName": "Pultify-Setup-${version}.${ext}"
-    },
-    "nsis": {
-      "oneClick": true,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Pultify"
-    },
-    "portable": {
-      "artifactName": "Pultify-Portable-${version}.${ext}"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "icon.ico",
-      "icon.png"
-    ]
+    "electron": "33.2.1",
+    "@electron/packager": "^18.3.5"
   }
 }

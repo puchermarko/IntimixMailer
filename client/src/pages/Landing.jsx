@@ -593,14 +593,14 @@ export default function Landing() {
                 Töltsd le a Pultify asztali alkalmazást Windows-ra. Gyors hozzáférés közvetlenül az asztalodról, értesítésekkel és rendszertálca támogatással.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-3">
-                <a href="/downloads/Pultify-Setup.exe" download
+                <a href="/downloads/Pultify-Setup.zip" download
                   className="magnetic-btn btn-primary px-6 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2.5 w-full sm:w-auto justify-center">
                   <Download className="w-4 h-4" />
-                  Letöltés Windows-ra
+                  Letöltés Windows-ra (.zip)
                 </a>
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> Windows 10+</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> ~180 MB</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> ~110 MB</span>
                 </div>
               </div>
             </div>

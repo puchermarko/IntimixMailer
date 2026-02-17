@@ -7,3 +7,6 @@ server/data.db-shm
 server/data.db-wal
 server/uploads/
 downloads/*.exe
+downloads/*.zip
+desktop/dist/
+desktop/node_modules/
