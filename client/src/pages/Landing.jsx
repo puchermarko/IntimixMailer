@@ -4,7 +4,7 @@ import {
   Send, Mail, Users, FileText, Shield, Zap,
   ArrowRight, Check, Star, ChevronDown, Globe,
   Inbox, PenLine, BookUser, CreditCard, Sparkles, Heart,
-  MousePointer, Play, BarChart3, Clock, Layers
+  MousePointer, Play, BarChart3, Clock, Layers, Monitor, Download
 } from 'lucide-react'
 
 const features = [
@@ -566,6 +566,43 @@ export default function Landing() {
                 className="magnetic-btn btn-primary px-10 py-4 rounded-xl text-white font-bold text-base flex items-center gap-2.5 mx-auto">
                 Ingyenes Próba Indítása <ArrowRight className="w-5 h-5" />
               </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ DESKTOP APP ═══ */}
+      <section className="py-16 sm:py-20 px-4 relative">
+        <div className="max-w-4xl mx-auto">
+          <div className="glass rounded-2xl p-8 sm:p-10 flex flex-col md:flex-row items-center gap-8 card-hover relative overflow-hidden">
+            {/* Background decoration */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#1AA19C]/5 rounded-full blur-[80px] pointer-events-none" />
+
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-[#1AA19C]/20 to-[#2EC4BE]/10 flex items-center justify-center shrink-0 relative">
+              <Monitor className="w-10 h-10 sm:w-12 sm:h-12 text-[#2EC4BE]" />
+              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#1a1d23] border border-white/10 flex items-center justify-center">
+                <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#0078D4]" fill="currentColor">
+                  <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
+                </svg>
+              </div>
+            </div>
+
+            <div className="flex-1 text-center md:text-left">
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Windows Asztali Alkalmazás</h3>
+              <p className="text-sm sm:text-base text-gray-400 leading-relaxed mb-5">
+                Töltsd le a Pultify asztali alkalmazást Windows-ra. Gyors hozzáférés közvetlenül az asztalodról, értesítésekkel és rendszertálca támogatással.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <a href="/downloads/Pultify-Setup.exe" download
+                  className="magnetic-btn btn-primary px-6 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2.5 w-full sm:w-auto justify-center">
+                  <Download className="w-4 h-4" />
+                  Letöltés Windows-ra
+                </a>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> Windows 10+</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> ~80 MB</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

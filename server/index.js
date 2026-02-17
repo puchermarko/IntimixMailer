@@ -2713,6 +2713,12 @@ app.post('/api/backup/import', authenticate, express.json({ limit: '100mb' }), (
   }
 });
 
+// Desktop app letöltések kiszolgálása
+const downloadsDir = path.join(__dirname, '..', 'downloads');
+if (fs.existsSync(downloadsDir)) {
+  app.use('/downloads', express.static(downloadsDir));
+}
+
 // Buildelt frontend kiszolgálása prodban
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {
