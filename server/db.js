@@ -255,13 +255,43 @@ db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_inbox_user_uid ON inbox(user_id, 
 try { db.exec('DROP INDEX IF EXISTS idx_sent_imap_uid'); } catch {}
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sent_imap_user_uid ON sent_imap(user_id, uid)');
 
-// contacts email is unique per user, not globally — drop any old global indexes
-try { db.exec('DROP INDEX IF EXISTS sqlite_autoindex_contacts_1'); } catch {}
-try { db.exec('DROP INDEX IF EXISTS idx_contacts_email'); } catch {}
-try { db.exec('DROP INDEX IF EXISTS idx_contacts_unique_email'); } catch {}
-// Drop and recreate to ensure the correct composite unique index
+// contacts email must be unique per user, not globally — migrate table if old autoindexes exist
+try {
+  const autoIdx = db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='contacts' AND name LIKE 'sqlite_autoindex_contacts_%'").all();
+  if (autoIdx.length > 0) {
+    console.log('[DB MIGRATION] Recreating contacts table to remove global UNIQUE constraint on email...');
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS contacts_new (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT '',
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        company TEXT DEFAULT '',
+        vat_id TEXT DEFAULT '',
+        street TEXT DEFAULT '',
+        street_number TEXT DEFAULT '',
+        city TEXT DEFAULT '',
+        zip TEXT DEFAULT '',
+        country TEXT DEFAULT '',
+        region TEXT DEFAULT '',
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      );
+      INSERT OR IGNORE INTO contacts_new SELECT id, user_id, name, email, phone, notes,
+        COALESCE(company,''), COALESCE(vat_id,''), COALESCE(street,''), COALESCE(street_number,''),
+        COALESCE(city,''), COALESCE(zip,''), COALESCE(country,''), COALESCE(region,''),
+        created_at, updated_at FROM contacts;
+      DROP TABLE contacts;
+      ALTER TABLE contacts_new RENAME TO contacts;
+    `);
+    console.log('[DB MIGRATION] contacts table recreated successfully.');
+  }
+} catch (e) { console.error('[DB MIGRATION] contacts migration error:', e.message); }
 try { db.exec('DROP INDEX IF EXISTS idx_contacts_user_email'); } catch {}
 db.exec('CREATE UNIQUE INDEX idx_contacts_user_email ON contacts(user_id, email)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id)');
 
 // Setup wizard completed flag
 addColumnIfMissing('users', 'setup_completed', 'INTEGER DEFAULT 0');
