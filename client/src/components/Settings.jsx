@@ -275,7 +275,7 @@ export default function Settings({ onStartTour }) {
 
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-6 mt-2">
         <h2 className="text-xl sm:text-2xl font-bold text-white">Beállítások</h2>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
       </div>
