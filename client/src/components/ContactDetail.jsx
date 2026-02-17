@@ -162,7 +162,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   return (
     <div className="fade-in">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center mt-2 justify-between gap-3">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
           <button onClick={onBack} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all shrink-0">
             <ArrowLeft className="w-5 h-5" />
