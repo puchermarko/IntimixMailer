@@ -738,7 +738,11 @@ app.get('/api/contacts/:id', authenticate, (req, res) => {
     ...sentImapAttachments
   ];
 
-  res.json({ ...contact, emails, attachments: allAttachments, received, sentImap });
+  const quotes = db.prepare(
+    "SELECT id, quote_number, contact_name, contact_email, currency, total, status, valid_until, created_at FROM quotes WHERE contact_email = ? AND user_id = ? ORDER BY created_at DESC"
+  ).all(contact.email, req.userId);
+
+  res.json({ ...contact, emails, attachments: allAttachments, received, sentImap, quotes });
 });
 
 // Új kapcsolat létrehozása
