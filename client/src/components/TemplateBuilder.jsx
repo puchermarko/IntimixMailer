@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import {
   Type, Image, MousePointerClick, Minus, MoveVertical, Columns, GripVertical,
   Trash2, ChevronUp, ChevronDown, Copy, AlignLeft, AlignCenter, AlignRight,
@@ -15,8 +15,11 @@ const BLOCK_TYPES = [
   { type: 'columns', label: 'Oszlopok', icon: Columns, desc: '2 oszlop' },
 ]
 
+let _blockId = 0
+const uid = () => `block-${Date.now()}-${++_blockId}`
+
 const createBlock = (type) => {
-  const id = crypto.randomUUID()
+  const id = uid()
   switch (type) {
     case 'text':
       return { id, type, content: '<p>Szerkeszd ezt a szöveget...</p>', align: 'left', fontSize: 15, color: '#333333', bgColor: '', padding: 20 }
@@ -349,49 +352,79 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId)
 
-  const updateBlocks = useCallback((newBlocks) => {
+  const applyBlocks = (newBlocks) => {
     setBlocks(newBlocks)
     const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
     setHtmlSource(html)
     onHtmlChange?.(html)
     onBlocksChange?.(newBlocks)
-  }, [bodyBg, contentBg, contentWidth, onHtmlChange, onBlocksChange])
+  }
 
   const addBlock = (type) => {
     const block = createBlock(type)
-    const newBlocks = [...blocks, block]
-    updateBlocks(newBlocks)
+    setBlocks(prev => {
+      const newBlocks = [...prev, block]
+      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+      setHtmlSource(html)
+      onHtmlChange?.(html)
+      onBlocksChange?.(newBlocks)
+      return newBlocks
+    })
     setSelectedBlockId(block.id)
   }
 
   const updateBlock = (updated) => {
-    const newBlocks = blocks.map(b => b.id === updated.id ? updated : b)
-    updateBlocks(newBlocks)
+    setBlocks(prev => {
+      const newBlocks = prev.map(b => b.id === updated.id ? updated : b)
+      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+      setHtmlSource(html)
+      onHtmlChange?.(html)
+      onBlocksChange?.(newBlocks)
+      return newBlocks
+    })
   }
 
   const deleteBlock = (id) => {
-    const newBlocks = blocks.filter(b => b.id !== id)
-    updateBlocks(newBlocks)
+    setBlocks(prev => {
+      const newBlocks = prev.filter(b => b.id !== id)
+      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+      setHtmlSource(html)
+      onHtmlChange?.(html)
+      onBlocksChange?.(newBlocks)
+      return newBlocks
+    })
     if (selectedBlockId === id) setSelectedBlockId(null)
   }
 
   const duplicateBlock = (id) => {
-    const idx = blocks.findIndex(b => b.id === id)
-    if (idx === -1) return
-    const clone = { ...blocks[idx], id: crypto.randomUUID() }
-    const newBlocks = [...blocks.slice(0, idx + 1), clone, ...blocks.slice(idx + 1)]
-    updateBlocks(newBlocks)
-    setSelectedBlockId(clone.id)
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id)
+      if (idx === -1) return prev
+      const clone = { ...prev[idx], id: uid() }
+      const newBlocks = [...prev.slice(0, idx + 1), clone, ...prev.slice(idx + 1)]
+      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+      setHtmlSource(html)
+      onHtmlChange?.(html)
+      onBlocksChange?.(newBlocks)
+      setSelectedBlockId(clone.id)
+      return newBlocks
+    })
   }
 
   const moveBlock = (id, dir) => {
-    const idx = blocks.findIndex(b => b.id === id)
-    if (idx === -1) return
-    const newIdx = idx + dir
-    if (newIdx < 0 || newIdx >= blocks.length) return
-    const newBlocks = [...blocks]
-    ;[newBlocks[idx], newBlocks[newIdx]] = [newBlocks[newIdx], newBlocks[idx]]
-    updateBlocks(newBlocks)
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === id)
+      if (idx === -1) return prev
+      const newIdx = idx + dir
+      if (newIdx < 0 || newIdx >= prev.length) return prev
+      const newBlocks = [...prev]
+      ;[newBlocks[idx], newBlocks[newIdx]] = [newBlocks[newIdx], newBlocks[idx]]
+      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+      setHtmlSource(html)
+      onHtmlChange?.(html)
+      onBlocksChange?.(newBlocks)
+      return newBlocks
+    })
   }
 
   // Drag and drop
@@ -413,7 +446,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
     const newBlocks = [...blocks]
     const [moved] = newBlocks.splice(dragIdx, 1)
     newBlocks.splice(dropIdx, 0, moved)
-    updateBlocks(newBlocks)
+    applyBlocks(newBlocks)
     setDragOverIdx(null)
     dragItem.current = null
   }
@@ -490,25 +523,25 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Háttér</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); updateBlocks(blocks) }}
+                  <input type="color" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); applyBlocks(blocks) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
-                  <input type="text" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); updateBlocks(blocks) }}
+                  <input type="text" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); applyBlocks(blocks) }}
                     className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Tartalom háttér</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={contentBg} onChange={(e) => { setContentBg(e.target.value); updateBlocks(blocks) }}
+                  <input type="color" value={contentBg} onChange={(e) => { setContentBg(e.target.value); applyBlocks(blocks) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
-                  <input type="text" value={contentBg} onChange={(e) => { setContentBg(e.target.value); updateBlocks(blocks) }}
+                  <input type="text" value={contentBg} onChange={(e) => { setContentBg(e.target.value); applyBlocks(blocks) }}
                     className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Szélesség: {contentWidth}px</label>
                 <input type="range" min={400} max={800} value={contentWidth}
-                  onChange={(e) => { setContentWidth(parseInt(e.target.value)); updateBlocks(blocks) }}
+                  onChange={(e) => { setContentWidth(parseInt(e.target.value)); applyBlocks(blocks) }}
                   className="w-full accent-[#1AA19C]" />
               </div>
             </div>
