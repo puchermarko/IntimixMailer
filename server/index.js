@@ -12,6 +12,7 @@ import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import PDFDocument from 'pdfkit';
 import Stripe from 'stripe';
+import bcrypt from 'bcryptjs';
 import db from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -129,6 +130,20 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), (req,
 });
 
 app.use(express.json());
+
+// ─── MIGRATE PLAIN-TEXT PASSWORDS TO BCRYPT ─────────────────
+(() => {
+  const users = db.prepare('SELECT id, password FROM users').all();
+  let migrated = 0;
+  for (const u of users) {
+    if (!u.password.startsWith('$2')) {
+      const hashed = bcrypt.hashSync(u.password, 10);
+      db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, u.id);
+      migrated++;
+    }
+  }
+  if (migrated > 0) console.log(`[security] Migrated ${migrated} plain-text password(s) to bcrypt.`);
+})();
 
 // ─── AUTH MIDDLEWARE ─────────────────────────────────────────
 
@@ -270,7 +285,7 @@ app.post('/api/login', (req, res) => {
 
   // User login (from DB)
   const user = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(email);
-  if (user && user.password === password) {
+  if (user && bcrypt.compareSync(password, user.password)) {
     // Auto-expire trial at login time
     let subStatus = user.subscription_status || 'none';
     if (subStatus === 'trial' && user.trial_end) {
@@ -318,7 +333,8 @@ app.post('/api/register', (req, res) => {
   const id = randomUUID();
   const trialStart = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
-  db.prepare('INSERT INTO users (id, email, password, name, subscription_status, trial_start, trial_end) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, email, password, name, 'trial', trialStart, trialEnd);
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  db.prepare('INSERT INTO users (id, email, password, name, subscription_status, trial_start, trial_end) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, email, hashedPassword, name, 'trial', trialStart, trialEnd);
 
   // Auto-login after registration
   const token = jwt.sign({ role: 'user', userId: id, email }, JWT_SECRET, { expiresIn: '24h' });
@@ -380,7 +396,8 @@ app.post('/api/admin/users', authenticate, adminOnly, (req, res) => {
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'User with this email already exists' });
   const id = randomUUID();
-  db.prepare('INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)').run(id, email, password, name || '');
+  const hashedPw = bcrypt.hashSync(password, 10);
+  db.prepare('INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)').run(id, email, hashedPw, name || '');
   const user = db.prepare('SELECT id, email, name, active, created_at FROM users WHERE id = ?').get(id);
   res.status(201).json(user);
 });
@@ -394,8 +411,9 @@ app.put('/api/admin/users/:id', authenticate, adminOnly, (req, res) => {
     const dup = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, req.params.id);
     if (dup) return res.status(409).json({ error: 'Another user with this email already exists' });
   }
+  const updatedPw = password ? bcrypt.hashSync(password, 10) : user.password;
   db.prepare("UPDATE users SET email = ?, password = ?, name = ?, active = ?, updated_at = datetime('now') WHERE id = ?").run(
-    email || user.email, password || user.password, name ?? user.name, active ?? user.active, req.params.id
+    email || user.email, updatedPw, name ?? user.name, active ?? user.active, req.params.id
   );
   const updated = db.prepare('SELECT id, email, name, active, created_at, updated_at FROM users WHERE id = ?').get(req.params.id);
   res.json(updated);
