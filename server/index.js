@@ -1394,20 +1394,20 @@ app.get('/api/templates', authenticate, (req, res) => {
 });
 
 app.post('/api/templates', authenticate, (req, res) => {
-  const { name, description, category, subject, html } = req.body;
+  const { name, description, category, subject, html, blocks_json } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
   const id = randomUUID();
-  db.prepare('INSERT INTO custom_templates (id, user_id, name, description, category, subject, html) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(id, req.userId, name, description || '', category || 'Custom', subject || '', html || '');
-  res.json({ id, name, description, category, subject, html });
+  db.prepare('INSERT INTO custom_templates (id, user_id, name, description, category, subject, html, blocks_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, req.userId, name, description || '', category || 'Custom', subject || '', html || '', blocks_json || '');
+  res.json({ id, name, description, category, subject, html, blocks_json });
 });
 
 app.put('/api/templates/:id', authenticate, (req, res) => {
-  const { name, description, category, subject, html } = req.body;
+  const { name, description, category, subject, html, blocks_json } = req.body;
   const existing = db.prepare('SELECT id FROM custom_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Template not found' });
-  db.prepare('UPDATE custom_templates SET name = ?, description = ?, category = ?, subject = ?, html = ?, updated_at = datetime(\'now\') WHERE id = ?')
-    .run(name, description || '', category || 'Custom', subject || '', html || '', req.params.id);
+  db.prepare('UPDATE custom_templates SET name = ?, description = ?, category = ?, subject = ?, html = ?, blocks_json = ?, updated_at = datetime(\'now\') WHERE id = ?')
+    .run(name, description || '', category || 'Custom', subject || '', html || '', blocks_json || '', req.params.id);
   res.json({ success: true });
 });
 

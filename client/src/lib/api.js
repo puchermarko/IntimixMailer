@@ -331,22 +331,22 @@ export async function getCustomTemplates() {
   return data
 }
 
-export async function createTemplate({ name, description, category, subject, html }) {
+export async function createTemplate({ name, description, category, subject, html, blocks_json }) {
   const res = await fetch(`${API_BASE}/templates`, {
     method: 'POST',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description, category, subject, html })
+    body: JSON.stringify({ name, description, category, subject, html, blocks_json })
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to create template')
   return data
 }
 
-export async function updateTemplate(id, { name, description, category, subject, html }) {
+export async function updateTemplate(id, { name, description, category, subject, html, blocks_json }) {
   const res = await fetch(`${API_BASE}/templates/${id}`, {
     method: 'PUT',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, description, category, subject, html })
+    body: JSON.stringify({ name, description, category, subject, html, blocks_json })
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to update template')

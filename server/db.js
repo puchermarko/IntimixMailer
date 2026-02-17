@@ -228,6 +228,9 @@ for (const [col, def] of addressCols) addColumnIfMissing('contacts', col, def);
 // Quotes title mező
 addColumnIfMissing('quotes', 'title', "TEXT DEFAULT ''");
 
+// Template builder blocks persistence
+addColumnIfMissing('custom_templates', 'blocks_json', "TEXT DEFAULT ''");
+
 // Multi-tenant migráció: user_id hozzáadása meglévő táblákhoz
 const tenantTables = ['contacts', 'email_log', 'inbox', 'sent_imap', 'custom_templates', 'api_keys', 'quotes'];
 for (const table of tenantTables) {

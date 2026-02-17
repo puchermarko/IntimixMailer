@@ -16,7 +16,7 @@ export default function TemplateGallery() {
   const [copiedId, setCopiedId] = useState(null)
   const [showEditor, setShowEditor] = useState(false)
   const [editingId, setEditingId] = useState(null)
-  const [form, setForm] = useState({ name: '', description: '', category: 'Custom', subject: '', html: '' })
+  const [form, setForm] = useState({ name: '', description: '', category: 'Custom', subject: '', html: '', blocks_json: '' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -57,13 +57,13 @@ export default function TemplateGallery() {
 
   const openNew = () => {
     setEditingId(null)
-    setForm({ name: '', description: '', category: 'Custom', subject: '', html: '' })
+    setForm({ name: '', description: '', category: 'Custom', subject: '', html: '', blocks_json: '' })
     setShowEditor(true)
   }
 
   const openEdit = (template) => {
     setEditingId(template.id)
-    setForm({ name: template.name, description: template.description || '', category: template.category || 'Custom', subject: template.subject || '', html: template.html || '' })
+    setForm({ name: template.name, description: template.description || '', category: template.category || 'Custom', subject: template.subject || '', html: template.html || '', blocks_json: template.blocks_json || '' })
     setShowEditor(true)
   }
 
@@ -133,8 +133,11 @@ export default function TemplateGallery() {
 
         {/* Template Builder */}
         <TemplateBuilder
+          key={editingId || 'new'}
           initialHtml={form.html}
+          initialBlocks={form.blocks_json ? (() => { try { return JSON.parse(form.blocks_json) } catch { return undefined } })() : undefined}
           onHtmlChange={(html) => setForm(f => ({ ...f, html }))}
+          onBlocksChange={(blocks) => setForm(f => ({ ...f, blocks_json: JSON.stringify(blocks) }))}
         />
 
         {/* Save buttons */}

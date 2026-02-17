@@ -337,37 +337,61 @@ function BlockPreview({ block }) {
   }
 }
 
+// ─── Extract settings from saved HTML ───────────────────────
+function parseSettingsFromHtml(html) {
+  const settings = { bodyBg: '#f4f4f5', contentBg: '#ffffff', contentWidth: 600 }
+  if (!html) return settings
+  const bodyMatch = html.match(/background-color:\s*(#[0-9a-fA-F]{3,8})/)
+  if (bodyMatch) settings.bodyBg = bodyMatch[1]
+  const containerMatch = html.match(/class="email-container"[^>]*style="[^"]*background-color:\s*(#[0-9a-fA-F]{3,8})/)
+  if (containerMatch) settings.contentBg = containerMatch[1]
+  const widthMatch = html.match(/class="email-container"\s+width="(\d+)"/)
+  if (widthMatch) settings.contentWidth = parseInt(widthMatch[1])
+  return settings
+}
+
 // ─── Main Template Builder ──────────────────────────────────
 export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChange, onBlocksChange }) {
+  const initSettings = parseSettingsFromHtml(initialHtml)
   const [blocks, setBlocks] = useState(initialBlocks || [])
   const [selectedBlockId, setSelectedBlockId] = useState(null)
   const [mode, setMode] = useState('visual') // 'visual' | 'html' | 'plaintext' | 'preview'
   const [htmlSource, setHtmlSource] = useState(initialHtml || '')
   const [plainText, setPlainText] = useState('')
-  const [bodyBg, setBodyBg] = useState('#f4f4f5')
-  const [contentBg, setContentBg] = useState('#ffffff')
-  const [contentWidth, setContentWidth] = useState(600)
+  const [bodyBg, setBodyBg] = useState(initSettings.bodyBg)
+  const [contentBg, setContentBg] = useState(initSettings.contentBg)
+  const [contentWidth, setContentWidth] = useState(initSettings.contentWidth)
   const [dragOverIdx, setDragOverIdx] = useState(null)
   const dragItem = useRef(null)
 
+  // Refs keep the latest values accessible inside functional setState callbacks
+  const bodyBgRef = useRef(bodyBg)
+  const contentBgRef = useRef(contentBg)
+  const contentWidthRef = useRef(contentWidth)
+  const setBodyBgTracked = (v) => { bodyBgRef.current = v; setBodyBg(v) }
+  const setContentBgTracked = (v) => { contentBgRef.current = v; setContentBg(v) }
+  const setContentWidthTracked = (v) => { contentWidthRef.current = v; setContentWidth(v) }
+
   const selectedBlock = blocks.find(b => b.id === selectedBlockId)
 
-  const applyBlocks = (newBlocks) => {
-    setBlocks(newBlocks)
-    const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
+  const emitHtml = (newBlocks, bgOverride, cbgOverride, cwOverride) => {
+    const html = blocksToHtml(newBlocks, bgOverride ?? bodyBgRef.current, cbgOverride ?? contentBgRef.current, cwOverride ?? contentWidthRef.current)
     setHtmlSource(html)
     onHtmlChange?.(html)
     onBlocksChange?.(newBlocks)
+    return html
+  }
+
+  const applyBlocks = (newBlocks, overrides = {}) => {
+    setBlocks(newBlocks)
+    emitHtml(newBlocks, overrides.bodyBg, overrides.contentBg, overrides.contentWidth)
   }
 
   const addBlock = (type) => {
     const block = createBlock(type)
     setBlocks(prev => {
       const newBlocks = [...prev, block]
-      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
-      setHtmlSource(html)
-      onHtmlChange?.(html)
-      onBlocksChange?.(newBlocks)
+      emitHtml(newBlocks)
       return newBlocks
     })
     setSelectedBlockId(block.id)
@@ -376,10 +400,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
   const updateBlock = (updated) => {
     setBlocks(prev => {
       const newBlocks = prev.map(b => b.id === updated.id ? updated : b)
-      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
-      setHtmlSource(html)
-      onHtmlChange?.(html)
-      onBlocksChange?.(newBlocks)
+      emitHtml(newBlocks)
       return newBlocks
     })
   }
@@ -387,10 +408,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
   const deleteBlock = (id) => {
     setBlocks(prev => {
       const newBlocks = prev.filter(b => b.id !== id)
-      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
-      setHtmlSource(html)
-      onHtmlChange?.(html)
-      onBlocksChange?.(newBlocks)
+      emitHtml(newBlocks)
       return newBlocks
     })
     if (selectedBlockId === id) setSelectedBlockId(null)
@@ -402,10 +420,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
       if (idx === -1) return prev
       const clone = { ...prev[idx], id: uid() }
       const newBlocks = [...prev.slice(0, idx + 1), clone, ...prev.slice(idx + 1)]
-      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
-      setHtmlSource(html)
-      onHtmlChange?.(html)
-      onBlocksChange?.(newBlocks)
+      emitHtml(newBlocks)
       setSelectedBlockId(clone.id)
       return newBlocks
     })
@@ -419,10 +434,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
       if (newIdx < 0 || newIdx >= prev.length) return prev
       const newBlocks = [...prev]
       ;[newBlocks[idx], newBlocks[newIdx]] = [newBlocks[newIdx], newBlocks[idx]]
-      const html = blocksToHtml(newBlocks, bodyBg, contentBg, contentWidth)
-      setHtmlSource(html)
-      onHtmlChange?.(html)
-      onBlocksChange?.(newBlocks)
+      emitHtml(newBlocks)
       return newBlocks
     })
   }
@@ -523,25 +535,25 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Háttér</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); applyBlocks(blocks) }}
+                  <input type="color" value={bodyBg} onChange={(e) => { setBodyBgTracked(e.target.value); applyBlocks(blocks, { bodyBg: e.target.value }) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
-                  <input type="text" value={bodyBg} onChange={(e) => { setBodyBg(e.target.value); applyBlocks(blocks) }}
+                  <input type="text" value={bodyBg} onChange={(e) => { setBodyBgTracked(e.target.value); applyBlocks(blocks, { bodyBg: e.target.value }) }}
                     className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Tartalom háttér</label>
                 <div className="flex items-center gap-2">
-                  <input type="color" value={contentBg} onChange={(e) => { setContentBg(e.target.value); applyBlocks(blocks) }}
+                  <input type="color" value={contentBg} onChange={(e) => { setContentBgTracked(e.target.value); applyBlocks(blocks, { contentBg: e.target.value }) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
-                  <input type="text" value={contentBg} onChange={(e) => { setContentBg(e.target.value); applyBlocks(blocks) }}
+                  <input type="text" value={contentBg} onChange={(e) => { setContentBgTracked(e.target.value); applyBlocks(blocks, { contentBg: e.target.value }) }}
                     className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Szélesség: {contentWidth}px</label>
                 <input type="range" min={400} max={800} value={contentWidth}
-                  onChange={(e) => { setContentWidth(parseInt(e.target.value)); applyBlocks(blocks) }}
+                  onChange={(e) => { const v = parseInt(e.target.value); setContentWidthTracked(v); applyBlocks(blocks, { contentWidth: v }) }}
                   className="w-full accent-[#1AA19C]" />
               </div>
             </div>
