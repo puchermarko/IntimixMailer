@@ -3,7 +3,7 @@ import {
   Send as SendIcon, Search, Paperclip, ChevronLeft, ChevronRight,
   ArrowLeft, Download, User, Clock, FileText, X, RefreshCw, Loader2
 } from 'lucide-react'
-import { getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent, getEnvConfig } from '../lib/api'
+import { getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent, getEnvConfig, getDownloadToken } from '../lib/api'
 
 export default function SentView() {
   const [emails, setEmails] = useState([])
@@ -21,7 +21,8 @@ export default function SentView() {
   const limit = 50
   const iframeRef = useRef(null)
 
-  const token = localStorage.getItem('intimix_token')
+  const [dlToken, setDlToken] = useState('')
+  useEffect(() => { getDownloadToken().then(t => setDlToken(t)).catch(() => {}) }, [])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -114,8 +115,8 @@ export default function SentView() {
   }
 
   const getDetailAttUrl = (attId) => {
-    if (selectedSource === 'imap') return `${getSentImapAttachmentUrl(attId)}?token=${token}`
-    return `${getAttachmentUrl(attId)}?token=${token}`
+    if (selectedSource === 'imap') return `${getSentImapAttachmentUrl(attId)}?token=${dlToken}`
+    return `${getAttachmentUrl(attId)}?token=${dlToken}`
   }
 
   const totalPages = Math.ceil(total / limit)

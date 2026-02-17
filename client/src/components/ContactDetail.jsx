@@ -1,6 +1,6 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl } from '../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken } from '../lib/api'
 import toast from 'react-hot-toast'
 import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
@@ -48,7 +48,11 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   const [sentImapDetail, setSentImapDetail] = useState(null)
   const [loadingSentImap, setLoadingSentImap] = useState(false)
 
-  const token = localStorage.getItem('intimix_token')
+  const [dlToken, setDlToken] = useState('')
+
+  useEffect(() => {
+    getDownloadToken().then(t => setDlToken(t)).catch(() => {})
+  }, [contactId])
 
   useEffect(() => {
     const load = async () => {
@@ -84,11 +88,11 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   }
 
   const getAuthUrl = (id) => {
-    return `${getAttachmentUrl(id)}?token=${token}`
+    return `${getAttachmentUrl(id)}?token=${dlToken}`
   }
 
   const getInboxAuthUrl = (id) => {
-    return `${getInboxAttachmentUrl(id)}?token=${token}`
+    return `${getInboxAttachmentUrl(id)}?token=${dlToken}`
   }
 
   const handleExpandReceived = async (emailId) => {
@@ -128,7 +132,7 @@ export default function ContactDetail({ contactId, onBack, onEdit }) {
   }
 
   const getSentImapAuthUrl = (id) => {
-    return `${getSentImapAttachmentUrl(id)}?token=${token}`
+    return `${getSentImapAttachmentUrl(id)}?token=${dlToken}`
   }
 
   const getAttUrl = (att) => {

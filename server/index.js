@@ -13,6 +13,7 @@ import { simpleParser } from 'mailparser';
 import PDFDocument from 'pdfkit';
 import Stripe from 'stripe';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import db from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,13 +56,26 @@ function getCidAttachments(html, smtpDomain) {
 const app = express();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.use(cors());
+app.use(cors({
+  origin: ['https://marketing.intimix.hu', 'https://pult.lakicsfesto.com', 'https://pultify.hu'],
+  credentials: true
+}));
+
+// ─── RATE LIMITING ──────────────────────────────────────────
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Túl sok bejelentkezési kísérlet. Próbáld újra 15 perc múlva.' }, standardHeaders: true, legacyHeaders: false });
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: { error: 'Túl sok regisztrációs kísérlet. Próbáld újra később.' }, standardHeaders: true, legacyHeaders: false });
+const sendLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { error: 'Túl sok email küldés. Próbáld újra később.' }, standardHeaders: true, legacyHeaders: false });
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'API rate limit exceeded. Try again later.' }, standardHeaders: true, legacyHeaders: false });
 
 const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY, ENCRYPTION_KEY } = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+const ADMIN_PASSWORD_HASH = ADMIN_PASSWORD ? bcrypt.hashSync(ADMIN_PASSWORD, 10) : null;
 
 // ─── AES-256-GCM ENCRYPTION FOR SENSITIVE SETTINGS ──────────
 const ENC_ALGORITHM = 'aes-256-gcm';
+if (!ENCRYPTION_KEY) {
+  console.warn('[SECURITY WARNING] ENCRYPTION_KEY is not set in .env — falling back to JWT_SECRET. Set a dedicated ENCRYPTION_KEY for production!');
+}
 const ENC_KEY = scryptSync(ENCRYPTION_KEY || JWT_SECRET, 'intimix-salt', 32);
 const SENSITIVE_SETTING_KEYS = ['smtp_pass', 'imap_pass'];
 
@@ -321,12 +335,12 @@ function logEmail({ userId, contactId, recipientEmail, subject, html, messageId,
 
 // ─── LOGIN ──────────────────────────────────────────────────
 
-app.post('/api/login', (req, res) => {
+app.post('/api/login', authLimiter, (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   // Admin login (from .env)
-  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+  if (email === ADMIN_EMAIL && ADMIN_PASSWORD_HASH && bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) {
     const token = jwt.sign({ role: 'admin', userId: '__admin__', email }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ token, email, role: 'admin', name: 'Admin' });
   }
@@ -353,7 +367,7 @@ app.post('/api/login', (req, res) => {
 
 // ─── REGISTRATION ────────────────────────────────────────────
 
-app.post('/api/register', (req, res) => {
+app.post('/api/register', registerLimiter, (req, res) => {
   // Check if registration is enabled
   if (getAppSetting('registration_enabled', 'true') !== 'true') {
     return res.status(403).json({ error: 'A regisztráció jelenleg nem elérhető.' });
@@ -541,7 +555,7 @@ app.put('/api/admin/users/:id/subscription', authenticate, adminOnly, (req, res)
 
 // User: get own subscription info
 app.get('/api/subscription', authenticate, (req, res) => {
-  if (req.role === 'admin') return res.json({ status: 'admin', type: 'admin' });
+  if (req.user.role === 'admin') return res.json({ status: 'admin', type: 'admin' });
   const user = db.prepare('SELECT subscription_status, subscription_type, trial_start, trial_end, subscription_start, subscription_end FROM users WHERE id = ?').get(req.userId);
   if (!user) return res.status(404).json({ error: 'User not found' });
   // Check if trial has expired
@@ -783,17 +797,31 @@ app.delete('/api/contacts/:id', authenticate, requireSubscription, (req, res) =>
 
 // ─── CSATOLMÁNY KISZOLGÁLÁS - fájlok letöltése ──────────────
 
-app.get('/api/attachments/:id/download', (req, res) => {
-  // Accept token from query param (for img/iframe src) or Authorization header
-  const token = req.query.token || req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    jwt.verify(token, JWT_SECRET);
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
+// Short-lived download tokens (5 min) — avoids leaking full JWT in URLs
+app.get('/api/download-token', authenticate, (req, res) => {
+  const dlToken = jwt.sign({ purpose: 'download', userId: req.userId }, JWT_SECRET, { expiresIn: '5m' });
+  res.json({ token: dlToken });
+});
 
-  const att = db.prepare('SELECT * FROM attachments WHERE id = ?').get(req.params.id);
+// Helper: extract userId from token (query param or header), matching authenticate logic
+function getUserIdFromToken(req) {
+  const token = req.query.token || req.headers.authorization?.split(' ')[1];
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    return decoded.impersonating || decoded.userId || null;
+  } catch {
+    return null;
+  }
+}
+
+app.get('/api/attachments/:id/download', (req, res) => {
+  const userId = getUserIdFromToken(req);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+  const att = db.prepare(
+    'SELECT a.* FROM attachments a JOIN email_log e ON a.email_log_id = e.id WHERE a.id = ? AND e.user_id = ?'
+  ).get(req.params.id, userId);
   if (!att) return res.status(404).json({ error: 'Attachment not found' });
 
   const fp = path.join(UPLOADS_DIR, att.stored_path);
@@ -881,11 +909,12 @@ app.get('/api/sent-imap/:id', authenticate, (req, res) => {
 
 // IMAP kimenő levél csatolmányának letöltése
 app.get('/api/sent-imap-attachments/:id/download', (req, res) => {
-  const token = req.query.token || req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try { jwt.verify(token, JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  const userId = getUserIdFromToken(req);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const att = db.prepare('SELECT * FROM sent_imap_attachments WHERE id = ?').get(req.params.id);
+  const att = db.prepare(
+    'SELECT a.* FROM sent_imap_attachments a JOIN sent_imap s ON a.sent_id = s.id WHERE a.id = ? AND s.user_id = ?'
+  ).get(req.params.id, userId);
   if (!att) return res.status(404).json({ error: 'Attachment not found' });
 
   const fp = path.join(UPLOADS_DIR, att.stored_path);
@@ -1020,7 +1049,7 @@ app.post('/api/sent/sync', authenticate, requireSubscription, async (req, res) =
 
 // ─── EMAIL KÜLDÉS - naplózással együtt ───────────────────────
 
-app.post('/api/send-email', authenticate, requireSubscription, upload.array('attachments', 5), async (req, res) => {
+app.post('/api/send-email', authenticate, requireSubscription, sendLimiter, upload.array('attachments', 5), async (req, res) => {
   try {
     const { to, subject, html, cc, bcc, inReplyTo } = req.body;
 
@@ -1082,7 +1111,7 @@ app.post('/api/send-email', authenticate, requireSubscription, upload.array('att
 
 // ─── TÖMEGES EMAIL KÜLDÉS - mindenkit végigmegy és naplóz ───
 
-app.post('/api/send-bulk', authenticate, requireSubscription, upload.array('attachments', 5), async (req, res) => {
+app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, upload.array('attachments', 5), async (req, res) => {
   try {
     const { recipients, subject, html } = req.body;
     const parsed = JSON.parse(recipients);
@@ -1320,11 +1349,12 @@ app.get('/api/inbox/:id', authenticate, (req, res) => {
 
 // Bejövő levél csatolmányának letöltése
 app.get('/api/inbox-attachments/:id/download', (req, res) => {
-  const token = req.query.token || req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  try { jwt.verify(token, JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  const userId = getUserIdFromToken(req);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const att = db.prepare('SELECT * FROM inbox_attachments WHERE id = ?').get(req.params.id);
+  const att = db.prepare(
+    'SELECT a.* FROM inbox_attachments a JOIN inbox i ON a.inbox_id = i.id WHERE a.id = ? AND i.user_id = ?'
+  ).get(req.params.id, userId);
   if (!att) return res.status(404).json({ error: 'Attachment not found' });
 
   const fp = path.join(UPLOADS_DIR, att.stored_path);
@@ -1420,26 +1450,37 @@ function authenticateApiKey(req, res, next) {
   const row = db.prepare('SELECT id, user_id, active FROM api_keys WHERE key = ?').get(apiKey);
   if (!row) return res.status(401).json({ error: 'Invalid API key' });
   if (!row.active) return res.status(403).json({ error: 'API key is disabled' });
+  // Check subscription status for the API key owner
+  const user = db.prepare('SELECT subscription_status, trial_end FROM users WHERE id = ?').get(row.user_id);
+  if (user) {
+    let status = user.subscription_status || 'none';
+    if (status === 'trial' && user.trial_end) {
+      if (new Date() > new Date(user.trial_end + 'Z')) status = 'expired';
+    }
+    if (status !== 'active' && status !== 'trial') {
+      return res.status(403).json({ error: 'Subscription inactive. API access requires an active subscription.' });
+    }
+  }
   db.prepare('UPDATE api_keys SET last_used_at = datetime(\'now\') WHERE id = ?').run(row.id);
   req.userId = row.user_id;
   next();
 }
 
 // Külső API: egyéni sablonok listázása
-app.get('/api/v1/templates', authenticateApiKey, (req, res) => {
+app.get('/api/v1/templates', apiLimiter, authenticateApiKey, (req, res) => {
   const custom = db.prepare('SELECT id, name, description, category, subject, html, created_at, updated_at FROM custom_templates WHERE user_id = ? ORDER BY updated_at DESC').all(req.userId);
   res.json({ templates: custom });
 });
 
 // Külső API: egy sablon lekérdezése
-app.get('/api/v1/templates/:id', authenticateApiKey, (req, res) => {
+app.get('/api/v1/templates/:id', apiLimiter, authenticateApiKey, (req, res) => {
   const template = db.prepare('SELECT * FROM custom_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!template) return res.status(404).json({ error: 'Template not found' });
   res.json(template);
 });
 
 // Külső API: kapcsolatok listázása lapozhatóan
-app.get('/api/v1/contacts', authenticateApiKey, (req, res) => {
+app.get('/api/v1/contacts', apiLimiter, authenticateApiKey, (req, res) => {
   const search = req.query.search || '';
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 50;
@@ -1465,14 +1506,14 @@ app.get('/api/v1/contacts', authenticateApiKey, (req, res) => {
 });
 
 // Külső API: egy kapcsolat lekérdezése
-app.get('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
+app.get('/api/v1/contacts/:id', apiLimiter, authenticateApiKey, (req, res) => {
   const contact = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!contact) return res.status(404).json({ error: 'Contact not found' });
   res.json(contact);
 });
 
 // Külső API: új kapcsolat létrehozása
-app.post('/api/v1/contacts', authenticateApiKey, (req, res) => {
+app.post('/api/v1/contacts', apiLimiter, authenticateApiKey, (req, res) => {
   const { name, email, phone, notes } = req.body;
   if (!name || !email) return res.status(400).json({ error: 'name and email are required' });
   const existing = db.prepare('SELECT id FROM contacts WHERE email = ? AND user_id = ?').get(email, req.userId);
@@ -1484,7 +1525,7 @@ app.post('/api/v1/contacts', authenticateApiKey, (req, res) => {
 });
 
 // Külső API: kapcsolat módosítása
-app.put('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
+app.put('/api/v1/contacts/:id', apiLimiter, authenticateApiKey, (req, res) => {
   const { name, email, phone, notes } = req.body;
   const existing = db.prepare('SELECT * FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
@@ -1494,7 +1535,7 @@ app.put('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
 });
 
 // Külső API: kapcsolat törlése
-app.delete('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
+app.delete('/api/v1/contacts/:id', apiLimiter, authenticateApiKey, (req, res) => {
   const existing = db.prepare('SELECT id FROM contacts WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!existing) return res.status(404).json({ error: 'Contact not found' });
   db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.id);
@@ -1502,7 +1543,7 @@ app.delete('/api/v1/contacts/:id', authenticateApiKey, (req, res) => {
 });
 
 // Külső API: email küldés sablonnal vagy nyers HTML-lel
-app.post('/api/v1/send', authenticateApiKey, (req, res) => {
+app.post('/api/v1/send', apiLimiter, authenticateApiKey, (req, res) => {
   const { to, subject, html, cc, bcc, template_id, variables } = req.body;
   if (!to || !subject) return res.status(400).json({ error: 'to and subject are required' });
 
@@ -2432,7 +2473,7 @@ function exportUserData(userId) {
 
 app.get('/api/backup/export', authenticate, (req, res) => {
   try {
-    const isAdmin = req.role === 'admin';
+    const isAdmin = req.user.role === 'admin';
     const backup = { version: 1, exported_at: new Date().toISOString(), type: isAdmin ? 'full' : 'user' };
 
     if (isAdmin) {
@@ -2538,7 +2579,7 @@ app.post('/api/backup/import', authenticate, express.json({ limit: '100mb' }), (
     const backup = req.body;
     if (!backup || !backup.version) return res.status(400).json({ error: 'Invalid backup file' });
 
-    const isAdmin = req.role === 'admin';
+    const isAdmin = req.user.role === 'admin';
     const results = [];
 
     if (backup.type === 'full' && isAdmin) {

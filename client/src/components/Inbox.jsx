@@ -4,7 +4,7 @@ import {
   ChevronRight, ArrowLeft, Download, User, Clock, FileText, X,
   Reply, Send, Loader2
 } from 'lucide-react'
-import { syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl, replyToEmail, getEnvConfig } from '../lib/api'
+import { syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl, replyToEmail, getEnvConfig, getDownloadToken } from '../lib/api'
 
 export default function InboxView() {
   const [emails, setEmails] = useState([])
@@ -174,7 +174,8 @@ export default function InboxView() {
   }
 
   const totalPages = Math.ceil(total / limit)
-  const token = localStorage.getItem('intimix_token')
+  const [dlToken, setDlToken] = useState('')
+  useEffect(() => { getDownloadToken().then(t => setDlToken(t)).catch(() => {}) }, [])
 
   // ─── Email Detail View ───
   if (selectedEmail && emailDetail) {
@@ -241,7 +242,7 @@ export default function InboxView() {
               <div className="flex flex-wrap gap-2">
                 {emailDetail.attachments.map(att => (
                   <a key={att.id}
-                    href={`${getInboxAttachmentUrl(att.id)}?token=${token}`}
+                    href={`${getInboxAttachmentUrl(att.id)}?token=${dlToken}`}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-gray-300 transition-all">
                     <FileText className="w-3.5 h-3.5 text-[#2EC4BE]" />

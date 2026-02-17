@@ -9,7 +9,8 @@ import {
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
   getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent,
-  replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig
+  replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig,
+  getDownloadToken
 } from '../lib/api'
 import { emailTemplates as builtinTemplates } from '../lib/templates'
 import { useBranding, useAuth } from '../App'
@@ -91,7 +92,8 @@ function InboxTab() {
   const limit = 50
   const iframeRef = useRef(null)
   const replyRef = useRef(null)
-  const token = localStorage.getItem('intimix_token')
+  const [dlToken, setDlToken] = useState('')
+  useEffect(() => { getDownloadToken().then(t => setDlToken(t)).catch(() => {}) }, [])
 
   const fetchEmails = async (p = page, s = search) => {
     setLoading(true)
@@ -321,7 +323,7 @@ function InboxTab() {
             <div className="border-t border-white/5 pt-3">
               <div className="flex flex-wrap gap-2">
                 {emailDetail.attachments.map(att => (
-                  <a key={att.id} href={`${getInboxAttachmentUrl(att.id)}?token=${token}`}
+                  <a key={att.id} href={`${getInboxAttachmentUrl(att.id)}?token=${dlToken}`}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-300 transition-all">
                     <FileText className="w-3.5 h-3.5 text-[#2EC4BE]" />
@@ -468,7 +470,8 @@ function SentTab() {
   const [emailDetail, setEmailDetail] = useState(null)
   const limit = 50
   const iframeRef = useRef(null)
-  const token = localStorage.getItem('intimix_token')
+  const [dlToken, setDlToken] = useState('')
+  useEffect(() => { getDownloadToken().then(t => setDlToken(t)).catch(() => {}) }, [])
 
   const fetchEmails = async (p = page, s = search) => {
     setLoading(true)
@@ -537,8 +540,8 @@ function SentTab() {
   }
 
   const getAttUrl = (attId) => {
-    if (selectedSource === 'imap') return `${getSentImapAttachmentUrl(attId)}?token=${token}`
-    return `${getAttachmentUrl(attId)}?token=${token}`
+    if (selectedSource === 'imap') return `${getSentImapAttachmentUrl(attId)}?token=${dlToken}`
+    return `${getAttachmentUrl(attId)}?token=${dlToken}`
   }
 
   const totalPages = Math.ceil(total / limit)

@@ -243,6 +243,13 @@ export function getAttachmentUrl(id) {
   return `${API_BASE}/attachments/${id}/download`
 }
 
+export async function getDownloadToken() {
+  const res = await fetch(`${API_BASE}/download-token`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to get download token')
+  return data.token
+}
+
 // ─── BEJÖVŐ LEVELEK ──────────────────────────────────────────
 
 export async function syncInbox() {
