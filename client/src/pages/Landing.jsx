@@ -600,7 +600,7 @@ export default function Landing() {
                 </a>
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> Windows 10+</span>
-                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> ~80 MB</span>
+                  <span className="flex items-center gap-1"><Check className="w-3 h-3 text-[#2EC4BE]" /> ~180 MB</span>
                 </div>
               </div>
             </div>
