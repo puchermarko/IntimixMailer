@@ -7,7 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { randomUUID } from 'crypto';
+import { randomUUID, createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import PDFDocument from 'pdfkit';
@@ -57,8 +57,37 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 
 app.use(cors());
 
-const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY } = process.env;
+const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY, ENCRYPTION_KEY } = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+
+// ─── AES-256-GCM ENCRYPTION FOR SENSITIVE SETTINGS ──────────
+const ENC_ALGORITHM = 'aes-256-gcm';
+const ENC_KEY = scryptSync(ENCRYPTION_KEY || JWT_SECRET, 'intimix-salt', 32);
+const SENSITIVE_SETTING_KEYS = ['smtp_pass', 'imap_pass'];
+
+function encryptValue(plaintext) {
+  if (!plaintext) return '';
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(ENC_ALGORITHM, ENC_KEY, iv);
+  let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
+  return `enc:${iv.toString('hex')}:${tag}:${encrypted}`;
+}
+
+function decryptValue(stored) {
+  if (!stored || !stored.startsWith('enc:')) return stored;
+  try {
+    const [, ivHex, tagHex, encrypted] = stored.split(':');
+    const decipher = createDecipheriv(ENC_ALGORITHM, ENC_KEY, Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch {
+    return stored;
+  }
+}
 
 // ─── STRIPE WEBHOOK (must be before express.json()) ─────────
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), (req, res) => {
@@ -145,6 +174,22 @@ app.use(express.json());
   if (migrated > 0) console.log(`[security] Migrated ${migrated} plain-text password(s) to bcrypt.`);
 })();
 
+// ─── MIGRATE PLAIN-TEXT CREDENTIALS TO ENCRYPTED ────────────
+(() => {
+  let migrated = 0;
+  for (const key of SENSITIVE_SETTING_KEYS) {
+    const rows = db.prepare('SELECT id, user_id, value FROM user_settings WHERE key = ?').all(key);
+    for (const r of rows) {
+      if (r.value && !r.value.startsWith('enc:')) {
+        const encrypted = encryptValue(r.value);
+        db.prepare('UPDATE user_settings SET value = ? WHERE id = ?').run(encrypted, r.id);
+        migrated++;
+      }
+    }
+  }
+  if (migrated > 0) console.log(`[security] Encrypted ${migrated} plain-text credential(s) in user_settings.`);
+})();
+
 // ─── AUTH MIDDLEWARE ─────────────────────────────────────────
 
 // JWT hitelesítés middleware
@@ -202,17 +247,20 @@ function setAppSetting(key, value) {
 
 // ─── PER-USER HELPERS ───────────────────────────────────────
 
-// Get user settings as object
+// Get user settings as object (auto-decrypts sensitive values)
 function getUserSettings(userId) {
   const rows = db.prepare('SELECT key, value FROM user_settings WHERE user_id = ?').all(userId);
   const settings = {};
-  for (const r of rows) settings[r.key] = r.value;
+  for (const r of rows) {
+    settings[r.key] = SENSITIVE_SETTING_KEYS.includes(r.key) ? decryptValue(r.value) : r.value;
+  }
   return settings;
 }
 
-// Upsert a user setting
+// Upsert a user setting (auto-encrypts sensitive values)
 function setUserSetting(userId, key, value) {
-  db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value').run(userId, key, value);
+  const stored = SENSITIVE_SETTING_KEYS.includes(key) ? encryptValue(value) : value;
+  db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value').run(userId, key, stored);
 }
 
 // Create SMTP transporter for a user
