@@ -5,6 +5,7 @@ import { getCustomTemplates, createTemplate, updateTemplate, deleteTemplate } fr
 import { useBranding } from '../App'
 import { Eye, Code, Copy, Check, Plus, Edit3, Trash2, Save, X, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import TemplateBuilder from './TemplateBuilder'
 
 export default function TemplateGallery() {
   const { login_domain } = useBranding()
@@ -104,74 +105,46 @@ export default function TemplateGallery() {
           <button onClick={() => setShowEditor(false)} className="text-gray-400 hover:text-gray-200"><X className="w-5 h-5" /></button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="glass rounded-xl p-4 space-y-3">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Név *</label>
-                <input type="text" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Sablon neve" className="input-field w-full px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Leírás</label>
-                <input type="text" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
-                  placeholder="Rövid leírás" className="input-field w-full px-3 py-2 text-sm" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Kategória</label>
-                  <input type="text" value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
-                    placeholder="Egyéni" className="input-field w-full px-3 py-2 text-sm" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tárgy</label>
-                  <input type="text" value={form.subject} onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))}
-                    placeholder="Email tárgy sor" className="input-field w-full px-3 py-2 text-sm" />
-                </div>
-              </div>
+        {/* Template metadata */}
+        <div className="glass rounded-xl p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Név *</label>
+              <input type="text" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Sablon neve" className="input-field w-full px-3 py-2 text-sm" />
             </div>
-
-            <div className="glass rounded-xl p-4">
-              <label className="block text-xs text-gray-400 mb-1">HTML törzs</label>
-              <textarea value={form.html} onChange={(e) => setForm(f => ({ ...f, html: e.target.value }))}
-                placeholder="Illeszd be vagy írd meg a HTML sablont..."
-                className="input-field w-full px-3 py-2 text-sm font-mono min-h-[300px] resize-y" spellCheck={false} />
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Leírás</label>
+              <input type="text" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Rövid leírás" className="input-field w-full px-3 py-2 text-sm" />
             </div>
-
-            <div className="flex items-center gap-3">
-              <button onClick={handleSave} disabled={saving}
-                className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {saving ? 'Mentés...' : editingId ? 'Sablon frissítése' : 'Sablon mentése'}
-              </button>
-              <button onClick={() => setShowEditor(false)} className="px-4 py-2.5 rounded-xl text-gray-400 hover:text-gray-200 text-sm transition-all">Mégse</button>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Kategória</label>
+              <input type="text" value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))}
+                placeholder="Egyéni" className="input-field w-full px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Tárgy</label>
+              <input type="text" value={form.subject} onChange={(e) => setForm(f => ({ ...f, subject: e.target.value }))}
+                placeholder="Email tárgy sor" className="input-field w-full px-3 py-2 text-sm" />
             </div>
           </div>
+        </div>
 
-          {/* Live preview */}
-          <div className="glass rounded-xl p-4 sticky top-8">
-            <h3 className="text-sm font-semibold text-gray-300 mb-3">Előnézet</h3>
-            <div className="rounded-lg overflow-hidden max-h-[500px]">
-              {form.html ? (
-                <iframe
-                  srcDoc={sampleHtml(form.html)}
-                  className="w-full h-[500px] border-0 bg-white rounded-lg"
-                  sandbox="allow-same-origin"
-                  title="Template preview"
-                />
-              ) : (
-                <div className="p-8 text-center text-gray-400 text-sm">Írj HTML-t az előnézethez</div>
-              )}
-            </div>
-            <div className="mt-3">
-              <p className="text-[10px] text-gray-500 mb-1.5">Elérhető változók:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {['{{name}}', '{{email}}', '{{order_id}}', '{{tracking_number}}', '{{tracking_url}}', '{{delivery_time}}', '{{delivery_phone}}'].map(v => (
-                  <span key={v} className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400 font-mono">{v}</span>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Template Builder */}
+        <TemplateBuilder
+          initialHtml={form.html}
+          onHtmlChange={(html) => setForm(f => ({ ...f, html }))}
+        />
+
+        {/* Save buttons */}
+        <div className="flex items-center gap-3">
+          <button onClick={handleSave} disabled={saving}
+            className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? 'Mentés...' : editingId ? 'Sablon frissítése' : 'Sablon mentése'}
+          </button>
+          <button onClick={() => setShowEditor(false)} className="px-4 py-2.5 rounded-xl text-gray-400 hover:text-gray-200 text-sm transition-all">Mégse</button>
         </div>
       </div>
     )
