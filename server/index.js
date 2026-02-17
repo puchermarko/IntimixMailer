@@ -2471,6 +2471,102 @@ function exportUserData(userId) {
   return { contacts, emailLog, attachments, inbox, sentImap, templates, apiKeys, quotes, quoteItems, settings };
 }
 
+// ─── ADATBÁZIS TISZTÍTÁS - árva rekordok eltávolítása ────────
+app.post('/api/cleanup', authenticate, (req, res) => {
+  try {
+    const userId = req.userId;
+    const stats = { orphaned_email_log: 0, orphaned_attachments: 0, orphaned_inbox: 0, orphaned_inbox_attachments: 0, orphaned_sent_imap: 0, orphaned_sent_imap_attachments: 0, files_deleted: 0 };
+
+    // Find orphaned email_log entries (contact_id points to non-existent contact)
+    const orphanedEmails = db.prepare(`
+      SELECT e.id FROM email_log e
+      WHERE e.user_id = ? AND e.contact_id IS NOT NULL
+      AND e.contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).all(userId, userId);
+    stats.orphaned_email_log = orphanedEmails.length;
+
+    // Delete orphaned attachment files from disk
+    for (const e of orphanedEmails) {
+      const atts = db.prepare('SELECT stored_path FROM attachments WHERE email_log_id = ?').all(e.id);
+      for (const att of atts) {
+        const fp = path.join(UPLOADS_DIR, att.stored_path);
+        if (fs.existsSync(fp)) { fs.unlinkSync(fp); stats.files_deleted++; }
+      }
+    }
+
+    // Delete orphaned attachments linked to deleted contacts
+    const orphanedAtts = db.prepare(`
+      SELECT a.id, a.stored_path FROM attachments a
+      WHERE a.contact_id IS NOT NULL
+      AND a.contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+      AND a.email_log_id IN (SELECT id FROM email_log WHERE user_id = ?)
+    `).all(userId, userId);
+    for (const att of orphanedAtts) {
+      const fp = path.join(UPLOADS_DIR, att.stored_path);
+      if (fs.existsSync(fp)) { fs.unlinkSync(fp); stats.files_deleted++; }
+    }
+    stats.orphaned_attachments = db.prepare(`
+      DELETE FROM attachments WHERE contact_id IS NOT NULL
+      AND contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+      AND email_log_id IN (SELECT id FROM email_log WHERE user_id = ?)
+    `).run(userId, userId).changes;
+
+    // Clean up the orphaned email_log entries
+    db.prepare(`
+      DELETE FROM email_log WHERE user_id = ? AND contact_id IS NOT NULL
+      AND contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).run(userId, userId);
+
+    // Orphaned inbox attachments
+    const orphanedInbox = db.prepare(`
+      SELECT i.id FROM inbox i
+      WHERE i.user_id = ? AND i.contact_id IS NOT NULL
+      AND i.contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).all(userId, userId);
+    for (const i of orphanedInbox) {
+      const atts = db.prepare('SELECT stored_path FROM inbox_attachments WHERE inbox_id = ?').all(i.id);
+      for (const att of atts) {
+        const fp = path.join(UPLOADS_DIR, att.stored_path);
+        if (fs.existsSync(fp)) { fs.unlinkSync(fp); stats.files_deleted++; }
+      }
+      stats.orphaned_inbox_attachments += db.prepare('DELETE FROM inbox_attachments WHERE inbox_id = ?').run(i.id).changes;
+    }
+
+    // Nullify contact_id on orphaned inbox (keep the emails, just unlink)
+    stats.orphaned_inbox = db.prepare(`
+      UPDATE inbox SET contact_id = NULL WHERE user_id = ? AND contact_id IS NOT NULL
+      AND contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).run(userId, userId).changes;
+
+    // Orphaned sent_imap attachments
+    const orphanedSent = db.prepare(`
+      SELECT s.id FROM sent_imap s
+      WHERE s.user_id = ? AND s.contact_id IS NOT NULL
+      AND s.contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).all(userId, userId);
+    for (const s of orphanedSent) {
+      const atts = db.prepare('SELECT stored_path FROM sent_imap_attachments WHERE sent_id = ?').all(s.id);
+      for (const att of atts) {
+        const fp = path.join(UPLOADS_DIR, att.stored_path);
+        if (fs.existsSync(fp)) { fs.unlinkSync(fp); stats.files_deleted++; }
+      }
+      stats.orphaned_sent_imap_attachments += db.prepare('DELETE FROM sent_imap_attachments WHERE sent_id = ?').run(s.id).changes;
+    }
+
+    // Nullify contact_id on orphaned sent_imap
+    stats.orphaned_sent_imap = db.prepare(`
+      UPDATE sent_imap SET contact_id = NULL WHERE user_id = ? AND contact_id IS NOT NULL
+      AND contact_id NOT IN (SELECT id FROM contacts WHERE user_id = ?)
+    `).run(userId, userId).changes;
+
+    const totalCleaned = Object.values(stats).reduce((a, b) => a + b, 0);
+    res.json({ success: true, stats, totalCleaned });
+  } catch (err) {
+    console.error('Cleanup error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/backup/export', authenticate, (req, res) => {
   try {
     const isAdmin = req.user.role === 'admin';

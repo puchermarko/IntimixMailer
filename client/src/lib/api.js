@@ -533,6 +533,16 @@ export async function exportBackup() {
   return res.json()
 }
 
+export async function cleanupDatabase() {
+  const res = await fetch(`${API_BASE}/cleanup`, {
+    method: 'POST',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to clean up database')
+  return data
+}
+
 export async function importBackup(backupData) {
   const res = await fetch(`${API_BASE}/backup/import`, {
     method: 'POST',

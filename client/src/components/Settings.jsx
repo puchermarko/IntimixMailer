@@ -1,6 +1,6 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, getSubscription, getStripePrices, createStripeCheckout, openStripePortal } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal } from '../lib/api'
 import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
 import {
@@ -38,6 +38,8 @@ export default function Settings({ onStartTour }) {
   const [backupImporting, setBackupImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const backupInputRef = useRef(null)
+  const [cleaning, setCleaning] = useState(false)
+  const [cleanupResult, setCleanupResult] = useState(null)
   const [subscription, setSubscription] = useState(null)
   const [subLoading, setSubLoading] = useState(false)
   const [stripePrices, setStripePrices] = useState([])
@@ -813,6 +815,75 @@ export default function Settings({ onStartTour }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Cleanup */}
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center"><Trash2 className="w-5 h-5 text-red-400" /></div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Adatbázis tisztítás</h3>
+                <p className="text-xs text-gray-500">Árva rekordok eltávolítása törölt kapcsolatokból</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">
+              Ha egy kapcsolatot töröltél, de az email előzmények vagy csatolmányok töredékei megmaradtak az adatbázisban, 
+              ez a funkció eltávolítja azokat. Ezután újra hozzáadhatod ugyanazt az email címet.
+            </p>
+            <button
+              onClick={async () => {
+                if (!confirm('Biztosan futtatod az adatbázis tisztítást? Az árva rekordok véglegesen törlődnek.')) return
+                setCleaning(true)
+                setCleanupResult(null)
+                try {
+                  const result = await cleanupDatabase()
+                  setCleanupResult(result)
+                  if (result.totalCleaned > 0) {
+                    toast.success(`Tisztítás kész! ${result.totalCleaned} árva rekord eltávolítva.`)
+                  } else {
+                    toast.success('Az adatbázis tiszta, nincs árva rekord.')
+                  }
+                } catch (err) { toast.error(err.message) }
+                finally { setCleaning(false) }
+              }}
+              disabled={cleaning}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-sm text-red-400 font-medium transition-all disabled:opacity-50 w-full justify-center"
+            >
+              {cleaning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {cleaning ? 'Tisztítás...' : 'Adatbázis tisztítás futtatása'}
+            </button>
+
+            {cleanupResult && (
+              <div className="mt-4 space-y-2 fade-in">
+                <p className="text-xs text-green-400 font-medium">Tisztítás eredménye:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Árva email napló</p>
+                    <p className="text-sm text-gray-200 font-medium">{cleanupResult.stats.orphaned_email_log}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Árva csatolmányok</p>
+                    <p className="text-sm text-gray-200 font-medium">{cleanupResult.stats.orphaned_attachments}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Árva bejövő levelek</p>
+                    <p className="text-sm text-gray-200 font-medium">{cleanupResult.stats.orphaned_inbox}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Árva kimenő levelek</p>
+                    <p className="text-sm text-gray-200 font-medium">{cleanupResult.stats.orphaned_sent_imap}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Törölt fájlok</p>
+                    <p className="text-sm text-gray-200 font-medium">{cleanupResult.stats.files_deleted}</p>
+                  </div>
+                  <div className="px-3 py-2 rounded-lg glass-light">
+                    <p className="text-[10px] text-gray-500">Összesen tisztítva</p>
+                    <p className="text-sm text-gray-200 font-bold">{cleanupResult.totalCleaned}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

@@ -236,7 +236,7 @@ export default function Contacts() {
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value.trim() }))}
                   placeholder="anna@example.com"
                   className="input-field w-full px-4 py-2.5 rounded-lg text-sm"
                 />
