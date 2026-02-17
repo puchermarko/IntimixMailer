@@ -2715,16 +2715,20 @@ app.post('/api/backup/import', authenticate, express.json({ limit: '100mb' }), (
 
 // Desktop app letöltések kiszolgálása
 const downloadsDir = path.join(__dirname, '..', 'downloads');
-if (fs.existsSync(downloadsDir)) {
-  app.use('/downloads', express.static(downloadsDir));
-}
+app.get('/downloads/:filename', (req, res) => {
+  const filePath = path.join(downloadsDir, req.params.filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+  res.download(filePath);
+});
 
 // Buildelt frontend kiszolgálása prodban
 const clientDist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
   app.get('*', (req, res) => {
-    if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
+    if (req.path.startsWith('/api') || req.path.startsWith('/downloads')) return res.status(404).json({ error: 'Not found' });
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
