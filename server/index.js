@@ -2460,10 +2460,13 @@ app.get('/api/backup/export', authenticate, (req, res) => {
 function importUserData(userId, data) {
   const stats = { contacts: 0, emails: 0, templates: 0, quotes: 0, settings: 0 };
 
-  // Import settings
+  // Import settings (re-encrypt sensitive values with current key)
   if (data.settings && data.settings.length > 0) {
-    const upsert = db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value');
-    for (const s of data.settings) { upsert.run(userId, s.key, s.value); stats.settings++; }
+    for (const s of data.settings) {
+      const val = SENSITIVE_SETTING_KEYS.includes(s.key) ? decryptValue(s.value) : s.value;
+      setUserSetting(userId, s.key, val);
+      stats.settings++;
+    }
   }
 
   // Import contacts
