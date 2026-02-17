@@ -101,7 +101,7 @@ export default function Contacts() {
 
   return (
     <div>
-      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between mt-2 gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Kapcsolatok</h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
