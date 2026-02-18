@@ -4,8 +4,9 @@ import { sendBulkEmails } from '../lib/api'
 import toast from 'react-hot-toast'
 import {
   Send, Paperclip, X, FileText, Users, Plus, Trash2,
-  Loader2, LayoutGrid, ChevronDown
+  Loader2, LayoutGrid, ChevronDown, Code
 } from 'lucide-react'
+import SimpleRichEditor from './SimpleRichEditor'
 
 export default function BulkSend() {
   const [recipients, setRecipients] = useState([{ name: '', email: '', order_id: '', tracking_number: '', tracking_url: '', delivery_time: '', delivery_phone: '' }])
@@ -16,6 +17,7 @@ export default function BulkSend() {
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const [sending, setSending] = useState(false)
   const [results, setResults] = useState(null)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const fileInputRef = useRef(null)
 
   const applyTemplate = (template) => {
@@ -245,14 +247,45 @@ export default function BulkSend() {
 
         {/* HTML Editor */}
         <div className="glass rounded-xl p-5">
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">Email Body (HTML) *</label>
-          <textarea
-            value={html}
-            onChange={(e) => setHtml(e.target.value)}
-            placeholder="HTML with {{name}}, {{order_id}}, {{tracking_number}}, {{tracking_url}}, {{delivery_time}}, {{delivery_phone}}..."
-            className="input-field w-full px-4 py-3 rounded-lg text-sm font-mono min-h-[200px] resize-y"
-            spellCheck={false}
-          />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <label className="text-xs font-medium text-gray-400">Email Body *</label>
+              <div className="flex bg-white/5 rounded-lg p-0.5">
+                <button
+                  onClick={() => setEditorMode('visual')}
+                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                    editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  Visual
+                </button>
+                <button
+                  onClick={() => setEditorMode('code')}
+                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                    editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  Code
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {editorMode === 'visual' ? (
+            <SimpleRichEditor
+              initialHtml={html}
+              onChange={setHtml}
+              className="min-h-[200px]"
+            />
+          ) : (
+            <textarea
+              value={html}
+              onChange={(e) => setHtml(e.target.value)}
+              placeholder="HTML with {{name}}, {{order_id}}, {{tracking_number}}, {{tracking_url}}, {{delivery_time}}, {{delivery_phone}}..."
+              className="input-field w-full px-4 py-3 rounded-lg text-sm font-mono min-h-[200px] resize-y"
+              spellCheck={false}
+            />
+          )}
         </div>
 
         {/* Attachments */}
