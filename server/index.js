@@ -333,6 +333,83 @@ function logEmail({ userId, contactId, recipientEmail, subject, html, messageId,
   return emailId;
 }
 
+// ─── TEMPLATE IMAGE UPLOAD ──────────────────────────────────
+const TEMPLATE_IMAGES_DIR = path.join(__dirname, 'uploads', 'template_images');
+if (!fs.existsSync(TEMPLATE_IMAGES_DIR)) fs.mkdirSync(TEMPLATE_IMAGES_DIR, { recursive: true });
+
+// Upload endpoint for template images
+app.post('/api/uploads/template-image', authenticate, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image file uploaded' });
+    
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.' });
+    }
+
+    const ext = path.extname(req.file.originalname) || '.jpg';
+    const filename = `tpl_${randomUUID()}${ext}`;
+    const filepath = path.join(TEMPLATE_IMAGES_DIR, filename);
+    
+    fs.writeFileSync(filepath, req.file.buffer);
+    
+    // Return full URL
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const url = `${protocol}://${host}/uploads/template_images/${filename}`;
+    
+    res.json({ success: true, url, filename });
+  } catch (err) {
+    console.error('Template image upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Serve template images
+app.use('/uploads/template_images', express.static(TEMPLATE_IMAGES_DIR));
+
+// Helper: Process HTML to replace local template images with CIDs
+function processTemplateImages(html, attachments) {
+  if (!html) return { html, attachments };
+  
+  const processedAttachments = [...attachments];
+  let processedHtml = html;
+  
+  // Find all images served from our /uploads/template_images/ directory
+  // Regex matches src="/uploads/template_images/..." or src="http.../uploads/template_images/..."
+  const regex = /src=["']((?:https?:\/\/[^\/]+)?\/uploads\/template_images\/([^"']+))["']/g;
+  
+  let match;
+  const seenImages = new Set();
+  
+  while ((match = regex.exec(html)) !== null) {
+    const fullUrl = match[1];
+    const filename = match[2];
+    
+    if (seenImages.has(filename)) continue;
+    seenImages.add(filename);
+    
+    const filepath = path.join(TEMPLATE_IMAGES_DIR, filename);
+    if (fs.existsSync(filepath)) {
+      const cid = `tpl_${filename.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      
+      // Add to attachments
+      processedAttachments.push({
+        filename: filename,
+        path: filepath,
+        cid: cid,
+        contentDisposition: 'inline'
+      });
+      
+      // Replace URL with CID in HTML (global replace)
+      processedHtml = processedHtml.replace(new RegExp(fullUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), `cid:${cid}`);
+    }
+  }
+  
+  return { html: processedHtml, attachments: processedAttachments };
+}
+
 // ─── LOGIN ──────────────────────────────────────────────────
 
 app.post('/api/login', authLimiter, (req, res) => {
@@ -1138,12 +1215,15 @@ app.post('/api/send-email', authenticate, requireSubscription, sendLimiter, uplo
     const smtpDomain = (userSettings.smtp_user || '').includes('@') ? userSettings.smtp_user.split('@')[1] : '';
     const cidAttachments = getCidAttachments(html, smtpDomain);
 
+    // Process local template images -> CID attachments
+    const { html: finalHtml, attachments: finalAttachments } = processTemplateImages(html, [...attachments, ...cidAttachments]);
+
     const mailOptions = {
       from: `"${fromName}" <${userSettings.smtp_user}>`,
       to,
       subject,
-      html,
-      attachments: [...attachments, ...cidAttachments]
+      html: finalHtml,
+      attachments: finalAttachments
     };
 
     if (cc) mailOptions.cc = cc;
@@ -1213,6 +1293,9 @@ app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, uploa
           .replace(/\{\{delivery_time\}\}/gi, recipient.delivery_time || '')
           .replace(/\{\{delivery_phone\}\}/gi, recipient.delivery_phone || '');
 
+        // Process local template images -> CID attachments
+        const { html: finalHtml, attachments: finalAttachments } = processTemplateImages(personalizedHtml, [...attachments, ...cidAttachments]);
+
         const personalizedSubject = subject
           .replace(/\{\{name\}\}/gi, recipient.name || '')
           .replace(/\{\{order_id\}\}/gi, recipient.order_id || '')
@@ -1222,8 +1305,8 @@ app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, uploa
           from: `"${fromName}" <${userSettings.smtp_user}>`,
           to: recipient.email,
           subject: personalizedSubject,
-          html: personalizedHtml,
-          attachments: [...attachments, ...cidAttachments]
+          html: finalHtml,
+          attachments: finalAttachments
         });
 
         // Log email per recipient
@@ -1233,7 +1316,7 @@ app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, uploa
           contactId,
           recipientEmail: recipient.email,
           subject: personalizedSubject,
-          html: personalizedHtml,
+          html: finalHtml,
           messageId: info.messageId,
           files: req.files || []
         });
@@ -1637,17 +1720,20 @@ app.post('/api/v1/send', apiLimiter, authenticateApiKey, (req, res) => {
   const smtpDomain = (userSettings.smtp_user || '').includes('@') ? userSettings.smtp_user.split('@')[1] : '';
   const cidAttachments = getCidAttachments(emailHtml, smtpDomain);
 
+  // Process local template images -> CID attachments
+  const { html: finalHtml, attachments: finalAttachments } = processTemplateImages(emailHtml, cidAttachments);
+
   const mailOptions = {
     from: `"${fromName}" <${userSettings.smtp_user}>`,
-    to, subject, html: emailHtml,
-    attachments: cidAttachments,
+    to, subject, html: finalHtml,
+    attachments: finalAttachments,
     ...(cc && { cc }), ...(bcc && { bcc })
   };
 
   userTransporter.sendMail(mailOptions, (err, info) => {
     if (err) return res.status(500).json({ error: err.message });
     const contactId = findContactByEmail(to, req.userId);
-    logEmail({ userId: req.userId, contactId, recipientEmail: to, subject, html: emailHtml, messageId: info.messageId, files: [] });
+    logEmail({ userId: req.userId, contactId, recipientEmail: to, subject, html: finalHtml, messageId: info.messageId, files: [] });
     res.json({ success: true, messageId: info.messageId });
   });
 });

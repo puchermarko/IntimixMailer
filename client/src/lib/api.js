@@ -57,6 +57,19 @@ export async function testSmtp() {
   return data
 }
 
+export async function uploadTemplateImage(file) {
+  const formData = new FormData()
+  formData.append('image', file)
+  const res = await fetch(`${API_BASE}/uploads/template-image`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: formData
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to upload image')
+  return data
+}
+
 // ─── BRANDING ────────────────────────────────────────────────
 
 export async function getBranding() {

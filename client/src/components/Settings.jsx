@@ -1191,6 +1191,54 @@ export default function Settings({ onStartTour }) {
               copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
           </ApiSection>
 
+          {/* Tömeges küldés */}
+          <ApiSection title={docLang === 'en' ? 'Bulk Send' : 'Tömeges küldés'}
+            desc={docLang === 'en' ? 'Send personalized emails to multiple recipients.' : 'Személyre szabott emailek küldése több címzettnek.'}>
+            <Endpoint method="POST" path="/api/v1/send-bulk"
+              desc={docLang === 'en' ? 'Send bulk emails' : 'Tömeges email küldés'}
+              body={`{\n  "subject": "Monthly Newsletter",\n  "html": "<p>Hi {{name}}, check out our updates...</p>",\n  "recipients": [\n    { "email": "alice@ex.com", "name": "Alice" },\n    { "email": "bob@ex.com", "name": "Bob" }\n  ],\n  "template_id": "uuid" // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
+              response={`{\n  "success": true,\n  "results": [\n    { "email": "alice@ex.com", "status": "sent", "messageId": "..." },\n    { "email": "bob@ex.com", "status": "failed", "error": "..." }\n  ]\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
+          {/* Árajánlatok */}
+          <ApiSection title={docLang === 'en' ? 'Quotes' : 'Árajánlatok'}
+            desc={docLang === 'en' ? 'Manage price quotes.' : 'Árajánlatok kezelése.'}>
+            <Endpoint method="GET" path="/api/v1/quotes"
+              desc={docLang === 'en' ? 'List quotes' : 'Árajánlatok listázása'}
+              params="page, limit"
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/quotes/:id"
+              desc={docLang === 'en' ? 'Get a quote' : 'Egy árajánlat lekérdezése'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="POST" path="/api/v1/quotes"
+              desc={docLang === 'en' ? 'Create quote' : 'Új árajánlat'}
+              body={`{\n  "title": "Web Development",\n  "contact_email": "client@example.com",\n  "items": [\n    { "description": "Frontend", "quantity": 10, "unit_price": 15000 }\n  ],\n  "currency": "HUF",\n  "valid_until": "2026-12-31"\n}`}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="DELETE" path="/api/v1/quotes/:id"
+              desc={docLang === 'en' ? 'Delete quote' : 'Árajánlat törlése'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
+          {/* Levelezés (Read-only) */}
+          <ApiSection title={docLang === 'en' ? 'Mailbox (Read-only)' : 'Levelezés (Csak olvasás)'}
+            desc={docLang === 'en' ? 'Access sent and received emails.' : 'Elküldött és fogadott levelek elérése.'}>
+            <Endpoint method="GET" path="/api/v1/inbox"
+              desc={docLang === 'en' ? 'List received emails' : 'Bejövő levelek listázása'}
+              params="page, limit"
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/inbox/:id"
+              desc={docLang === 'en' ? 'Get received email details' : 'Bejövő levél részletei'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/sent"
+              desc={docLang === 'en' ? 'List sent emails' : 'Elküldött levelek listázása'}
+              params="page, limit"
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+            <Endpoint method="GET" path="/api/v1/sent/:id"
+              desc={docLang === 'en' ? 'Get sent email details' : 'Elküldött levél részletei'}
+              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
+          </ApiSection>
+
           {/* Kód példák */}
           <div className="glass rounded-xl p-6">
             <h4 className="text-sm font-semibold text-white mb-4">

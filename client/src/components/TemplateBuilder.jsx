@@ -1,8 +1,10 @@
 import { useState, useRef } from 'react'
+import { uploadTemplateImage } from '../lib/api'
+import toast from 'react-hot-toast'
 import {
   Type, Image, MousePointerClick, Minus, MoveVertical, Columns, GripVertical,
   Trash2, ChevronUp, ChevronDown, Copy, AlignLeft, AlignCenter, AlignRight,
-  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText, X
+  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText, X, Upload
 } from 'lucide-react'
 
 // ─── Block Types ─────────────────────────────────────────────
@@ -188,9 +190,28 @@ function BlockSettings({ block, onChange }) {
       return (
         <div className="space-y-3">
           <div>
-            <label className="block text-[10px] text-gray-500 mb-1">Kép URL</label>
-            <input type="text" value={block.src} onChange={(e) => update('src', e.target.value)}
-              placeholder="https://example.com/image.jpg" className="input-field w-full px-2 py-1.5 text-xs" />
+            <label className="block text-[10px] text-gray-500 mb-1">Kép forrás</label>
+            <div className="flex gap-2">
+              <input type="text" value={block.src} onChange={(e) => update('src', e.target.value)}
+                placeholder="https://example.com/image.jpg" className="input-field w-full px-2 py-1.5 text-xs" />
+              <label className="cursor-pointer flex items-center justify-center p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all shrink-0" title="Kép feltöltése">
+                <Upload className="w-4 h-4 text-gray-400" />
+                <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const toastId = toast.loading('Kép feltöltése...')
+                  try {
+                    const res = await uploadTemplateImage(file)
+                    update('src', res.url)
+                    toast.success('Sikeres feltöltés', { id: toastId })
+                  } catch (err) {
+                    toast.error('Feltöltési hiba: ' + err.message, { id: toastId })
+                  }
+                  e.target.value = null // Reset input
+                }} />
+              </label>
+            </div>
+            <p className="text-[10px] text-gray-600 mt-1">Adj meg URL-t vagy tölts fel egy képet.</p>
           </div>
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Alt szöveg</label>
