@@ -15,6 +15,7 @@ import {
 import { emailTemplates as builtinTemplates } from '../lib/templates'
 import { useBranding, useAuth } from '../App'
 import toast from 'react-hot-toast'
+import SimpleRichEditor from './SimpleRichEditor'
 
 const TABS = [
   { id: 'inbox', label: 'Bejövő', icon: InboxIcon },
@@ -712,6 +713,7 @@ function ComposeTab() {
   const [contactSearch, setContactSearch] = useState('')
   const [selectedContact, setSelectedContact] = useState(null)
   const [customTemplates, setCustomTemplates] = useState([])
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const fileInputRef = useRef(null)
 
   const showBuiltin = login_domain === 'intimix.hu'
@@ -902,7 +904,21 @@ function ComposeTab() {
         {/* HTML szerkesztő */}
         <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs text-gray-400">Törzs (HTML) *</label>
+            <div className="flex items-center gap-3">
+              <label className="text-xs text-gray-400">Törzs (HTML) *</label>
+              {!showPreview && (
+                <div className="flex bg-white/5 rounded-lg p-0.5">
+                  <button onClick={() => setEditorMode('visual')}
+                    className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                    Vizuális
+                  </button>
+                  <button onClick={() => setEditorMode('code')}
+                    className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                    Kód
+                  </button>
+                </div>
+              )}
+            </div>
             <button onClick={() => setShowPreview(!showPreview)}
               className="flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C] transition-colors">
               {showPreview ? <Code className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -917,8 +933,16 @@ function ComposeTab() {
               title="Email preview"
             />
           ) : (
-            <textarea value={html} onChange={(e) => setHtml(e.target.value)} placeholder="HTML tartalom..."
-              className="input-field w-full px-3 py-2 text-sm font-mono min-h-[250px] resize-y" spellCheck={false} />
+            editorMode === 'visual' ? (
+              <SimpleRichEditor
+                initialHtml={html}
+                onChange={setHtml}
+                className="min-h-[250px]"
+              />
+            ) : (
+              <textarea value={html} onChange={(e) => setHtml(e.target.value)} placeholder="HTML tartalom..."
+                className="input-field w-full px-3 py-2 text-sm font-mono min-h-[250px] resize-y" spellCheck={false} />
+            )
           )}
         </div>
 
@@ -986,6 +1010,7 @@ function BulkTab() {
   const [results, setResults] = useState(null)
   const [customTemplates, setCustomTemplates] = useState([])
   const [showEcommerce, setShowEcommerce] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const fileInputRef = useRef(null)
 
   const showBuiltin = login_domain === 'intimix.hu'
@@ -1126,9 +1151,31 @@ function BulkTab() {
 
       {/* HTML */}
       <div className="glass rounded-xl p-4">
-        <label className="block text-xs text-gray-400 mb-1">Törzs (HTML) *</label>
-        <textarea value={html} onChange={(e) => setHtml(e.target.value)}
-          placeholder="HTML tartalom {{name}}, {{order_id}}..." className="input-field w-full px-3 py-2 text-sm font-mono min-h-[180px] resize-y" spellCheck={false} />
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <label className="block text-xs text-gray-400">Törzs (HTML) *</label>
+            <div className="flex bg-white/5 rounded-lg p-0.5">
+              <button onClick={() => setEditorMode('visual')}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                Vizuális
+              </button>
+              <button onClick={() => setEditorMode('code')}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                Kód
+              </button>
+            </div>
+          </div>
+        </div>
+        {editorMode === 'visual' ? (
+          <SimpleRichEditor
+            initialHtml={html}
+            onChange={setHtml}
+            className="min-h-[180px]"
+          />
+        ) : (
+          <textarea value={html} onChange={(e) => setHtml(e.target.value)}
+            placeholder="HTML tartalom {{name}}, {{order_id}}..." className="input-field w-full px-3 py-2 text-sm font-mono min-h-[180px] resize-y" spellCheck={false} />
+        )}
       </div>
 
       {/* Csatolmányok */}
