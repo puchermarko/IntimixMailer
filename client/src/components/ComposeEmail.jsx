@@ -7,6 +7,8 @@ import {
   Eye, Code, Loader2, LayoutGrid, BookUser, UserPen, Search
 } from 'lucide-react'
 
+import SimpleRichEditor from './SimpleRichEditor'
+
 export default function ComposeEmail() {
   const [to, setTo] = useState('')
   const [recipientName, setRecipientName] = useState('')
@@ -23,6 +25,7 @@ export default function ComposeEmail() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(null)
   const [showPreview, setShowPreview] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const [sending, setSending] = useState(false)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const [recipientMode, setRecipientMode] = useState('manual') // 'manual' | 'contact'
@@ -406,15 +409,49 @@ export default function ComposeEmail() {
           {/* HTML Editor */}
           <div className="glass rounded-xl p-5">
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-medium text-gray-400">Email Body (HTML) *</label>
+              <div className="flex items-center gap-3">
+                <label className="text-xs font-medium text-gray-400">Email Body</label>
+                {/* Mode Toggle */}
+                {!showPreview && (
+                  <div className="flex bg-white/5 rounded-lg p-0.5">
+                    <button
+                      onClick={() => setEditorMode('visual')}
+                      className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                        editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      Visual
+                    </button>
+                    <button
+                      onClick={() => setEditorMode('code')}
+                      className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                        editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      Code
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setShowPreview(!showPreview)}
                 className="flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C] transition-colors"
               >
-                {showPreview ? <Code className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {showPreview ? 'Edit HTML' : 'Preview'}
+                {showPreview ? (
+                  <>
+                    {editorMode === 'visual' ? <FileText className="w-3.5 h-3.5" /> : <Code className="w-3.5 h-3.5" />}
+                    Edit
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5" />
+                    Preview
+                  </>
+                )}
               </button>
             </div>
+
             {showPreview ? (
               <iframe
                 srcDoc={getPreviewHtml()}
@@ -423,13 +460,23 @@ export default function ComposeEmail() {
                 title="Email preview"
               />
             ) : (
-              <textarea
-                value={html}
-                onChange={(e) => setHtml(e.target.value)}
-                placeholder="Paste or write your HTML email content here..."
-                className="input-field w-full px-4 py-3 rounded-lg text-sm font-mono min-h-[300px] resize-y"
-                spellCheck={false}
-              />
+              <>
+                {editorMode === 'visual' ? (
+                  <SimpleRichEditor
+                    initialHtml={html}
+                    onChange={setHtml}
+                    className="min-h-[300px]"
+                  />
+                ) : (
+                  <textarea
+                    value={html}
+                    onChange={(e) => setHtml(e.target.value)}
+                    placeholder="Paste or write your HTML email content here..."
+                    className="input-field w-full px-4 py-3 rounded-lg text-sm font-mono min-h-[300px] resize-y"
+                    spellCheck={false}
+                  />
+                )}
+              </>
             )}
           </div>
 
