@@ -290,22 +290,44 @@ export default function InboxView() {
           {showReply && (
             <div className="border-t border-white/5 pt-4 space-y-3 fade-in">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-400 flex items-center gap-1.5">
-                  <Reply className="w-3.5 h-3.5" />
-                  Replying to <span className="text-gray-200">{emailDetail.from_name || emailDetail.from_address}</span>
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-400 flex items-center gap-1.5">
+                    <Reply className="w-3.5 h-3.5" />
+                    Replying to <span className="text-gray-200">{emailDetail.from_name || emailDetail.from_address}</span>
+                  </p>
+                  <div className="flex bg-white/5 rounded-lg p-0.5">
+                    <button onClick={() => setEditorMode('visual')}
+                      className={`px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                      Visual
+                    </button>
+                    <button onClick={() => setEditorMode('code')}
+                      className={`px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                      Code
+                    </button>
+                  </div>
+                </div>
                 <button onClick={() => setShowReply(false)}
                   className="p-1 text-gray-500 hover:text-gray-300 transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <textarea
-                ref={replyRef}
-                value={replyHtml}
-                onChange={(e) => setReplyHtml(e.target.value)}
-                placeholder="Write your reply..."
-                className="input-field w-full min-h-[150px] resize-y text-sm"
-              />
+              
+              {editorMode === 'visual' ? (
+                <SimpleRichEditor
+                  initialHtml={replyHtml}
+                  onChange={setReplyHtml}
+                  className="min-h-[150px]"
+                />
+              ) : (
+                <textarea
+                  ref={replyRef}
+                  value={replyHtml}
+                  onChange={(e) => setReplyHtml(e.target.value)}
+                  placeholder="Write your reply..."
+                  className="input-field w-full min-h-[150px] resize-y text-sm"
+                />
+              )}
+
               <div className="flex justify-end">
                 <button onClick={handleSendReply} disabled={sending}
                   className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50">
