@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Inbox as InboxIcon, RefreshCw, Search, Trash2, Paperclip, ChevronLeft,
   ChevronRight, ArrowLeft, Download, User, Clock, FileText, X,
-  Reply, Send, Loader2
+  Reply, Send, Loader2, Code, Eye
 } from 'lucide-react'
 import { syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl, replyToEmail, getEnvConfig, getDownloadToken } from '../lib/api'
+import SimpleRichEditor from './SimpleRichEditor'
 
 export default function InboxView() {
   const [emails, setEmails] = useState([])
@@ -21,6 +22,7 @@ export default function InboxView() {
   const [showReply, setShowReply] = useState(false)
   const [replyHtml, setReplyHtml] = useState('')
   const [sending, setSending] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const limit = 50
   const iframeRef = useRef(null)
   const replyRef = useRef(null)

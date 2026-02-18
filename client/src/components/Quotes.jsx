@@ -6,8 +6,9 @@ import toast from 'react-hot-toast'
 import {
   Plus, Trash2, FileText, Send, Download, Loader2, ChevronLeft, Search,
   User, Building2, MapPin, Phone, Mail, Hash, Calendar, StickyNote, X, Check, Lock,
-  ThumbsUp, ThumbsDown, RotateCcw
+  ThumbsUp, ThumbsDown, RotateCcw, Code, Eye
 } from 'lucide-react'
+import SimpleRichEditor from './SimpleRichEditor'
 
 const statusLabels = { draft: 'Piszkozat', sent: 'Elküldve', accepted: 'Elfogadva', rejected: 'Elutasítva' }
 const statusColors = { draft: 'text-gray-400 bg-gray-500/10', sent: 'text-blue-400 bg-blue-500/10', accepted: 'text-green-400 bg-green-500/10', rejected: 'text-red-400 bg-red-500/10' }
@@ -714,6 +715,7 @@ function SendQuoteModal({ quoteId, contactName, contactEmail, quoteNumber, total
   const [subject, setSubject] = useState('')
   const [customHtml, setCustomHtml] = useState('')
   const [useCustom, setUseCustom] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
 
   const handleSend = async () => {
     if (!contactEmail) { toast.error('Nincs email cím megadva a vevőnél'); return }
@@ -751,15 +753,37 @@ function SendQuoteModal({ quoteId, contactName, contactEmail, quoteNumber, total
           </div>
 
           <div>
-            <label className="flex items-center gap-2 text-xs text-gray-400 mb-1 cursor-pointer">
-              <input type="checkbox" checked={useCustom} onChange={(e) => setUseCustom(e.target.checked)}
-                className="rounded border-gray-600" />
-              Egyéni email sablon használata
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+                <input type="checkbox" checked={useCustom} onChange={(e) => setUseCustom(e.target.checked)}
+                  className="rounded border-gray-600" />
+                Egyéni email sablon használata
+              </label>
+              {useCustom && (
+                <div className="flex bg-white/5 rounded-lg p-0.5">
+                  <button onClick={() => setEditorMode('visual')}
+                    className={`px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                    Vizuális
+                  </button>
+                  <button onClick={() => setEditorMode('code')}
+                    className={`px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                    Kód
+                  </button>
+                </div>
+              )}
+            </div>
             {useCustom && (
-              <textarea value={customHtml} onChange={(e) => setCustomHtml(e.target.value)}
-                placeholder="<p>Tisztelt Ügyfelünk...</p>" rows={6}
-                className="input-field w-full px-3 py-2 text-sm rounded-lg font-mono resize-y mt-1" />
+              editorMode === 'visual' ? (
+                <SimpleRichEditor
+                  initialHtml={customHtml}
+                  onChange={setCustomHtml}
+                  className="min-h-[150px] max-h-[300px]"
+                />
+              ) : (
+                <textarea value={customHtml} onChange={(e) => setCustomHtml(e.target.value)}
+                  placeholder="<p>Tisztelt Ügyfelünk...</p>" rows={6}
+                  className="input-field w-full px-3 py-2 text-sm rounded-lg font-mono resize-y mt-1" />
+              )
             )}
           </div>
 

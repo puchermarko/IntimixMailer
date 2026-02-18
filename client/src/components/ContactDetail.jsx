@@ -8,6 +8,7 @@ import {
   Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
   TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink
 } from 'lucide-react'
+import SimpleRichEditor from './SimpleRichEditor'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -52,6 +53,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   const [expandedSentImap, setExpandedSentImap] = useState(null)
   const [sentImapDetail, setSentImapDetail] = useState(null)
   const [loadingSentImap, setLoadingSentImap] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
 
   const [dlToken, setDlToken] = useState('')
 
