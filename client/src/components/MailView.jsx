@@ -87,6 +87,7 @@ function InboxTab() {
   const [showReply, setShowReply] = useState(false)
   const [replyHtml, setReplyHtml] = useState('')
   const [sending, setSending] = useState(false)
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const [showCreateContact, setShowCreateContact] = useState(false)
   const [newContactName, setNewContactName] = useState('')
   const [creatingContact, setCreatingContact] = useState(false)
