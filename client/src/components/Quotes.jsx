@@ -215,6 +215,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
   const [notes, setNotes] = useState(quote?.notes || '')
   const [validUntil, setValidUntil] = useState(quote?.valid_until || '')
   const [items, setItems] = useState(quote?.items?.length ? quote.items.map(i => ({ ...i })) : [{ description: '', quantity: 1, unit: 'db', unit_price: 0 }])
+  const [priceMode, setPriceMode] = useState('netto') // 'netto' | 'brutto'
 
   // Parse existing address back into fields on edit
   useEffect(() => {
@@ -254,6 +255,10 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 0) * (item.unit_price || 0), 0)
   const vatAmount = Math.round(subtotal * vatRate / 100)
   const total = subtotal + vatAmount
+
+  // Helper: convert brutto input to netto for storage
+  const bruttoToNetto = (brutto) => Math.round((brutto / (1 + vatRate / 100)) * 100) / 100
+  const nettoToBrutto = (netto) => Math.round(netto * (1 + vatRate / 100) * 100) / 100
 
   const buildAddress = (street, num, zip, city, region, country) => {
     const streetFull = [street, num].filter(Boolean).join(' ')
@@ -588,6 +593,24 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
                 <input type="number" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))}
                   className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
             </div>
+            <div className="flex items-center justify-between pt-1">
+              <label className="text-[10px] text-gray-500">Ár megadás módja</label>
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-medium ${priceMode === 'netto' ? 'text-[#2EC4BE]' : 'text-gray-500'}`}>Nettó</span>
+                <button
+                  type="button"
+                  onClick={() => setPriceMode(priceMode === 'netto' ? 'brutto' : 'netto')}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${
+                    priceMode === 'brutto' ? 'bg-[#1AA19C]' : 'bg-white/10'
+                  }`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                    priceMode === 'brutto' ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </button>
+                <span className={`text-[10px] font-medium ${priceMode === 'brutto' ? 'text-[#2EC4BE]' : 'text-gray-500'}`}>Bruttó</span>
+              </div>
+            </div>
             <div><label className="block text-[10px] text-gray-500 mb-0.5">Érvényesség</label>
               <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
                 className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
@@ -613,14 +636,16 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
               <span className="col-span-5 text-[10px] text-gray-500 uppercase">Megnevezés</span>
               <span className="col-span-1 text-[10px] text-gray-500 uppercase text-right">Menny.</span>
               <span className="col-span-1 text-[10px] text-gray-500 uppercase text-right">Egység</span>
-              <span className="col-span-2 text-[10px] text-gray-500 uppercase text-right">Egységár</span>
-              <span className="col-span-2 text-[10px] text-gray-500 uppercase text-right">Összeg</span>
+              <span className="col-span-2 text-[10px] text-gray-500 uppercase text-right">{priceMode === 'brutto' ? 'Egységár (bruttó)' : 'Egységár (nettó)'}</span>
+              <span className="col-span-2 text-[10px] text-gray-500 uppercase text-right">{priceMode === 'brutto' ? 'Összeg (bruttó)' : 'Összeg (nettó)'}</span>
               <span className="col-span-1" />
             </div>
 
             <div className="space-y-3 sm:space-y-2">
               {items.map((item, i) => {
                 const lineTotal = (item.quantity || 0) * (item.unit_price || 0)
+                const displayPrice = priceMode === 'brutto' ? nettoToBrutto(item.unit_price || 0) : (item.unit_price || 0)
+                const displayLineTotal = priceMode === 'brutto' ? (item.quantity || 0) * nettoToBrutto(item.unit_price || 0) : lineTotal
                 return (
                   <div key={i}>
                     {/* Desktop row */}
@@ -631,10 +656,15 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
                         min="0" step="0.01" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
                       <input type="text" value={item.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)}
                         placeholder="db" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
-                      <input type="number" value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', Number(e.target.value))}
+                      <input type="number"
+                        value={displayPrice}
+                        onChange={(e) => {
+                          const val = Number(e.target.value)
+                          updateItem(i, 'unit_price', priceMode === 'brutto' ? bruttoToNetto(val) : val)
+                        }}
                         min="0" step="1" className="col-span-2 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
                       <div className="col-span-2 text-xs text-gray-300 text-right font-mono pr-1">
-                        {formatMoney(lineTotal, currency)}
+                        {formatMoney(displayLineTotal, currency)}
                       </div>
                       <button onClick={() => removeItem(i)} disabled={items.length === 1}
                         className="col-span-1 flex items-center justify-center text-gray-500 hover:text-red-400 disabled:opacity-30">
@@ -657,13 +687,18 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
                             placeholder="db" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
                         </div>
                         <div>
-                          <label className="text-[9px] text-gray-500">Egységár</label>
-                          <input type="number" value={item.unit_price} onChange={(e) => updateItem(i, 'unit_price', Number(e.target.value))}
+                          <label className="text-[9px] text-gray-500">{priceMode === 'brutto' ? 'Egységár (br.)' : 'Egységár'}</label>
+                          <input type="number"
+                            value={displayPrice}
+                            onChange={(e) => {
+                              const val = Number(e.target.value)
+                              updateItem(i, 'unit_price', priceMode === 'brutto' ? bruttoToNetto(val) : val)
+                            }}
                             min="0" step="1" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
                         </div>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-300 font-mono">{formatMoney(lineTotal, currency)}</span>
+                        <span className="text-xs text-gray-300 font-mono">{formatMoney(displayLineTotal, currency)}</span>
                         <button onClick={() => removeItem(i)} disabled={items.length === 1}
                           className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 disabled:opacity-30">
                           <Trash2 className="w-3.5 h-3.5" />
