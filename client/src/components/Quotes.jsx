@@ -345,7 +345,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
         </h2>
         <p className="text-sm text-gray-400 mt-0.5 hidden sm:block">
           {quote
-            ? 'Módosítsd a tételeket, árat, leírást és mentsd el'
+            ? 'Módosítsd a tételeket, árat, leírást és mentsd el!'
             : 'Add meg az alapadatokat és kezdd el a tételsorok felvitelét'}
         </p>
       </div>
