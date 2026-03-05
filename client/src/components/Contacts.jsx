@@ -1,6 +1,6 @@
 // Kapcsolatok kezelése - itt hozol létre, szerkesztesz, törölsz kontaktokat
 import { useState, useEffect } from 'react'
-import { getContacts, createContact, updateContact, deleteContact } from '../lib/api'
+import { getContacts, createContact, updateContact, deleteContact, getInbox, getSentEmails } from '../lib/api'
 import ContactDetail from './ContactDetail'
 import { useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
@@ -24,11 +24,40 @@ export default function Contacts({ onNavigate, enhancedMail }) {
   const isModern = uiMode === 'modern'
 
   const fetchContacts = async () => {
+    setLoading(true)
     try {
       const data = await getContacts()
-      setContacts(data)
+      
+      // Fetch email counts for each contact
+      const contactsWithCounts = await Promise.all(
+        data.map(async (contact) => {
+          try {
+            // Search for emails related to this contact
+            const [sentData, receivedData] = await Promise.all([
+              getSentEmails({ page: 1, limit: 1, search: contact.email }),
+              getInbox({ page: 1, limit: 1, search: contact.email })
+            ])
+            
+            return {
+              ...contact,
+              email_count: (sentData.total || 0) + (receivedData.total || 0),
+              attachment_count: contact.attachment_count || 0 // Keep existing attachment count
+            }
+          } catch (err) {
+            console.warn(`Failed to fetch email counts for contact ${contact.id}:`, err)
+            return {
+              ...contact,
+              email_count: 0,
+              attachment_count: contact.attachment_count || 0
+            }
+          }
+        })
+      )
+      
+      setContacts(contactsWithCounts)
     } catch (err) {
       toast.error(err.message)
+      setContacts([])
     } finally {
       setLoading(false)
     }
