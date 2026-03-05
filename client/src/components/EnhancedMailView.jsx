@@ -352,6 +352,8 @@ export default function EnhancedMailView() {
       } else if (activeFolder === 'sent') {
         data = await getSentEmails()
         console.log('Sent emails loaded:', data)
+        console.log('First sent email structure:', data.emails?.[0] ? Object.keys(data.emails[0]) : 'No emails')
+        console.log('Sample sent email:', data.emails?.[0])
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
         data.emails = []
