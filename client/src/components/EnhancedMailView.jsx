@@ -336,6 +336,7 @@ export default function EnhancedMailView() {
   const [sending, setSending] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [emailToDelete, setEmailToDelete] = useState(null)
+  const [trashEmails, setTrashEmails] = useState([])
   
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
@@ -358,10 +359,9 @@ export default function EnhancedMailView() {
         console.log('Sample sent email:', data.emails?.[0])
         console.log('All field names in first sent email:', data.emails?.[0] ? Object.keys(data.emails[0]).map(key => `${key}: ${data.emails[0][key]}`).join(', ') : 'No emails')
       } else if (activeFolder === 'trash') {
-        // Load deleted emails from trash
-        // TODO: Implement trash API - for now show empty
-        data.emails = []
-        console.log('Trash folder loaded (empty for now)')
+        // Load deleted emails from client-side trash storage
+        data.emails = trashEmails
+        console.log('Trash folder loaded with emails:', trashEmails.length)
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
         data.emails = []
@@ -537,8 +537,21 @@ export default function EnhancedMailView() {
   const confirmDelete = async () => {
     try {
       if (activeFolder === 'inbox') {
-        await deleteInboxEmail(emailToDelete)
-        toast.success('Levél a kukába helyezve')
+        // Find the email to delete from current emails
+        const emailToDeleteData = emails.find(email => email.id === emailToDelete)
+        if (emailToDeleteData) {
+          // Add to trash with timestamp
+          const trashEmail = {
+            ...emailToDeleteData,
+            deleted_at: new Date().toISOString(),
+            original_folder: 'inbox'
+          }
+          setTrashEmails(prev => [...prev, trashEmail])
+          
+          // Remove from inbox (simulate deletion)
+          setEmails(prev => prev.filter(email => email.id !== emailToDelete))
+          toast.success('Levél a kukába helyezve')
+        }
       } else if (activeFolder === 'sent') {
         // TODO: Implement sent email delete API
         toast.warning('Kimenő levelek törlése hamarosan elérhető lesz')
@@ -546,15 +559,12 @@ export default function EnhancedMailView() {
         setEmailToDelete(null)
         return
       } else if (activeFolder === 'trash') {
-        // TODO: Implement permanent delete from trash
-        toast.warning('Levelek végleges törlése hamarosan elérhető lesz')
-        setShowDeleteConfirm(false)
-        setEmailToDelete(null)
-        return
+        // Permanently delete from trash
+        setTrashEmails(prev => prev.filter(email => email.id !== emailToDelete))
+        toast.success('Levél véglegesen törölve')
       }
       setSelectedEmail(null)
       setEmailDetail(null)
-      loadEmails()
     } catch (err) {
       toast.error(err.message || 'Hiba a levél törlésekor')
     } finally {
@@ -603,7 +613,10 @@ export default function EnhancedMailView() {
               <h3 className="text-lg font-semibold text-white">Levél törlése</h3>
             </div>
             <p className="text-gray-300 mb-6">
-              Biztosan törölni szeretnéd ezt a levelet? A levél a kukába kerül, ahonnan később visszaállítható.
+              {activeFolder === 'trash' 
+                ? 'Biztosan véglegesen törölni szeretnéd ezt a levelet? Ez a művelet nem vonható vissza.'
+                : 'Biztosan törölni szeretnéd ezt a levelet? A levél a kukába kerül, ahonnan később visszaállítható.'
+              }
             </p>
             <div className="flex items-center gap-3">
               <button
@@ -616,7 +629,7 @@ export default function EnhancedMailView() {
                 onClick={confirmDelete}
                 className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
               >
-                Törlés
+                {activeFolder === 'trash' ? 'Végleges törlés' : 'Törlés'}
               </button>
             </div>
           </div>
