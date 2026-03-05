@@ -7,6 +7,7 @@ import EnhancedMailView from '../components/EnhancedMailView'
 import TemplateGallery from '../components/TemplateGallery'
 import Settings from '../components/Settings'
 import Contacts from '../components/Contacts'
+import EnhancedContactManager from '../components/EnhancedContacts/ContactManager'
 import Quotes from '../components/Quotes'
 import UserManagement from '../components/UserManagement'
 import GlobalSettings from '../components/GlobalSettings'
@@ -33,7 +34,7 @@ export default function Dashboard() {
 
   const views = {
     mail: useEnhancedMail ? <EnhancedMailView onNavigate={setActiveView} /> : <MailView />,
-    contacts: <Contacts onNavigate={setActiveView} enhancedMail={useEnhancedMail} />,
+    contacts: useEnhancedMail ? <EnhancedContactManager onNavigate={setActiveView} enhancedMail={useEnhancedMail} /> : <Contacts onNavigate={setActiveView} enhancedMail={useEnhancedMail} />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,
@@ -69,19 +70,13 @@ export default function Dashboard() {
         </div>
       )}
       {showTour && <QuickTour onComplete={() => setShowTour(false)} setActiveView={setActiveView} setSidebarOpen={setSidebarOpen} />}
-      {/* Only show sidebar if not in enhanced mail view */}
-      {activeView !== 'mail' || !useEnhancedMail ? (
-        <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
-      ) : null}
+      <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
       <main className={`pt-16 lg:pt-0 min-h-screen transition-all duration-300 
-        ${activeView === 'mail' && useEnhancedMail 
-          ? 'ml-0 p-0' 
-          : `${sidebarCollapsed 
-            ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
-            : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
-          } ${impersonating ? 'mt-10' : ''}
-          ${isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8'}`
-        }
+        ${sidebarCollapsed 
+          ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
+          : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
+        } ${impersonating ? 'mt-10' : ''}
+        ${activeView === 'mail' && useEnhancedMail ? 'p-0' : (isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8')}
       `}>
         <div className={`mx-auto fade-in ${activeView === 'mail' && useEnhancedMail ? 'w-full h-full' : (isModern ? 'max-w-[1600px]' : 'max-w-5xl')}`} key={activeView}>
           {views[activeView]}

@@ -1159,6 +1159,17 @@ export default function EnhancedMailView({ onNavigate }) {
                 <Forward className="w-4 h-4" />
                 Továbbítás
               </button>
+              <button
+                onClick={() => {
+                  const name = activeFolder === 'sent' ? emailDetail.recipient_name || '' : (emailDetail.from_name || '');
+                  const email = activeFolder === 'sent' ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient) : (emailDetail.from_address || emailDetail.sender);
+                  onNavigate('contacts', { name, email });
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-blue-400"
+              >
+                <UserPlus className="w-4 h-4" />
+                Hozzáadás a kapcsolatokhoz
+              </button>
               <button 
                 onClick={() => handleDelete(emailDetail.id)}
                 className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400"
