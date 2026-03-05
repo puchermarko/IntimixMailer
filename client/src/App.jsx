@@ -44,8 +44,8 @@ function App() {
   const [uiMode, setUiMode] = useState(() => {
     const savedMode = localStorage.getItem('intimix_ui_mode')
     if (savedMode) return savedMode
-    // If no saved preference, check if modern UI is globally enabled
-    return 'legacy' // Default to legacy, will be updated by global settings
+    // Default to modern UI
+    return 'modern'
   })
   const [globalModernUI, setGlobalModernUI] = useState(false)
 
@@ -62,7 +62,7 @@ function App() {
   }
 
   useEffect(() => {
-    // Initialize body class
+    // Initialize body class - default to modern
     if (uiMode === 'modern') {
       document.body.classList.add('ui-modern')
     }
@@ -74,10 +74,10 @@ function App() {
       const globalEnabled = settings.modern_ui_enabled === 'true'
       setGlobalModernUI(globalEnabled)
       
-      // If user hasn't set a preference, apply global setting
+      // If user hasn't set a preference, default to modern (not legacy)
       const savedMode = localStorage.getItem('intimix_ui_mode')
       if (!savedMode) {
-        const newMode = globalEnabled ? 'modern' : 'legacy'
+        const newMode = 'modern' // Always default to modern
         setUiMode(newMode)
         localStorage.setItem('intimix_ui_mode', newMode)
         if (newMode === 'modern') {
@@ -99,10 +99,10 @@ function App() {
         const globalEnabled = settings.modern_ui_enabled === 'true'
         setGlobalModernUI(globalEnabled)
         
-        // If user hasn't set a preference, apply global setting
+        // If user hasn't set a preference, default to modern
         const savedMode = localStorage.getItem('intimix_ui_mode')
         if (!savedMode) {
-          const newMode = globalEnabled ? 'modern' : 'legacy'
+          const newMode = 'modern' // Default to modern UI
           setUiMode(newMode)
           localStorage.setItem('intimix_ui_mode', newMode)
           if (newMode === 'modern') {
@@ -123,7 +123,7 @@ function App() {
   useEffect(() => {
     const savedMode = localStorage.getItem('intimix_ui_mode')
     if (!savedMode) {
-      const newMode = globalModernUI ? 'modern' : 'legacy'
+      const newMode = 'modern' // Always default to modern
       setUiMode(newMode)
       localStorage.setItem('intimix_ui_mode', newMode)
       if (newMode === 'modern') {

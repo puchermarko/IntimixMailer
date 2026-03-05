@@ -448,22 +448,22 @@ export default function Settings({ onStartTour }) {
             
             <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 relative">
               <div className="flex items-center gap-3">
-                <Monitor className={`w-5 h-5 ${uiMode === 'modern' ? 'text-[#2EC4BE]' : 'text-gray-400'}`} />
+                <Monitor className={`w-5 h-5 ${uiMode === 'legacy' ? 'text-gray-400' : 'text-[#2EC4BE]'}`} />
                 <div>
-                  <p className="text-sm font-medium text-white">Modern Felület</p>
-                  <p className="text-xs text-gray-400">Új, letisztultabb dizájn és intuitívabb működés</p>
+                  <p className="text-sm font-medium text-white">Klasszikus Felület</p>
+                  <p className="text-xs text-gray-400">Válts vissza a hagyományos megjelenésre</p>
                 </div>
               </div>
               
               <button
                 onClick={() => toggleUiMode()}
                 className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
-                  uiMode === 'modern' ? 'bg-[#2EC4BE]' : 'bg-gray-700'
+                  uiMode === 'legacy' ? 'bg-gray-700' : 'bg-[#2EC4BE]'
                 }`}
               >
                 <div
                   className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${
-                    uiMode === 'modern' ? 'translate-x-6' : 'translate-x-0'
+                    uiMode === 'legacy' ? 'translate-x-0' : 'translate-x-6'
                   }`}
                 />
               </button>
