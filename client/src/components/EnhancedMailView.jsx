@@ -393,6 +393,15 @@ export default function EnhancedMailView() {
       const detail = await getEmailDetail(email.id)
       
       console.log('Email detail loaded:', detail)
+      console.log('Email detail structure:', Object.keys(detail))
+      console.log('Email body fields:', {
+        html_body: detail.html_body,
+        text_body: detail.text_body,
+        body: detail.body,
+        content: detail.content,
+        message: detail.message
+      })
+      
       setEmailDetail(detail)
     } catch (err) {
       console.error('Failed to load email detail:', err)
@@ -656,7 +665,7 @@ export default function EnhancedMailView() {
                         {email.subject}
                       </div>
                       <div className="text-sm text-gray-500 truncate">
-                        {email.text_body || email.preview || 'Nincs tartalom'}
+                        {email.text_body || email.preview || email.body || email.content || 'Nincs tartalom'}
                       </div>
                     </div>
                     {!email.read && (
@@ -732,14 +741,16 @@ export default function EnhancedMailView() {
 
           {/* Email Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {emailDetail.html_body ? (
+            {emailDetail.html_body || emailDetail.body || emailDetail.content || emailDetail.message ? (
               <div
                 className="prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: emailDetail.html_body }}
+                dangerouslySetInnerHTML={{ 
+                  __html: emailDetail.html_body || emailDetail.body || emailDetail.content || emailDetail.message 
+                }}
               />
             ) : (
               <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
-                {emailDetail.text_body || '(Nincs tartalom)'}
+                {emailDetail.text_body || emailDetail.plain_text || emailDetail.text || '(Nincs tartalom)'}
               </pre>
             )}
           </div>
