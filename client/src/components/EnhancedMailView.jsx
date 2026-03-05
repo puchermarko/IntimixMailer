@@ -315,7 +315,7 @@ const MAIL_FOLDERS = [
   { id: 'trash', label: 'Kuka', icon: Trash2, count: 0 }
 ]
 
-export default function EnhancedMailView() {
+export default function EnhancedMailView({ onNavigate }) {
   const [activeFolder, setActiveFolder] = useState('inbox')
   const [selectedEmail, setSelectedEmail] = useState(null)
   const [emailDetail, setEmailDetail] = useState(null)
@@ -643,95 +643,98 @@ export default function EnhancedMailView() {
       )}
 
       {/* Main Layout */}
-      {/* Sidebar */}
-      <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r border-white/10 flex flex-col transition-all duration-300`}>
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            {!sidebarCollapsed && <h2 className="font-semibold text-white">Levelezés</h2>}
+      {/* Header with Back Button */}
+      <div className="w-full border-b border-white/10 bg-[#1a1d23]">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => onNavigate('analytics')}
+              className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-gray-300"
             >
-              <Sidebar className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
+              Vissza
             </button>
-          </div>
-        </div>
-
-        {/* Compose Button */}
-        <div className="p-4">
-          <button
-            onClick={() => setShowCompose(true)}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
-              isModern 
-                ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
-                : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
-            }`}
-          >
-            <PenLine className="w-4 h-4" />
-            {!sidebarCollapsed && 'Új levél'}
-          </button>
-        </div>
-
-        {/* Folders */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="space-y-1 p-2">
-            {MAIL_FOLDERS.map(folder => {
-              const Icon = folder.icon
-              const isActive = activeFolder === folder.id
-              return (
-                <button
-                  key={folder.id}
-                  onClick={() => setActiveFolder(folder.id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
-                    isActive
-                      ? isModern 
-                        ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20'
-                        : 'bg-[#1AA19C]/15 text-[#2EC4BE]'
-                      : 'text-gray-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  {!sidebarCollapsed && (
-                    <>
-                      <span className="flex-1 text-left text-sm">{folder.label}</span>
-                      {folder.count > 0 && (
-                        <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">
-                          {folder.count}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
-              )
-            })}
+            <h1 className="text-xl font-semibold text-white">Levelezés</h1>
           </div>
         </div>
       </div>
 
-      {/* Email List */}
-      <div className={`border-r border-white/10 flex flex-col ${selectedEmail ? 'w-96' : 'flex-1'}`}>
-        {/* List Header */}
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Keresés..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm ${
-                  isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'
-                }`}
-              />
-            </div>
+      {/* Email Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Email Sidebar */}
+        <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r border-white/10 flex flex-col transition-all duration-300`}>
+          {/* Compose Button */}
+          <div className="p-4">
             <button
-              onClick={loadEmails}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              onClick={() => setShowCompose(true)}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                isModern 
+                  ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
+                  : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
+              }`}
             >
-              <RefreshCw className="w-4 h-4" />
+              <PenLine className="w-4 h-4" />
+              {!sidebarCollapsed && 'Új levél'}
             </button>
+          </div>
+
+          {/* Folders */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="space-y-1 p-2">
+              {MAIL_FOLDERS.map(folder => {
+                const Icon = folder.icon
+                const isActive = activeFolder === folder.id
+                return (
+                  <button
+                    key={folder.id}
+                    onClick={() => setActiveFolder(folder.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                      isActive
+                        ? isModern 
+                          ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20'
+                          : 'bg-[#1AA19C]/15 text-[#2EC4BE]'
+                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="flex-1 text-left text-sm font-medium">{folder.label}</span>
+                        {folder.count > 0 && (
+                          <span className="text-xs bg-white/10 px-2 py-1 rounded-full">{folder.count}</span>
+                        )}
+                      </>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Email List */}
+        <div className={`border-r border-white/10 flex flex-col ${selectedEmail ? 'w-96' : 'flex-1'}`}>
+          {/* List Header */}
+          <div className="p-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Keresés..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm ${
+                    isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'
+                  }`}
+                />
+              </div>
+              <button
+                onClick={loadEmails}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'conversation' : 'list')}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -740,8 +743,6 @@ export default function EnhancedMailView() {
             </button>
           </div>
         </div>
-
-        {/* Email List */}
         <div className="flex-1 overflow-y-auto" ref={emailListRef}>
           {loading ? (
             <div className="p-8 text-center">
@@ -1012,6 +1013,7 @@ export default function EnhancedMailView() {
           )}
         </div>
       )}
+        </div>
     </div>
   )
 }
