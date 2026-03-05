@@ -1,6 +1,6 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect, useMemo } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails } from '../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails, replyToEmail } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth, useUI } from '../App'
 import {
@@ -59,6 +59,10 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   const [sentImapDetail, setSentImapDetail] = useState(null)
   const [loadingSentImap, setLoadingSentImap] = useState(false)
   const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
+  const [showReply, setShowReply] = useState(false)
+  const [replyHtml, setReplyHtml] = useState('')
+  const [replyToEmail, setReplyToEmail] = useState(null)
+  const [sendingReply, setSendingReply] = useState(false)
 
   const [dlToken, setDlToken] = useState('')
 
@@ -189,6 +193,55 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
       toast.error(err.message)
     } finally {
       setLoadingSentImap(false)
+    }
+  }
+
+  const handleReply = (email, emailType) => {
+    setReplyToEmail({ ...email, type: emailType })
+    setShowReply(true)
+    setReplyHtml('')
+  }
+
+  const handleSendReply = async () => {
+    if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
+    setSendingReply(true)
+    try {
+      const email = replyToEmail
+      const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
+      const originalFrom = email.type === 'sent' 
+        ? (email.to_address || email.recipient_email)
+        : (email.from_name 
+          ? `${email.from_name} <${email.from_address}>` 
+          : email.from_address)
+      
+      const fullHtml = `
+        <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
+          ${replyHtml.replace(/\n/g, '<br>')}
+        </div>
+        <br>
+        <div style="border-left:2px solid #ccc;padding-left:12px;margin-top:16px;color:#666;font-size:13px;">
+          <p style="margin:0 0 8px;"><strong>On ${originalDate}, ${originalFrom} wrote:</strong></p>
+          ${email.html_body || email.text_body?.replace(/\n/g, '<br>') || ''}
+        </div>
+      `
+      
+      const subject = email.subject?.startsWith('Re:')
+        ? email.subject
+        : `Re: ${email.subject}`
+      
+      const replyTo = email.type === 'sent' 
+        ? (email.to_address || email.recipient_email)
+        : email.from_address
+      
+      await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: email.message_id || undefined })
+      toast.success('Válasz elküldve!')
+      setShowReply(false)
+      setReplyHtml('')
+      setReplyToEmail(null)
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSendingReply(false)
     }
   }
 
@@ -338,7 +391,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
                 return (
                   <div key={`${email._source}-${email.id}`} className="glass rounded-xl overflow-hidden">
                     <button
-                      onClick={() => handleExpand(email.id)}
+                      onClick={() => isLocal ? handleExpandEmail(email.id) : handleExpandSentImap(email.id)}
                       className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-all"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -346,16 +399,35 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-200 truncate">{email.subject}</p>
                           <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatDate(email._date)}
-                            {!isLocal && email.has_attachments === 1 && <Paperclip className="w-3 h-3 ml-2" />}
+                            {isLocal ? (
+                              <>
+                                <span>To: {email.recipient || email.to_address || email.recipient_email}</span>
+                                <span>•</span>
+                                <span>{formatDate(email._date)}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>From: {email.from_name || email.from_address}</span>
+                                <span>•</span>
+                                <span>{formatDate(email._date)}</span>
+                              </>
+                            )}
                           </p>
                         </div>
                       </div>
-                      {isExpanded
-                        ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
-                        : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
-                      }
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleReply(email, isLocal ? 'sent' : 'received') }}
+                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          title="Válasz"
+                        >
+                          <Reply className="w-4 h-4 text-gray-400" />
+                        </button>
+                        {isExpanded
+                          ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+                          : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                        }
+                      </div>
                     </button>
 
                     {isExpanded && (
@@ -457,10 +529,19 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
                       </p>
                     </div>
                   </div>
-                  {expandedReceived === email.id
-                    ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
-                    : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
-                  }
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleReply(email, 'received') }}
+                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      title="Válasz"
+                    >
+                      <Reply className="w-4 h-4 text-gray-400" />
+                    </button>
+                    {expandedReceived === email.id
+                      ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                    }
+                  </div>
                 </button>
 
                 {expandedReceived === email.id && (
@@ -1099,6 +1180,59 @@ function ContactJourney({ contact }) {
         </div>
       )}
     </div>
+    
+    {/* Reply Modal */}
+    {showReply && replyToEmail && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowReply(false)}>
+        <div className="glass glow rounded-2xl p-6 w-full max-w-2xl fade-in" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-lg font-semibold text-white">Válasz erre az emailre</h3>
+            <button onClick={() => setShowReply(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="mb-4">
+            <p className="text-sm text-gray-400 mb-2">Válasz erre:</p>
+            <p className="text-white font-medium">{replyToEmail.subject}</p>
+            <p className="text-xs text-gray-500">
+              {replyToEmail.type === 'sent' 
+                ? `To: ${replyToEmail.to_address || replyToEmail.recipient_email}`
+                : `From: ${replyToEmail.from_name || replyToEmail.from_address}`
+              }
+            </p>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-400 mb-2">Válasz szövege:</label>
+            <textarea
+              value={replyHtml}
+              onChange={(e) => setReplyHtml(e.target.value)}
+              placeholder="Írd ide a válaszodat..."
+              className="w-full px-4 py-3 rounded-lg text-sm bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#2EC4BE] resize-none"
+              rows={8}
+            />
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowReply(false)}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 glass-light transition-all"
+            >
+              Mégse
+            </button>
+            <button
+              onClick={handleSendReply}
+              disabled={sendingReply || !replyHtml.trim()}
+              className="flex-1 btn-primary py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {sendingReply ? 'Küldés...' : 'Válasz küldése'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 )
 }
