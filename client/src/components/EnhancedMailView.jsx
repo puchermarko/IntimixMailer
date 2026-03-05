@@ -787,12 +787,12 @@ export default function EnhancedMailView() {
                         {email.subject}
                       </div>
                       
-                      <div className="text-sm text-gray-500 truncate">
+                      {/* <div className="text-sm text-gray-500 truncate">
                         {activeFolder === 'sent' 
-                          ? `To: ${email.recipient || email.to_address || email.recipient_email || 'Nincs címzett'}`
+                          ? `To: ${email.recipient || email.to_address || email.recipient_email || 'Nincs címzett'}` 
                           : (email.text_body || email.preview || email.body || email.content || 'Nincs tartalom')
                         }
-                      </div>
+                      </div> */}
                       
                     </div>
                     {!email.read && (
