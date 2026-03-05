@@ -348,8 +348,10 @@ export default function EnhancedMailView() {
       let data = { emails: [] }
       if (activeFolder === 'inbox') {
         data = await getInbox()
+        console.log('Inbox emails loaded:', data)
       } else if (activeFolder === 'sent') {
         data = await getSentEmails()
+        console.log('Sent emails loaded:', data)
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
         data.emails = []
@@ -364,6 +366,7 @@ export default function EnhancedMailView() {
         data.emails = []
       }
       setEmails(data.emails || [])
+      console.log('Final emails array:', data.emails || [])
     } catch (err) {
       console.error('Failed to load emails:', err)
       toast.error(err.message || 'Hiba a levelek betöltésekor')
@@ -381,12 +384,20 @@ export default function EnhancedMailView() {
     setSelectedEmail(email)
     setLoading(true)
     try {
+      console.log('Opening email:', email)
+      console.log('Active folder:', activeFolder)
+      console.log('Email ID:', email.id)
+      
       let detail = null
       if (activeFolder === 'inbox') {
+        console.log('Calling getInboxEmail for:', email.id)
         detail = await getInboxEmail(email.id)
       } else if (activeFolder === 'sent') {
+        console.log('Calling getSentImapEmail for:', email.id)
         detail = await getSentImapEmail(email.id)
       }
+      
+      console.log('Email detail loaded:', detail)
       setEmailDetail(detail)
     } catch (err) {
       console.error('Failed to load email detail:', err)
