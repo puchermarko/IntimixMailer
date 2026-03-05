@@ -68,6 +68,29 @@ function App() {
     }
   }, [])
 
+  const refreshGlobalSettings = async () => {
+    try {
+      const settings = await getGlobalSettings()
+      const globalEnabled = settings.modern_ui_enabled === 'true'
+      setGlobalModernUI(globalEnabled)
+      
+      // If user hasn't set a preference, apply global setting
+      const savedMode = localStorage.getItem('intimix_ui_mode')
+      if (!savedMode) {
+        const newMode = globalEnabled ? 'modern' : 'legacy'
+        setUiMode(newMode)
+        localStorage.setItem('intimix_ui_mode', newMode)
+        if (newMode === 'modern') {
+          document.body.classList.add('ui-modern')
+        } else {
+          document.body.classList.remove('ui-modern')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh global settings:', error)
+    }
+  }
+
   // Fetch global settings and update UI mode if needed
   useEffect(() => {
     const loadGlobalSettings = async () => {
@@ -76,12 +99,17 @@ function App() {
         const globalEnabled = settings.modern_ui_enabled === 'true'
         setGlobalModernUI(globalEnabled)
         
-        // If user hasn't set a preference and global modern UI is enabled, set it
+        // If user hasn't set a preference, apply global setting
         const savedMode = localStorage.getItem('intimix_ui_mode')
-        if (!savedMode && globalEnabled) {
-          setUiMode('modern')
-          localStorage.setItem('intimix_ui_mode', 'modern')
-          document.body.classList.add('ui-modern')
+        if (!savedMode) {
+          const newMode = globalEnabled ? 'modern' : 'legacy'
+          setUiMode(newMode)
+          localStorage.setItem('intimix_ui_mode', newMode)
+          if (newMode === 'modern') {
+            document.body.classList.add('ui-modern')
+          } else {
+            document.body.classList.remove('ui-modern')
+          }
         }
       } catch (error) {
         console.error('Failed to load global settings:', error)
@@ -90,6 +118,21 @@ function App() {
     
     loadGlobalSettings()
   }, [])
+
+  // Update UI when global setting changes and user has no preference
+  useEffect(() => {
+    const savedMode = localStorage.getItem('intimix_ui_mode')
+    if (!savedMode) {
+      const newMode = globalModernUI ? 'modern' : 'legacy'
+      setUiMode(newMode)
+      localStorage.setItem('intimix_ui_mode', newMode)
+      if (newMode === 'modern') {
+        document.body.classList.add('ui-modern')
+      } else {
+        document.body.classList.remove('ui-modern')
+      }
+    }
+  }, [globalModernUI])
 
   const login = (newToken, userEmail, userRole, userName, subStatus, setupDone) => {
     localStorage.setItem('intimix_token', newToken)
@@ -160,7 +203,7 @@ function App() {
   useEffect(() => { if (isAuthenticated) refreshBranding() }, [token])
 
   return (
-    <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI }}>
+    <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI, refreshGlobalSettings }}>
       <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
         <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
           <Routes>

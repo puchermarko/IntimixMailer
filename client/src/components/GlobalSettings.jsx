@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { Globe, Loader2, Shield, UserPlus, Layout, Monitor } from 'lucide-react'
 
 export default function GlobalSettings() {
-  const { uiMode } = useUI()
+  const { uiMode, refreshGlobalSettings } = useUI()
   const [settings, setSettings] = useState({
     landing_page_enabled: 'true',
     registration_enabled: 'true',
@@ -44,6 +44,10 @@ export default function GlobalSettings() {
     try {
       await updateGlobalSettings({ [key]: newValue })
       toast.success('Beállítás mentve!')
+      // Refresh global settings to apply changes immediately
+      if (refreshGlobalSettings) {
+        await refreshGlobalSettings()
+      }
     } catch (err) {
       toast.error(err.message)
       setSettings(prev => ({ ...prev, [key]: settings[key] }))
