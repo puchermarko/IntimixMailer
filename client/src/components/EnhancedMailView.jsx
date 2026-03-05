@@ -695,7 +695,8 @@ export default function EnhancedMailView() {
                       <div className="text-sm font-medium text-gray-300 truncate mb-1">
                         {email.subject}
                       </div>
-                      <div className="text-sm text-gray-500 truncate">
+                      
+                      {/* <div className="text-sm text-gray-500 truncate">
                         {(() => {
                           if (activeFolder === 'sent') {
                             // For sent emails, try different field names
@@ -705,7 +706,8 @@ export default function EnhancedMailView() {
                             return email.text_body || email.preview || email.body || email.content || 'Nincs tartalom'
                           }
                         })()}
-                      </div>
+                      </div> */}
+                      
                     </div>
                     {!email.read && (
                       <div className="w-2 h-2 bg-[#2EC4BE] rounded-full shrink-0" />
