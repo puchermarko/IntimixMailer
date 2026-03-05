@@ -696,17 +696,12 @@ export default function EnhancedMailView() {
                         {email.subject}
                       </div>
                       
-                      {/* <div className="text-sm text-gray-500 truncate">
-                        {(() => {
-                          if (activeFolder === 'sent') {
-                            // For sent emails, try different field names
-                            return email.text_body || email.preview || email.body || email.content || email.message || 'Nincs tartalom'
-                          } else {
-                            // For inbox emails, use the original logic
-                            return email.text_body || email.preview || email.body || email.content || 'Nincs tartalom'
-                          }
-                        })()}
-                      </div> */}
+                      <div className="text-sm text-gray-500 truncate">
+                        {activeFolder === 'sent' 
+                          ? `To: ${email.to_address || email.recipient_email || 'Nincs címzett'}`
+                          : (email.text_body || email.preview || email.body || email.content || 'Nincs tartalom')
+                        }
+                      </div>
                       
                     </div>
                     {!email.read && (
