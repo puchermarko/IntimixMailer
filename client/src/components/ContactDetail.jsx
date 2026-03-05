@@ -125,13 +125,8 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   }, [contact, contactId])
 
   const handleExpandEmail = async (emailId) => {
-    // If enhanced mail view is enabled, navigate to it instead of expanding inline
-    if (enhancedMail && onNavigate) {
-      onNavigate('mail')
-      return
-    }
-    
-    // Original inline expansion logic
+    // Always use inline expansion for contact details, regardless of enhanced mail setting
+    // Enhanced mail view should only be accessed from main navigation
     if (expandedEmail === emailId) {
       setExpandedEmail(null)
       setEmailDetail(null)
@@ -158,13 +153,8 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   }
 
   const handleExpandReceived = async (emailId) => {
-    // If enhanced mail view is enabled, navigate to it instead of expanding inline
-    if (enhancedMail && onNavigate) {
-      onNavigate('mail')
-      return
-    }
-    
-    // Original inline expansion logic
+    // Always use inline expansion for contact details, regardless of enhanced mail setting
+    // Enhanced mail view should only be accessed from main navigation
     if (expandedReceived === emailId) {
       setExpandedReceived(null)
       setReceivedDetail(null)
@@ -183,13 +173,8 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   }
 
   const handleExpandSentImap = async (emailId) => {
-    // If enhanced mail view is enabled, navigate to it instead of expanding inline
-    if (enhancedMail && onNavigate) {
-      onNavigate('mail')
-      return
-    }
-    
-    // Original inline expansion logic
+    // Always use inline expansion for contact details, regardless of enhanced mail setting
+    // Enhanced mail view should only be accessed from main navigation
     if (expandedSentImap === emailId) {
       setExpandedSentImap(null)
       setSentImapDetail(null)
