@@ -40,7 +40,7 @@ function isPreviewable(mimetype) {
   return mimetype?.startsWith('image/') || mimetype?.includes('pdf')
 }
 
-export default function ContactDetail({ contactId, onBack, onEdit, onNavigate }) {
+export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, enhancedMail }) {
   const { uiMode } = useUI()
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -81,6 +81,13 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   }, [contactId])
 
   const handleExpandEmail = async (emailId) => {
+    // If enhanced mail view is enabled, navigate to it instead of expanding inline
+    if (enhancedMail && onNavigate) {
+      onNavigate('mail')
+      return
+    }
+    
+    // Original inline expansion logic
     if (expandedEmail === emailId) {
       setExpandedEmail(null)
       setEmailDetail(null)
@@ -107,6 +114,13 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   }
 
   const handleExpandReceived = async (emailId) => {
+    // If enhanced mail view is enabled, navigate to it instead of expanding inline
+    if (enhancedMail && onNavigate) {
+      onNavigate('mail')
+      return
+    }
+    
+    // Original inline expansion logic
     if (expandedReceived === emailId) {
       setExpandedReceived(null)
       setReceivedDetail(null)
@@ -125,6 +139,13 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   }
 
   const handleExpandSentImap = async (emailId) => {
+    // If enhanced mail view is enabled, navigate to it instead of expanding inline
+    if (enhancedMail && onNavigate) {
+      onNavigate('mail')
+      return
+    }
+    
+    // Original inline expansion logic
     if (expandedSentImap === emailId) {
       setExpandedSentImap(null)
       setSentImapDetail(null)

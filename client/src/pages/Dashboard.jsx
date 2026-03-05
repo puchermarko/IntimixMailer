@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   const views = {
     mail: useEnhancedMail ? <EnhancedMailView onNavigate={setActiveView} /> : <MailView />,
-    contacts: <Contacts onNavigate={setActiveView} />,
+    contacts: <Contacts onNavigate={setActiveView} enhancedMail={useEnhancedMail} />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,

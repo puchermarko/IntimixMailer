@@ -9,7 +9,7 @@ import {
   Loader2, BookOpen, Paperclip, ChevronRight, MapPin, Building2, Lock
 } from 'lucide-react'
 
-export default function Contacts({ onNavigate }) {
+export default function Contacts({ onNavigate, enhancedMail }) {
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
   const [contacts, setContacts] = useState([])
@@ -99,6 +99,7 @@ export default function Contacts({ onNavigate }) {
         onBack={() => { setSelectedContactId(null); fetchContacts() }}
         onEdit={(contact) => { setSelectedContactId(null); openEdit(contact) }}
         onNavigate={onNavigate}
+        enhancedMail={enhancedMail}
       />
     )
   }
