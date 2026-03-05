@@ -629,6 +629,10 @@ export default function EnhancedMailView({ onNavigate }) {
         // Permanently delete from trash
         setTrashEmails(prev => prev.filter(email => email.id !== emailToDelete))
         toast.success('Levél véglegesen törölve')
+        // Auto-refresh trash folder after permanent deletion
+        setTimeout(() => {
+          loadEmails()
+        }, 500)
       }
       setSelectedEmail(null)
       setEmailDetail(null)
