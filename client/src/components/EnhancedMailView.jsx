@@ -580,7 +580,7 @@ export default function EnhancedMailView({ onNavigate }) {
   }
 
   return (
-    <div className={`h-screen flex ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
+    <div className={`h-screen flex flex-col ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Compose Modal */}
       {showCompose && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
