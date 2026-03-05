@@ -519,9 +519,15 @@ export default function EnhancedMailView({ onNavigate }) {
       const originalDate = new Date(emailDetail.date).toLocaleString('hu-HU')
       const originalFrom = activeFolder === 'sent' 
         ? (emailDetail.to_address || emailDetail.recipient_email)
-        : (emailDetail.from_name
-          ? `${emailDetail.from_name} <${emailDetail.from_address}>`
-          : emailDetail.from_address)
+        : activeFolder === 'trash'
+          ? (emailDetail.original_folder === 'sent'
+            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+            : (emailDetail.from_name
+              ? `${emailDetail.from_name} <${emailDetail.from_address}>`
+              : emailDetail.from_address))
+          : (emailDetail.from_name
+            ? `${emailDetail.from_name} <${emailDetail.from_address}>`
+            : emailDetail.from_address)
       const fullHtml = `
         <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
           ${replyHtml.replace(/\n/g, '<br>')}
@@ -537,7 +543,11 @@ export default function EnhancedMailView({ onNavigate }) {
         : `Re: ${emailDetail.subject}`
       const replyTo = activeFolder === 'sent' 
         ? (emailDetail.to_address || emailDetail.recipient_email)
-        : emailDetail.from_address
+        : activeFolder === 'trash'
+          ? (emailDetail.original_folder === 'sent'
+            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+            : emailDetail.from_address)
+          : emailDetail.from_address
       await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: emailDetail.message_id || undefined })
       toast.success('Válasz elküldve!')
       setShowReply(false)
@@ -879,14 +889,24 @@ export default function EnhancedMailView({ onNavigate }) {
                   Válasz neki: <span className="text-gray-200">
                     {activeFolder === 'sent' 
                       ? (emailDetail.to_address || emailDetail.recipient_email)
-                      : (emailDetail.from_name || emailDetail.from_address)
+                      : activeFolder === 'trash'
+                        ? (emailDetail.original_folder === 'sent'
+                          ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+                          : (emailDetail.from_name || emailDetail.from_address))
+                        : (emailDetail.from_name || emailDetail.from_address)
                     }
                   </span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                {new Date(activeFolder === 'sent' ? (emailDetail.sent_at || emailDetail.date) : emailDetail.date).toLocaleString('hu-HU')}
+                {new Date(
+                  activeFolder === 'sent' 
+                    ? (emailDetail.sent_at || emailDetail.date)
+                    : activeFolder === 'trash'
+                      ? (emailDetail.deleted_at || emailDetail.date)
+                      : emailDetail.date
+                ).toLocaleString('hu-HU')}
               </div>
             </div>
 
@@ -925,8 +945,20 @@ export default function EnhancedMailView({ onNavigate }) {
           <div className="flex-1 overflow-y-auto p-6">
             {(() => {
               const isImap = activeFolder === 'sent' && emailDetail && emailDetail.to_address
-              const bodyHtml = isImap ? emailDetail.html_body : (emailDetail.html_body || emailDetail.html || emailDetail.body || emailDetail.content || emailDetail.message)
-              const bodyText = isImap ? emailDetail.text_body : (emailDetail.text_body || emailDetail.plain_text || emailDetail.text)
+              const isTrash = activeFolder === 'trash'
+              
+              // For trash emails, use all available content fields since they're stored locally
+              const bodyHtml = isTrash 
+                ? (emailDetail.html_body || emailDetail.html || emailDetail.body || emailDetail.content || emailDetail.message)
+                : isImap 
+                  ? emailDetail.html_body 
+                  : (emailDetail.html_body || emailDetail.html || emailDetail.body || emailDetail.content || emailDetail.message)
+              
+              const bodyText = isTrash
+                ? (emailDetail.text_body || emailDetail.plain_text || emailDetail.text || emailDetail.preview)
+                : isImap 
+                  ? emailDetail.text_body 
+                  : (emailDetail.text_body || emailDetail.plain_text || emailDetail.text)
               
               return bodyHtml ? (
                 <div
@@ -952,7 +984,11 @@ export default function EnhancedMailView({ onNavigate }) {
                     Válasz neki: <span className="text-gray-200">
                       {activeFolder === 'sent' 
                         ? (emailDetail.to_address || emailDetail.recipient_email)
-                        : (emailDetail.from_name || emailDetail.from_address)
+                        : activeFolder === 'trash'
+                          ? (emailDetail.original_folder === 'sent'
+                            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+                            : (emailDetail.from_name || emailDetail.from_address))
+                          : (emailDetail.from_name || emailDetail.from_address)
                       }
                     </span>
                   </p>
