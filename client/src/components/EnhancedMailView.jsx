@@ -597,9 +597,19 @@ export default function EnhancedMailView({ onNavigate }) {
         // Find the email to delete from current emails
         const emailToDeleteData = emails.find(email => email.id === emailToDelete)
         if (emailToDeleteData) {
-          // Add to trash with timestamp
+          // Fetch full email content before moving to trash
+          let fullEmailData = emailToDeleteData
+          try {
+            const emailDetail = await getInboxEmail(emailToDelete)
+            fullEmailData = { ...emailToDeleteData, ...emailDetail }
+            console.log('Fetched full email content for trash:', fullEmailData)
+          } catch (err) {
+            console.warn('Could not fetch full email content, using basic data:', err)
+          }
+          
+          // Add to trash with timestamp and full content
           const trashEmail = {
-            ...emailToDeleteData,
+            ...fullEmailData,
             deleted_at: new Date().toISOString(),
             original_folder: 'inbox'
           }
