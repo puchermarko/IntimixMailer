@@ -6,6 +6,7 @@ import {
   Inbox, PenLine, BookUser, CreditCard, Sparkles, Heart,
   MousePointer, Play, BarChart3, Clock, Layers, Monitor, Download
 } from 'lucide-react'
+import { useUI } from '../App'
 
 const features = [
   {
@@ -212,6 +213,8 @@ function AnimatedStat({ target, suffix, label }) {
 
 export default function Landing() {
   const navigate = useNavigate()
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
   const [navScrolled, setNavScrolled] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
@@ -246,10 +249,10 @@ export default function Landing() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1a1d23] text-[#e0e2e7] overflow-x-hidden" onMouseMove={handleMouseMove}>
+    <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7] overflow-x-hidden`} onMouseMove={handleMouseMove}>
 
       {/* ═══ NAVBAR ═══ */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/5 transition-all duration-500 ${navScrolled ? 'nav-scrolled glass' : 'glass'}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/5 transition-all duration-500 ${navScrolled ? (isModern ? 'nav-scrolled bg-[#0f1115]/90 backdrop-blur-xl' : 'nav-scrolled glass') : (isModern ? 'bg-transparent' : 'glass')}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
@@ -275,7 +278,7 @@ export default function Landing() {
                 Bejelentkezés
               </button>
               <button onClick={() => navigate('/register')}
-                className="magnetic-btn btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2">
+                className={`magnetic-btn btn-primary px-5 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                 Indulás <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -287,9 +290,9 @@ export default function Landing() {
       <section className="relative pt-32 pb-20 sm:pt-44 sm:pb-32 px-4">
         {/* Animated background orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-[#1AA19C]/8 rounded-full blur-[120px] orb-animate" />
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-[#2EC4BE]/5 rounded-full blur-[100px] orb-animate-2" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#1AA19C]/3 rounded-full blur-[200px] orb-animate-3" />
+          <div className={`absolute top-20 left-1/4 w-[500px] h-[500px] rounded-full blur-[120px] orb-animate ${isModern ? 'bg-[#1AA19C]/5' : 'bg-[#1AA19C]/8'}`} />
+          <div className={`absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px] orb-animate-2 ${isModern ? 'bg-[#2EC4BE]/3' : 'bg-[#2EC4BE]/5'}`} />
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full blur-[200px] orb-animate-3 ${isModern ? 'bg-[#1AA19C]/2' : 'bg-[#1AA19C]/3'}`} />
         </div>
 
         <Particles />
@@ -305,7 +308,7 @@ export default function Landing() {
         />
 
         <div className="max-w-5xl mx-auto text-center relative z-10">
-          <div className="hero-enter hero-enter-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-8">
+          <div className={`hero-enter hero-enter-1 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#2EC4BE] mb-8 ${isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'glass-light'}`}>
             <Sparkles className="w-3.5 h-3.5" />
             Professzionális üzleti management platform
           </div>
@@ -325,11 +328,11 @@ export default function Landing() {
 
           <div className="hero-enter hero-enter-4 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button onClick={() => navigate('/register')}
-              className="magnetic-btn btn-primary px-8 py-3.5 rounded-xl text-white font-bold text-base flex items-center gap-2.5 w-full sm:w-auto justify-center">
+              className={`magnetic-btn btn-primary px-8 py-3.5 rounded-xl text-white font-bold text-base flex items-center gap-2.5 w-full sm:w-auto justify-center ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
               Ingyenes Próba Indítása <ArrowRight className="w-5 h-5" />
             </button>
             <button onClick={() => scrollTo('features')}
-              className="px-8 py-3.5 rounded-xl text-gray-300 font-medium text-base flex items-center gap-2.5 glass hover:border-[#1AA19C]/30 transition-all w-full sm:w-auto justify-center group">
+              className={`px-8 py-3.5 rounded-xl text-gray-300 font-medium text-base flex items-center gap-2.5 transition-all w-full sm:w-auto justify-center group ${isModern ? 'bg-white/5 hover:bg-white/10 border border-white/5' : 'glass hover:border-[#1AA19C]/30'}`}>
               Funkciók Felfedezése <ChevronDown className="w-5 h-5 group-hover:translate-y-1 transition-transform" />
             </button>
           </div>
@@ -343,14 +346,14 @@ export default function Landing() {
 
         {/* Hero visual — floating glass cards */}
         <div ref={heroRef} className="reveal max-w-4xl mx-auto mt-16 sm:mt-20 relative">
-          <div className="glass glow rounded-2xl p-6 sm:p-8 pulse-glow">
+          <div className={`${isModern ? 'modern-card p-6 sm:p-8 pulse-glow bg-gradient-to-br from-[#1AA19C]/5 to-[#2EC4BE]/5 border-white/5' : 'glass glow rounded-2xl p-6 sm:p-8 pulse-glow'}`}>
             <div className="grid grid-cols-3 gap-3 sm:gap-4">
               {[
                 { icon: Mail, label: 'Email', sub: 'Küldés & fogadás', anim: 'float' },
                 { icon: Users, label: 'CRM', sub: 'Kapcsolatkezelés', anim: 'float float-delay-1' },
                 { icon: FileText, label: 'Árajánlat', sub: 'PDF generálás', anim: 'float float-delay-2' },
               ].map((card, i) => (
-                <div key={i} className={`glass-light rounded-xl p-4 sm:p-5 text-center card-hover ${card.anim}`}>
+                <div key={i} className={`${isModern ? 'bg-white/5 rounded-xl p-4 sm:p-5 border border-white/5' : 'glass-light rounded-xl p-4 sm:p-5'} text-center card-hover ${card.anim}`}>
                   <card.icon className="w-7 h-7 sm:w-8 sm:h-8 text-[#2EC4BE] mx-auto mb-2" />
                   <div className="text-xl sm:text-2xl font-bold text-white">{card.label}</div>
                   <div className="text-[10px] sm:text-xs text-gray-500 mt-1">{card.sub}</div>
@@ -380,7 +383,7 @@ export default function Landing() {
         </div>
         <div className="max-w-6xl mx-auto relative z-10">
           <div ref={featuresHeaderRef} className="reveal text-center mb-20 sm:mb-28">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-5">
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#2EC4BE] mb-5 ${isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'glass-light'}`}>
               <Star className="w-3.5 h-3.5" /> Funkciók
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
@@ -402,7 +405,7 @@ export default function Landing() {
 
                   {/* Icon showcase */}
                   <div className="shrink-0 relative">
-                    <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl glass flex items-center justify-center relative group cursor-default card-hover"
+                    <div className={`w-28 h-28 sm:w-36 sm:h-36 rounded-3xl flex items-center justify-center relative group cursor-default card-hover ${isModern ? 'modern-card' : 'glass'}`}
                       style={{ borderColor: `${f.color}25` }}>
                       {/* Animated glow ring */}
                       <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
@@ -447,7 +450,7 @@ export default function Landing() {
         </div>
         <div className="max-w-4xl mx-auto relative z-10">
           <div ref={howHeaderRef} className="reveal text-center mb-14 sm:mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-4">
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#2EC4BE] mb-4 ${isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'glass-light'}`}>
               <Zap className="w-3.5 h-3.5" /> Egyszerű
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
@@ -467,12 +470,12 @@ export default function Landing() {
                 const StepIcon = s.icon
                 return (
                   <div key={i} ref={stepRefs(i)}
-                    className={`reveal delay-${i + 1} glass rounded-2xl p-6 sm:p-8 flex items-start gap-5 sm:gap-7 card-hover relative`}>
+                    className={`reveal delay-${i + 1} ${isModern ? 'modern-card' : 'glass'} rounded-2xl p-6 sm:p-8 flex items-start gap-5 sm:gap-7 card-hover relative`}>
                     <div className="relative shrink-0">
                       <div className="w-[50px] h-[50px] sm:w-[60px] sm:h-[60px] rounded-2xl bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] flex items-center justify-center shadow-lg shadow-[#1AA19C]/20">
                         <StepIcon className="w-6 h-6 text-white" />
                       </div>
-                      <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[#1a1d23] border-2 border-[#2EC4BE] flex items-center justify-center">
+                      <div className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center ${isModern ? 'bg-[#0f1115] border-2 border-[#2EC4BE]' : 'bg-[#1a1d23] border-2 border-[#2EC4BE]'}`}>
                         <span className="text-[10px] font-bold text-[#2EC4BE]">{s.num}</span>
                       </div>
                     </div>
@@ -495,7 +498,7 @@ export default function Landing() {
         </div>
         <div className="max-w-5xl mx-auto relative z-10">
           <div ref={pricingHeaderRef} className="reveal text-center mb-14 sm:mb-20">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-light text-xs font-medium text-[#2EC4BE] mb-4">
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium text-[#2EC4BE] mb-4 ${isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'glass-light'}`}>
               <CreditCard className="w-3.5 h-3.5" /> Árazás
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
@@ -506,7 +509,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div ref={pricingCard1Ref} className="reveal-scale max-w-lg mx-auto relative glass rounded-2xl p-8 sm:p-10 border-[#1AA19C]/30 card-hover">
+          <div ref={pricingCard1Ref} className={`reveal-scale max-w-lg mx-auto relative ${isModern ? 'modern-card' : 'glass'} rounded-2xl p-8 sm:p-10 border-[#1AA19C]/30 card-hover`}>
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#1AA19C] text-xs font-bold text-white shadow-lg shadow-[#1AA19C]/30">
               30 napos ingyenes próba
             </div>
@@ -533,7 +536,7 @@ export default function Landing() {
               ))}
             </ul>
             <button onClick={() => navigate('/register')}
-              className="magnetic-btn btn-primary w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
+              className={`magnetic-btn btn-primary w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
               Ingyenes Próba Indítása <ArrowRight className="w-4 h-4" />
             </button>
             <p className="text-center text-xs text-gray-500 mt-4">30 napig ingyenes · Nincs bankkártya szükséges · Bármikor lemondható</p>
@@ -548,7 +551,7 @@ export default function Landing() {
         </div>
         <Particles />
         <div ref={ctaRef} className="reveal-scale max-w-3xl mx-auto text-center relative z-10">
-          <div className="glass glow rounded-3xl p-10 sm:p-14 pulse-glow relative overflow-hidden">
+          <div className={`${isModern ? 'modern-card bg-gradient-to-br from-[#1AA19C]/10 to-[#2EC4BE]/5 border-[#2EC4BE]/20' : 'glass glow'} rounded-3xl p-10 sm:p-14 pulse-glow relative overflow-hidden`}>
             {/* Animated gradient border effect */}
             <div className="absolute inset-0 rounded-3xl opacity-30"
               style={{ background: 'conic-gradient(from var(--angle, 0deg), transparent, #1AA19C, transparent, #2EC4BE, transparent)', padding: '1px' }} />
@@ -563,7 +566,7 @@ export default function Landing() {
                 Próbáld ki 30 napig teljesen ingyen. Nincs rejtett költség, nincs kötelezettség.
               </p>
               <button onClick={() => navigate('/register')}
-                className="magnetic-btn btn-primary px-10 py-4 rounded-xl text-white font-bold text-base flex items-center gap-2.5 mx-auto">
+                className={`magnetic-btn btn-primary px-10 py-4 rounded-xl text-white font-bold text-base flex items-center gap-2.5 mx-auto ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                 Ingyenes Próba Indítása <ArrowRight className="w-5 h-5" />
               </button>
             </div>
@@ -574,13 +577,13 @@ export default function Landing() {
       {/* ═══ DESKTOP APP ═══ */}
       <section className="py-16 sm:py-20 px-4 relative">
         <div className="max-w-4xl mx-auto">
-          <div className="glass rounded-2xl p-8 sm:p-10 flex flex-col md:flex-row items-center gap-8 card-hover relative overflow-hidden">
+          <div className={`${isModern ? 'modern-card' : 'glass'} rounded-2xl p-8 sm:p-10 flex flex-col md:flex-row items-center gap-8 card-hover relative overflow-hidden`}>
             {/* Background decoration */}
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#1AA19C]/5 rounded-full blur-[80px] pointer-events-none" />
 
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-[#1AA19C]/20 to-[#2EC4BE]/10 flex items-center justify-center shrink-0 relative">
               <Monitor className="w-10 h-10 sm:w-12 sm:h-12 text-[#2EC4BE]" />
-              <div className="absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-[#1a1d23] border border-white/10 flex items-center justify-center">
+              <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-lg border border-white/10 flex items-center justify-center ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'}`}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#0078D4]" fill="currentColor">
                   <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/>
                 </svg>
@@ -594,7 +597,7 @@ export default function Landing() {
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <a href="/downloads/Pultify-Setup.zip" download
-                  className="magnetic-btn btn-primary px-6 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2.5 w-full sm:w-auto justify-center">
+                  className={`magnetic-btn btn-primary px-6 py-3 rounded-xl text-white text-sm font-semibold flex items-center gap-2.5 w-full sm:w-auto justify-center ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   <Download className="w-4 h-4" />
                   Letöltés Windows-ra (.zip)
                 </a>
@@ -611,7 +614,7 @@ export default function Landing() {
       {/* ═══ CONTACT ═══ */}
       <section id="contact" className="py-16 sm:py-20 px-4">
         <div ref={contactRef} className="reveal max-w-4xl mx-auto">
-          <div className="glass rounded-2xl p-8 sm:p-10 flex flex-col md:flex-row items-start gap-8 sm:gap-12 card-hover">
+          <div className={`${isModern ? 'modern-card' : 'glass'} rounded-2xl p-8 sm:p-10 flex flex-col md:flex-row items-start gap-8 sm:gap-12 card-hover`}>
             <div className="flex-1">
               <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">Kérdésed van?</h3>
               <p className="text-gray-400 text-sm sm:text-base leading-relaxed mb-5">
@@ -623,7 +626,7 @@ export default function Landing() {
                 info@tm-it.hu
               </a>
             </div>
-            <div className="glass-light rounded-xl p-5 sm:p-6 w-full md:w-auto md:min-w-[240px]">
+            <div className={`${isModern ? 'bg-white/5 border border-white/5' : 'glass-light'} rounded-xl p-5 sm:p-6 w-full md:w-auto md:min-w-[240px]`}>
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
                   <Globe className="w-5 h-5 text-[#2EC4BE]" />

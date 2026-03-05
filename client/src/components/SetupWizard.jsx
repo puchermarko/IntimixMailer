@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import {
   Server, Building2, Upload, RefreshCw, Check, ChevronRight, ChevronLeft,
   Loader2, Send, X, Mail, Lock, Globe, Phone, Hash, MapPin, Image,
@@ -17,8 +17,11 @@ const STEPS = [
 
 export default function SetupWizard({ onComplete }) {
   const { setSetupCompleted } = useAuth()
+  const { uiMode } = useUI()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+
+  const isModern = uiMode === 'modern'
 
   // Step 1: SMTP/IMAP
   const [smtp, setSmtp] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_pass: '', smtp_from_name: '', imap_host: '', imap_port: '993', imap_user: '', imap_pass: '' })
@@ -145,10 +148,10 @@ export default function SetupWizard({ onComplete }) {
   const currentStep = STEPS[step]
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 ${isModern ? 'bg-[#0f1115]' : ''}`}>
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-600/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/6 rounded-full blur-3xl" />
+        <div className={`absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl ${isModern ? 'bg-[#1AA19C]/5' : 'bg-teal-600/8'}`} />
+        <div className={`absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl ${isModern ? 'bg-[#2EC4BE]/5' : 'bg-teal-500/6'}`} />
       </div>
 
       <div className="w-full max-w-2xl relative z-10 fade-in">
@@ -168,12 +171,16 @@ export default function SetupWizard({ onComplete }) {
             return (
               <div key={s.id} className="flex items-center gap-2">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  done ? 'bg-[#1AA19C] text-white' : active ? 'bg-[#1AA19C]/20 text-[#2EC4BE] ring-2 ring-[#1AA19C]/40' : 'bg-white/5 text-gray-600'
+                  done 
+                    ? (isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white shadow-lg' : 'bg-[#1AA19C] text-white')
+                    : active 
+                      ? (isModern ? 'bg-[#2EC4BE]/20 text-[#2EC4BE] ring-2 ring-[#2EC4BE]/40' : 'bg-[#1AA19C]/20 text-[#2EC4BE] ring-2 ring-[#1AA19C]/40')
+                      : (isModern ? 'bg-white/5 text-gray-600' : 'bg-white/5 text-gray-600')
                 }`}>
                   {done ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`w-8 sm:w-12 h-0.5 rounded-full transition-all ${i < step ? 'bg-[#1AA19C]' : 'bg-white/10'}`} />
+                  <div className={`w-8 sm:w-12 h-0.5 rounded-full transition-all ${i < step ? (isModern ? 'bg-[#2EC4BE]' : 'bg-[#1AA19C]') : 'bg-white/10'}`} />
                 )}
               </div>
             )
@@ -181,9 +188,9 @@ export default function SetupWizard({ onComplete }) {
         </div>
 
         {/* Step content */}
-        <div className="glass glow rounded-2xl p-6 sm:p-8">
+        <div className={isModern ? 'modern-card p-6 sm:p-8' : 'glass glow rounded-2xl p-6 sm:p-8'}>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
               <currentStep.icon className="w-5 h-5 text-[#2EC4BE]" />
             </div>
             <div>
@@ -195,7 +202,7 @@ export default function SetupWizard({ onComplete }) {
           {/* ═══ STEP 1: SMTP/IMAP ═══ */}
           {step === 0 && (
             <div className="space-y-4">
-              <div className="glass-light rounded-xl p-4">
+              <div className={isModern ? 'modern-card p-4 bg-white/5 border-none' : 'glass-light rounded-xl p-4'}>
                 <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                   <SendHorizontal className="w-4 h-4 text-[#2EC4BE]" /> SMTP (Kimenő levelek)
                 </h3>
@@ -203,32 +210,32 @@ export default function SetupWizard({ onComplete }) {
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Szerver</label>
                     <input value={smtp.smtp_host} onChange={e => handleSmtpChange('smtp_host', e.target.value)}
-                      placeholder="smtp.example.com" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="smtp.example.com" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Port</label>
                     <input value={smtp.smtp_port} onChange={e => handleSmtpChange('smtp_port', e.target.value)}
-                      placeholder="587" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="587" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Felhasználónév</label>
                     <input value={smtp.smtp_user} onChange={e => handleSmtpChange('smtp_user', e.target.value)}
-                      placeholder="user@example.com" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="user@example.com" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Jelszó</label>
                     <input type="password" value={smtp.smtp_pass} onChange={e => handleSmtpChange('smtp_pass', e.target.value)}
-                      placeholder="••••••••" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="••••••••" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="text-xs text-gray-500 mb-1 block">Feladó neve</label>
                     <input value={smtp.smtp_from_name} onChange={e => handleSmtpChange('smtp_from_name', e.target.value)}
-                      placeholder="Cégnév vagy neved" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="Cégnév vagy neved" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
               </div>
 
-              <div className="glass-light rounded-xl p-4">
+              <div className={isModern ? 'modern-card p-4 bg-white/5 border-none' : 'glass-light rounded-xl p-4'}>
                 <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                   <Inbox className="w-4 h-4 text-[#2EC4BE]" /> IMAP (Bejövő levelek)
                 </h3>
@@ -236,29 +243,29 @@ export default function SetupWizard({ onComplete }) {
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Szerver</label>
                     <input value={smtp.imap_host} onChange={e => handleSmtpChange('imap_host', e.target.value)}
-                      placeholder="imap.example.com" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="imap.example.com" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Port</label>
                     <input value={smtp.imap_port} onChange={e => handleSmtpChange('imap_port', e.target.value)}
-                      placeholder="993" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="993" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Felhasználónév</label>
                     <input value={smtp.imap_user} onChange={e => handleSmtpChange('imap_user', e.target.value)}
-                      placeholder="user@example.com" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="user@example.com" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Jelszó</label>
                     <input type="password" value={smtp.imap_pass} onChange={e => handleSmtpChange('imap_pass', e.target.value)}
-                      placeholder="••••••••" className="input-field w-full px-3 py-2 rounded-lg text-sm" />
+                      placeholder="••••••••" className={`input-field w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
               </div>
 
               {smtp.smtp_host && smtp.smtp_user && smtp.smtp_pass && (
                 <button onClick={handleTestSmtp} disabled={smtpTesting}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium glass hover:border-[#1AA19C]/30 text-gray-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  className={`w-full py-2.5 rounded-xl text-sm font-medium text-gray-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${isModern ? 'bg-white/5 hover:bg-white/10 border border-white/5' : 'glass hover:border-[#1AA19C]/30'}`}>
                   {smtpTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : smtpTested ? <ShieldCheck className="w-4 h-4 text-green-400" /> : <Server className="w-4 h-4" />}
                   {smtpTesting ? 'Tesztelés...' : smtpTested ? 'SMTP Kapcsolat OK' : 'SMTP Kapcsolat Tesztelése'}
                 </button>
@@ -275,7 +282,7 @@ export default function SetupWizard({ onComplete }) {
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_name} onChange={e => handleCompanyChange('company_name', e.target.value)}
-                      placeholder="Céged neve" className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="Céged neve" className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
                 <div>
@@ -283,7 +290,7 @@ export default function SetupWizard({ onComplete }) {
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_vat} onChange={e => handleCompanyChange('company_vat', e.target.value)}
-                      placeholder="12345678-1-23" className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="12345678-1-23" className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
                 <div>
@@ -291,7 +298,7 @@ export default function SetupWizard({ onComplete }) {
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_email} onChange={e => handleCompanyChange('company_email', e.target.value)}
-                      placeholder="info@ceged.hu" className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="info@ceged.hu" className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
                 <div>
@@ -299,7 +306,7 @@ export default function SetupWizard({ onComplete }) {
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_phone} onChange={e => handleCompanyChange('company_phone', e.target.value)}
-                      placeholder="+36 1 234 5678" className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="+36 1 234 5678" className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
                 <div>
@@ -307,25 +314,25 @@ export default function SetupWizard({ onComplete }) {
                   <div className="relative">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_street} onChange={e => handleCompanyChange('company_street', e.target.value)}
-                      placeholder="Fő utca 1." className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="Fő utca 1." className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Város</label>
                   <input value={company.company_city} onChange={e => handleCompanyChange('company_city', e.target.value)}
-                    placeholder="Budapest" className="input-field w-full px-3 py-2.5 rounded-lg text-sm" />
+                    placeholder="Budapest" className={`input-field w-full px-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Irányítószám</label>
                   <input value={company.company_zip} onChange={e => handleCompanyChange('company_zip', e.target.value)}
-                    placeholder="1000" className="input-field w-full px-3 py-2.5 rounded-lg text-sm" />
+                    placeholder="1000" className={`input-field w-full px-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Ország</label>
                   <div className="relative">
                     <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input value={company.company_country} onChange={e => handleCompanyChange('company_country', e.target.value)}
-                      placeholder="Magyarország" className="input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm" />
+                      placeholder="Magyarország" className={`input-field w-full pl-10 pr-3 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
               </div>
@@ -335,14 +342,14 @@ export default function SetupWizard({ onComplete }) {
           {/* ═══ STEP 3: LOGO ═══ */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="glass-light rounded-xl p-8 text-center">
+              <div className={isModern ? 'modern-card p-8 bg-white/5 border-none text-center' : 'glass-light rounded-xl p-8 text-center'}>
                 {logoPreview ? (
                   <div className="space-y-4">
                     <img src={logoPreview} alt="Logo preview" className="max-h-32 mx-auto rounded-lg" />
                     <p className="text-sm text-gray-400">{logoFile?.name}</p>
                     {!logoUploaded ? (
                       <button onClick={handleLogoUpload} disabled={saving}
-                        className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 mx-auto disabled:opacity-50">
+                        className={`btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 mx-auto disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                         {saving ? 'Feltöltés...' : 'Logó Feltöltése'}
                       </button>
@@ -358,13 +365,13 @@ export default function SetupWizard({ onComplete }) {
                   </div>
                 ) : (
                   <div>
-                    <div className="w-16 h-16 rounded-2xl bg-[#1AA19C]/10 flex items-center justify-center mx-auto mb-4">
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                       <Image className="w-8 h-8 text-[#2EC4BE]" />
                     </div>
                     <p className="text-gray-300 font-medium mb-1">Töltsd fel a céges logódat</p>
                     <p className="text-xs text-gray-500 mb-4">PNG, JPG, SVG vagy WebP formátum</p>
                     <button onClick={() => logoInputRef.current?.click()}
-                      className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 mx-auto">
+                      className={`btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 mx-auto ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                       <Upload className="w-4 h-4" /> Kép Kiválasztása
                     </button>
                     <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoSelect} className="hidden" />
@@ -382,9 +389,9 @@ export default function SetupWizard({ onComplete }) {
                 Ez az SMTP/IMAP beállításoktól függ — ha még nem adtad meg, kihagyhatod ezt a lépést.
               </p>
 
-              <div className="glass-light rounded-xl p-5 flex items-center justify-between">
+              <div className={isModern ? 'modern-card p-5 bg-white/5 border-none flex items-center justify-between' : 'glass-light rounded-xl p-5 flex items-center justify-between'}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                     <Inbox className="w-5 h-5 text-[#2EC4BE]" />
                   </div>
                   <div>
@@ -396,16 +403,18 @@ export default function SetupWizard({ onComplete }) {
                 </div>
                 <button onClick={handleSyncInbox} disabled={inboxSyncing}
                   className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all disabled:opacity-50 ${
-                    inboxResult ? 'bg-green-500/10 text-green-400' : 'btn-primary text-white'
+                    inboxResult 
+                      ? 'bg-green-500/10 text-green-400' 
+                      : (isModern ? 'btn-primary text-white shadow-lg shadow-[#2EC4BE]/20' : 'btn-primary text-white')
                   }`}>
                   {inboxSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : inboxResult ? <Check className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
                   {inboxSyncing ? 'Szinkronizálás...' : inboxResult ? 'Kész' : 'Szinkronizálás'}
                 </button>
               </div>
 
-              <div className="glass-light rounded-xl p-5 flex items-center justify-between">
+              <div className={isModern ? 'modern-card p-5 bg-white/5 border-none flex items-center justify-between' : 'glass-light rounded-xl p-5 flex items-center justify-between'}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                     <SendHorizontal className="w-5 h-5 text-[#2EC4BE]" />
                   </div>
                   <div>
@@ -417,7 +426,9 @@ export default function SetupWizard({ onComplete }) {
                 </div>
                 <button onClick={handleSyncSent} disabled={sentSyncing}
                   className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all disabled:opacity-50 ${
-                    sentResult ? 'bg-green-500/10 text-green-400' : 'btn-primary text-white'
+                    sentResult 
+                      ? 'bg-green-500/10 text-green-400' 
+                      : (isModern ? 'btn-primary text-white shadow-lg shadow-[#2EC4BE]/20' : 'btn-primary text-white')
                   }`}>
                   {sentSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : sentResult ? <Check className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
                   {sentSyncing ? 'Szinkronizálás...' : sentResult ? 'Kész' : 'Szinkronizálás'}
@@ -452,7 +463,7 @@ export default function SetupWizard({ onComplete }) {
 
               {step === 0 && (
                 <button onClick={saveSmtp} disabled={saving}
-                  className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+                  className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
                   {smtp.smtp_host ? 'Mentés & Tovább' : 'Kihagyás'}
                 </button>
@@ -460,7 +471,7 @@ export default function SetupWizard({ onComplete }) {
 
               {step === 1 && (
                 <button onClick={saveCompany} disabled={saving}
-                  className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+                  className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
                   {company.company_name ? 'Mentés & Tovább' : 'Kihagyás'}
                 </button>
@@ -468,7 +479,7 @@ export default function SetupWizard({ onComplete }) {
 
               {step === 2 && (
                 <button onClick={() => setStep(3)} disabled={saving}
-                  className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50">
+                  className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-semibold flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   <ChevronRight className="w-4 h-4" />
                   {logoUploaded ? 'Tovább' : 'Kihagyás'}
                 </button>
@@ -476,7 +487,7 @@ export default function SetupWizard({ onComplete }) {
 
               {step === 3 && (
                 <button onClick={finishSetup} disabled={saving}
-                  className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50">
+                  className={`btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-bold flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Beállítás Befejezése
                 </button>

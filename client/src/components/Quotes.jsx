@@ -1,7 +1,7 @@
 // Árajánlat kezelő - lista, szerkesztő, PDF letöltés, email küldés
 import { useState, useEffect } from 'react'
 import { getQuotes, getQuote, createQuote, updateQuote, updateQuoteStatus, deleteQuote, getQuotePdfUrl, sendQuoteEmail, getContacts } from '../lib/api'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, FileText, Send, Download, Loader2, ChevronLeft, Search,
@@ -20,11 +20,14 @@ function formatMoney(amount, currency = 'HUF') {
 
 export default function Quotes() {
   const { token, hasSubscription } = useAuth()
+  const { uiMode } = useUI()
   const [quotes, setQuotes] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('list') // list | editor
   const [editingQuote, setEditingQuote] = useState(null)
   const [search, setSearch] = useState('')
+
+  const isModern = uiMode === 'modern'
 
   useEffect(() => { if (hasSubscription) loadQuotes() }, [])
 
@@ -88,14 +91,14 @@ export default function Quotes() {
 
   if (!hasSubscription) {
     return (
-      <div>
+      <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2 mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-white mt-2">Árajánlatok</h2>
             <p className="text-xs sm:text-sm text-gray-400 mt-1">Árajánlatok kezelése, PDF generálás és küldés</p>
           </div>
         </div>
-        <div className="glass rounded-xl p-12 text-center">
+        <div className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-12 text-center`}>
           <Lock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-300 font-medium">Aktív előfizetés szükséges</p>
           <p className="text-gray-500 text-sm mt-1">Az árajánlatok használatához aktiváld az előfizetésed a Beállítások &rarr; Előfizetés menüben.</p>
@@ -105,46 +108,48 @@ export default function Quotes() {
   }
 
   if (view === 'editor') {
-    return <QuoteEditor quote={editingQuote} onBack={() => { setView('list'); loadQuotes() }} onSaved={handleSaved} onStatusChange={handleStatusChange} token={token} />
+    return <QuoteEditor quote={editingQuote} onBack={() => { setView('list'); loadQuotes() }} onSaved={handleSaved} onStatusChange={handleStatusChange} token={token} isModern={isModern} />
   }
 
   return (
-    <div>
+    <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Árajánlatok</h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">Árajánlatok kezelése, PDF generálás és küldés</p>
         </div>
-        <button onClick={handleNew} className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
+        <button onClick={handleNew} className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
           <Plus className="w-4 h-4" /> Új árajánlat
         </button>
       </div>
 
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-        <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
-          placeholder="Keresés név vagy szám alapján..." className="input-field w-full pl-10 pr-4 py-2.5 rounded-xl text-sm" />
+      <div className={`${isModern ? 'modern-card p-4 mb-6' : 'relative mb-4'}`}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder="Keresés név vagy szám alapján..." className={`input-field w-full pl-10 pr-4 py-2.5 rounded-xl text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
+        </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" /></div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
+        <div className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-12 text-center`}>
           <FileText className="w-12 h-12 text-gray-600 mx-auto mb-3" />
           <p className="text-gray-400">Még nincs árajánlat</p>
           <button onClick={handleNew} className="mt-3 text-sm text-[#1AA19C] hover:text-[#2EC4BE]">Készíts egyet →</button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={isModern ? 'grid grid-cols-1 xl:grid-cols-2 gap-4' : 'space-y-2'}>
           {filtered.map(q => (
-            <div key={q.id} className="glass rounded-xl p-4 flex items-center gap-4 hover:border-[#1AA19C]/20 transition-all cursor-pointer" onClick={() => handleEdit(q.id)}>
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5 text-[#1AA19C]" />
+            <div key={q.id} className={`${isModern ? 'modern-card p-5 hover:border-[#2EC4BE]/30' : 'glass rounded-xl p-4 hover:border-[#1AA19C]/20'} flex items-center gap-4 transition-all cursor-pointer`} onClick={() => handleEdit(q.id)}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] shadow-lg' : 'bg-[#1AA19C]/10'}`}>
+                <FileText className={`w-5 h-5 ${isModern ? 'text-white' : 'text-[#1AA19C]'}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-white">{q.quote_number}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[q.status] || statusColors.draft}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isModern && q.status === 'accepted' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : statusColors[q.status] || statusColors.draft}`}>
                     {statusLabels[q.status] || q.status}
                   </span>
                 </div>
@@ -152,30 +157,30 @@ export default function Quotes() {
                 <p className="text-xs text-gray-400 truncate">{q.contact_name || 'Nincs megadva'} — {formatMoney(q.total, q.currency)}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm font-semibold text-[#2EC4BE]">{formatMoney(q.total, q.currency)}</p>
+                <p className={`text-sm font-semibold ${isModern ? 'text-white' : 'text-[#2EC4BE]'}`}>{formatMoney(q.total, q.currency)}</p>
                 <p className="text-[10px] text-gray-500">{new Date(q.created_at).toLocaleDateString('hu-HU')}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {q.status !== 'accepted' && (
                   <button onClick={(e) => handleStatusChange(q.id, 'accepted', e)} title="Elfogadás"
-                    className="p-2 rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-500/10 transition-all">
+                    className={`p-2 rounded-lg transition-all ${isModern ? 'text-gray-400 hover:text-green-400 hover:bg-green-500/10' : 'text-gray-500 hover:text-green-400 hover:bg-green-500/10'}`}>
                     <ThumbsUp className="w-4 h-4" />
                   </button>
                 )}
                 {q.status !== 'rejected' && (
                   <button onClick={(e) => handleStatusChange(q.id, 'rejected', e)} title="Elutasítás"
-                    className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                    className={`p-2 rounded-lg transition-all ${isModern ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}>
                     <ThumbsDown className="w-4 h-4" />
                   </button>
                 )}
                 {(q.status === 'accepted' || q.status === 'rejected') && (
                   <button onClick={(e) => handleStatusChange(q.id, 'draft', e)} title="Visszaállítás piszkozatba"
-                    className="p-2 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all">
+                    className={`p-2 rounded-lg transition-all ${isModern ? 'text-gray-400 hover:text-amber-400 hover:bg-amber-500/10' : 'text-gray-500 hover:text-amber-400 hover:bg-amber-500/10'}`}>
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); handleDelete(q.id) }}
-                  className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                  className={`p-2 rounded-lg transition-all ${isModern ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}>
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -189,7 +194,7 @@ export default function Quotes() {
 
 // ─── Árajánlat szerkesztő ────
 
-function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
+function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token, isModern }) {
   const [contacts, setContacts] = useState([])
   const [contactSearch, setContactSearch] = useState('')
   const [showContactPicker, setShowContactPicker] = useState(false)
@@ -322,7 +327,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
   )
 
   return (
-    <div>
+    <div className={`fade-in ${isModern ? 'max-w-[1600px] mx-auto' : ''}`}>
       
       {/* GROK */}
 
@@ -358,7 +363,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-white/6 hover:bg-white/12 text-gray-200 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg text-gray-200 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none ${isModern ? 'bg-white/5 hover:bg-white/10 border border-white/5' : 'bg-white/6 hover:bg-white/12'}`}
           >
             {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             PDF letöltés
@@ -366,7 +371,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
 
           <button
             onClick={() => setShowSendModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-teal-600/40 text-teal-300 hover:bg-teal-950/30 hover:border-teal-500/50 transition-colors"
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20 hover:bg-[#2EC4BE]/20' : 'border border-teal-600/40 text-teal-300 hover:bg-teal-950/30 hover:border-teal-500/50'}`}
           >
             <Send className="w-4 h-4" />
             Küldés
@@ -384,6 +389,7 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
           text-white shadow-md hover:shadow-lg transition-all
           disabled:opacity-60 disabled:pointer-events-none
           min-w-[110px] justify-center
+          ${isModern ? 'shadow-lg shadow-teal-500/20' : ''}
         `}
       >
         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
@@ -448,74 +454,15 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
       value={title}
       onChange={(e) => setTitle(e.target.value)}
       placeholder="Árajánlat neve (pl. Webáruház fejlesztés – 2026 Q1)"
-      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30 transition-all text-base"
+      className={`w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 focus:outline-none transition-all text-base ${isModern ? 'bg-white/5 border border-white/5 focus:bg-white/10 focus:border-[#2EC4BE]/50 focus:ring-1 focus:ring-[#2EC4BE]/30' : 'bg-white/5 border border-white/10 focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/30'}`}
     />
   </div>
 </div>
 
-     {  /* <div className="mb-6 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button onClick={onBack} className="p-2 rounded-lg glass-light hover:bg-white/10 transition-all shrink-0">
-              <ChevronLeft className="w-5 h-5 text-gray-400" />
-            </button>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-bold text-white truncate">{quote ? `${quote.quote_number} szerkesztése` : 'Új árajánlat'}</h2>
-              <p className="text-xs text-gray-500 hidden sm:block">{quote ? 'Módosítsd a tételeket és mentsd el' : 'Töltsd ki az adatokat és add hozzá a tételeket'}</p>
-            </div>
-          </div>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-            placeholder="Árajánlat neve (pl. Weboldal fejlesztés)" className="input-field w-full sm:max-w-xs px-3 py-1.5 text-sm rounded-lg" />
-          <div className="flex items-center gap-2 flex-wrap">
-            {quote?.id && (
-              <>
-                <button onClick={handleDownload} disabled={downloading}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-gray-300 hover:text-white transition-all disabled:opacity-50">
-                  {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} PDF
-                </button>
-                <button onClick={() => setShowSendModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass-light text-sm text-[#1AA19C] hover:text-[#2EC4BE] transition-all">
-                  <Send className="w-4 h-4" /> Küldés
-                </button>
-              </>
-            )}
-            <button onClick={handleSave} disabled={saving}
-              className="btn-primary px-5 py-2 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Mentés
-            </button>
-          </div>
-        </div>
-        {quote?.id && (
-          <div className="flex items-center gap-2 flex-wrap pl-12">
-            <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium ${statusColors[quote.status] || statusColors.draft}`}>
-              {statusLabels[quote.status] || quote.status}
-            </span>
-            {quote.status !== 'accepted' && (
-              <button onClick={() => onStatusChange(quote.id, 'accepted')} title="Elfogadás"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-green-400 hover:bg-green-500/10 transition-all">
-                <ThumbsUp className="w-3.5 h-3.5" /> Elfogadás
-              </button>
-            )}
-            {quote.status !== 'rejected' && (
-              <button onClick={() => onStatusChange(quote.id, 'rejected')} title="Elutasítás"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-red-400 hover:bg-red-500/10 transition-all">
-                <ThumbsDown className="w-3.5 h-3.5" /> Elutasítás
-              </button>
-            )}
-            {(quote.status === 'accepted' || quote.status === 'rejected') && (
-              <button onClick={() => onStatusChange(quote.id, 'draft')} title="Visszaállítás piszkozatba"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-light text-xs text-amber-400 hover:bg-amber-500/10 transition-all">
-                <RotateCcw className="w-3.5 h-3.5" /> Visszaállítás
-              </button>
-            )}
-          </div>
-        )}
-      </div> */}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Bal oldal: Vevő adatok */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="glass rounded-xl p-5">
+          <div className={isModern ? 'modern-card p-5' : 'glass rounded-xl p-5'}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white flex items-center gap-2"><User className="w-4 h-4 text-[#1AA19C]" /> Vevő adatok</h3>
               <button onClick={() => setShowContactPicker(!showContactPicker)}
@@ -527,11 +474,11 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
             {showContactPicker && (
               <div className="mb-4 space-y-2">
                 <input type="text" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)}
-                  placeholder="Keresés..." className="input-field w-full px-3 py-1.5 text-xs rounded-lg" />
+                  placeholder="Keresés..." className={`input-field w-full px-3 py-1.5 text-xs rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 <div className="max-h-40 overflow-y-auto space-y-1">
                   {filteredContacts.map(c => (
                     <button key={c.id} onClick={() => selectContact(c)}
-                      className="w-full text-left px-3 py-2 rounded-lg glass-light hover:border-[#1AA19C]/20 transition-all">
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-all ${isModern ? 'hover:bg-white/5' : 'glass-light hover:border-[#1AA19C]/20'}`}>
                       <p className="text-xs text-white font-medium">{c.name}</p>
                       <p className="text-[10px] text-gray-500">{c.email}</p>
                     </button>
@@ -543,36 +490,36 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
             <div className="space-y-3">
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Név *</label>
                 <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)}
-                  placeholder="Vevő neve" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  placeholder="Vevő neve" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Email</label>
                 <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="email@example.com" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  placeholder="email@example.com" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Telefon</label>
                 <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)}
-                  placeholder="+3630..." className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  placeholder="+3630..." className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Adószám</label>
                 <input type="text" value={contactVat} onChange={(e) => setContactVat(e.target.value)}
-                  placeholder="12345678-1-23" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  placeholder="12345678-1-23" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div className="pt-2 border-t border-white/5">
                 <p className="text-[10px] text-gray-500 mb-2 flex items-center gap-1"><MapPin className="w-3 h-3" /> Cím</p>
                 <div className="space-y-2">
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-3"><input type="text" value={contactStreet} onChange={(e) => setContactStreet(e.target.value)}
-                      placeholder="Utca" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Utca" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                     <div><input type="text" value={contactStreetNumber} onChange={(e) => setContactStreetNumber(e.target.value)}
-                      placeholder="Hsz." className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Hsz." className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div><input type="text" value={contactZip} onChange={(e) => setContactZip(e.target.value)}
-                      placeholder="Ir.szám" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Ir.szám" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                     <div className="col-span-2"><input type="text" value={contactCity} onChange={(e) => setContactCity(e.target.value)}
-                      placeholder="Város" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Város" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div><input type="text" value={contactRegion} onChange={(e) => setContactRegion(e.target.value)}
-                      placeholder="Megye" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Megye" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                     <div><input type="text" value={contactCountry} onChange={(e) => setContactCountry(e.target.value)}
-                      placeholder="Ország" className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                      placeholder="Ország" className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   </div>
                 </div>
               </div>
@@ -580,18 +527,18 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
           </div>
 
           {/* Beállítások */}
-          <div className="glass rounded-xl p-5 space-y-3">
+          <div className={`${isModern ? 'modern-card p-5' : 'glass rounded-xl p-5'} space-y-3`}>
             <h3 className="text-sm font-semibold text-white flex items-center gap-2"><Hash className="w-4 h-4 text-[#1AA19C]" /> Beállítások</h3>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-[10px] text-gray-500 mb-0.5">Pénznem</label>
                 <select value={currency} onChange={(e) => setCurrency(e.target.value)}
-                  className="input-field w-full px-3 py-1.5 text-sm rounded-lg">
+                  className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`}>
                   <option value="HUF">HUF (Ft)</option>
                   <option value="EUR">EUR (€)</option>
                 </select></div>
               <div><label className="block text-[10px] text-gray-500 mb-0.5">ÁFA %</label>
                 <input type="number" value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))}
-                  className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                  className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
             </div>
             <div className="flex items-center justify-between pt-1">
               <label className="text-[10px] text-gray-500">Ár megadás módja</label>
@@ -613,17 +560,17 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
             </div>
             <div><label className="block text-[10px] text-gray-500 mb-0.5">Érvényesség</label>
               <input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)}
-                className="input-field w-full px-3 py-1.5 text-sm rounded-lg" /></div>
+                className={`input-field w-full px-3 py-1.5 text-sm rounded-lg ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
             <div><label className="block text-[10px] text-gray-500 mb-0.5">Megjegyzés</label>
               <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
                 placeholder="Fizetési feltételek, egyéb megjegyzések..." rows={3}
-                className="input-field w-full px-3 py-1.5 text-sm rounded-lg resize-y" /></div>
+                className={`input-field w-full px-3 py-1.5 text-sm rounded-lg resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
           </div>
         </div>
 
         {/* Jobb oldal: Tételek */}
         <div className="lg:col-span-2">
-          <div className="glass rounded-xl p-5">
+          <div className={isModern ? 'modern-card p-5' : 'glass rounded-xl p-5'}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Tételek</h3>
               <button onClick={addItem} className="flex items-center gap-1 text-xs text-[#1AA19C] hover:text-[#2EC4BE] px-2 py-1 rounded-lg hover:bg-[#1AA19C]/10">
@@ -651,9 +598,9 @@ function QuoteEditor({ quote, onBack, onSaved, onStatusChange, token }) {
                     {/* Desktop row */}
                     <div className="hidden sm:grid grid-cols-12 gap-2 items-center">
                       <input type="text" value={item.description} onChange={(e) => updateItem(i, 'description', e.target.value)}
-                        placeholder="Tétel megnevezése" className="col-span-5 input-field px-2 py-1.5 rounded-lg text-xs" />
+                        placeholder="Tétel megnevezése" className={`col-span-5 input-field px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                       <input type="number" value={item.quantity} onChange={(e) => updateItem(i, 'quantity', Number(e.target.value))}
-                        min="0" step="0.01" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
+                        min="0" step="0.01" className={`col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                       <input type="text" value={item.unit} onChange={(e) => updateItem(i, 'unit', e.target.value)}
                         placeholder="db" className="col-span-1 input-field px-2 py-1.5 rounded-lg text-xs text-right" />
                       <input type="number"

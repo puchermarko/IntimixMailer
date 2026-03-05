@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Building2, Phone, Mail, Globe, Hash, Scale, Server } from 'lucide-react'
+import { useUI } from '../App'
 
 export default function Impressum() {
   const navigate = useNavigate()
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
 
   return (
-    <div className="min-h-screen bg-[#1a1d23] text-[#e0e2e7]">
+    <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+      <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/5 ${isModern ? 'bg-[#0f1115]/80 backdrop-blur-xl' : 'glass'}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
@@ -19,15 +22,15 @@ export default function Impressum() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20">
+      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20 fade-in">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-2">Impresszum</h1>
         <p className="text-gray-500 text-sm mb-10">Utolsó frissítés: 2026. február 15.</p>
 
         <div className="space-y-8">
           {/* Cégadatok */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Building2 className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">Cégadatok</h2>
@@ -63,9 +66,9 @@ export default function Impressum() {
           </section>
 
           {/* Nyilvántartási adatok */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Scale className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">Nyilvántartási adatok</h2>
@@ -91,9 +94,9 @@ export default function Impressum() {
           </section>
 
           {/* Tárhelyszolgáltató */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Server className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">Tárhelyszolgáltató</h2>

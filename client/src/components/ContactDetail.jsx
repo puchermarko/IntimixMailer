@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken } from '../lib/api'
 import toast from 'react-hot-toast'
+import { useAuth, useUI } from '../App'
 import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
@@ -40,6 +41,7 @@ function isPreviewable(mimetype) {
 }
 
 export default function ContactDetail({ contactId, onBack, onEdit, onNavigate }) {
+  const { uiMode } = useUI()
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('emails')
@@ -56,6 +58,8 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
 
   const [dlToken, setDlToken] = useState('')
+
+  const isModern = uiMode === 'modern'
 
   useEffect(() => {
     getDownloadToken().then(t => setDlToken(t)).catch(() => {})
@@ -167,7 +171,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
   }
 
   return (
-    <div className="fade-in">
+    <div className={`fade-in ${isModern ? 'max-w-[1600px] mx-auto' : ''}`}>
       {/* Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center mt-2 justify-between gap-3">
         <div className="flex items-center gap-3 sm:gap-4 min-w-0">
@@ -175,7 +179,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-base sm:text-xl font-bold shrink-0">
+            <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-base sm:text-xl font-bold shrink-0 ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white shadow-lg' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>
               {contact.name?.[0]?.toUpperCase() || '?'}
             </div>
             <div className="min-w-0">
@@ -197,7 +201,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
         </div>
         <button
           onClick={() => onEdit(contact)}
-          className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all shrink-0"
+          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm transition-all shrink-0 ${isModern ? 'text-gray-300 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 border border-white/5' : 'text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}
         >
           <Edit3 className="w-4 h-4" />
           Szerkesztés
@@ -206,7 +210,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
 
       {/* Megjegyzések */}
       {contact.notes && (
-        <div className="glass rounded-xl p-4 mb-4">
+        <div className={`${isModern ? 'modern-card p-4 mb-6' : 'glass rounded-xl p-4 mb-4'}`}>
           <div className="flex items-start gap-2">
             <StickyNote className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
             <p className="text-sm text-gray-400">{contact.notes}</p>
@@ -216,26 +220,26 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
 
       {/* Statisztikák */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
-        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+        <div className={`${isModern ? 'modern-card p-4 hover:border-[#2EC4BE]/30 transition-all' : 'glass rounded-xl p-3 sm:p-4'} text-center`}>
           <p className="text-lg sm:text-2xl font-bold text-white">{(contact.emails?.length || 0) + (contact.sentImap?.length || 0)}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Küldött</p>
         </div>
-        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+        <div className={`${isModern ? 'modern-card p-4 hover:border-[#2EC4BE]/30 transition-all' : 'glass rounded-xl p-3 sm:p-4'} text-center`}>
           <p className="text-lg sm:text-2xl font-bold text-white">{contact.received?.length || 0}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Fogadott</p>
         </div>
-        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+        <div className={`${isModern ? 'modern-card p-4 hover:border-[#2EC4BE]/30 transition-all' : 'glass rounded-xl p-3 sm:p-4'} text-center`}>
           <p className="text-lg sm:text-2xl font-bold text-white">{contact.attachments?.length || 0}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Fájlok</p>
         </div>
-        <div className="glass rounded-xl p-3 sm:p-4 text-center">
+        <div className={`${isModern ? 'modern-card p-4 hover:border-[#2EC4BE]/30 transition-all' : 'glass rounded-xl p-3 sm:p-4'} text-center`}>
           <p className="text-lg sm:text-2xl font-bold text-white">{contact.quotes?.length || 0}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Árajánlatok</p>
         </div>
       </div>
 
       {/* Fülek */}
-      <div className="flex gap-1 mb-4 overflow-x-auto scrollbar-hide -mx-1 px-1">
+      <div className={`flex gap-1 mb-6 overflow-x-auto scrollbar-hide ${isModern ? 'p-1 bg-white/5 rounded-2xl w-fit mx-auto sm:mx-0' : '-mx-1 px-1'}`}>
         {[
           { id: 'emails', icon: SendHorizontal, label: 'Küldött', count: (contact.emails?.length || 0) + (contact.sentImap?.length || 0) },
           { id: 'received', icon: Inbox, label: 'Fogadott', count: contact.received?.length || 0 },
@@ -246,16 +250,16 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate })
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-2.5 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
               activeTab === tab.id
-                ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20'
-                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+                ? (isModern ? 'bg-[#2EC4BE] text-black shadow-lg shadow-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
           >
             <span className="flex items-center gap-1.5 sm:gap-2">
               <tab.icon className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">{tab.label}</span>
-              {tab.count !== null && <span className="text-[10px] sm:text-xs">({tab.count})</span>}
+              {tab.count !== null && <span className="text-[10px] sm:text-xs opacity-70">({tab.count})</span>}
             </span>
           </button>
         ))}
@@ -940,109 +944,160 @@ function ContactJourney({ contact }) {
           </ResponsiveContainer>
         </div>
       </div>
+      {/* Factor breakdown */}
+      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/5">
+        <div className="text-center">
+          <p className="text-lg font-bold text-white">{totalEmails}</p>
+          <p className="text-[10px] text-gray-500">Email váltás</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-white">{decidedQuotes > 0 ? Math.round((accepted / decidedQuotes) * 100) : '—'}%</p>
+          <p className="text-[10px] text-gray-500">Elfogadási arány</p>
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-white">{sentCount > 0 ? Math.round((receivedCount / sentCount) * 100) : '—'}%</p>
+          <p className="text-[10px] text-gray-500">Válaszadási arány</p>
+        </div>
+      </div>
+    </div>
 
-      {/* Quote charts row */}
-      {totalQuotes > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
-          {/* Quote Status Pie */}
-          <div className="glass rounded-xl p-3 sm:p-5">
+    {/* Email Activity Chart */}
+    <div className="glass rounded-xl p-3 sm:p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-9 h-9 rounded-lg bg-[#1AA19C]/10 flex items-center justify-center">
+          <BarChart3 className="w-4 h-4 text-[#2EC4BE]" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white">Email aktivitás</p>
+          <p className="text-[10px] text-gray-500">Küldött és fogadott levelek az elmúlt 30 napban</p>
+        </div>
+      </div>
+      <div className="h-[180px] sm:h-[200px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={emailChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <defs>
+              <linearGradient id="cjSentGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#1AA19C" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#1AA19C" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="cjRecvGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+            <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+            <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 10, color: '#9ca3af' }} />
+            <Area type="monotone" dataKey="sent" name="Küldött" stroke="#1AA19C" fill="url(#cjSentGrad)" strokeWidth={2} />
+            <Area type="monotone" dataKey="received" name="Fogadott" stroke="#3B82F6" fill="url(#cjRecvGrad)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+
+    {/* Quote charts row */}
+    {totalQuotes > 0 && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-5">
+        {/* Quote Status Pie */}
+        <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-3 sm:p-5'}`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Receipt className="w-4 h-4 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Árajánlat státuszok</p>
+              <p className="text-[10px] text-gray-500">{totalQuotes} árajánlat összesen</p>
+            </div>
+          </div>
+          <div className="h-[180px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={quoteStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                  {quoteStatusData.map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name) => [`${value} db`, name]} contentStyle={{ background: 'rgba(30,33,40,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Quote Values Bar */}
+        {quoteValueData.length > 0 && (
+          <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-3 sm:p-5'}`}>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Receipt className="w-4 h-4 text-amber-400" />
+              <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-purple-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">Árajánlat státuszok</p>
-                <p className="text-[10px] text-gray-500">{totalQuotes} árajánlat összesen</p>
+                <p className="text-sm font-medium text-white">Árajánlat értékek</p>
+                <p className="text-[10px] text-gray-500">Összeg árajánlatonként</p>
               </div>
             </div>
             <div className="h-[180px]">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={quoteStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
-                    {quoteStatusData.map((entry, i) => (
+                <BarChart data={quoteValueData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<BarTooltip />} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                    {quoteValueData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(value, name) => [`${value} db`, name]} contentStyle={{ background: 'rgba(30,33,40,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '11px' }} />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                </PieChart>
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Quote Values Bar */}
-          {quoteValueData.length > 0 && (
-            <div className="glass rounded-xl p-3 sm:p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-white">Árajánlat értékek</p>
-                  <p className="text-[10px] text-gray-500">Összeg árajánlatonként</p>
-                </div>
-              </div>
-              <div className="h-[180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={quoteValueData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<BarTooltip />} />
-                    <Bar dataKey="total" radius={[4, 4, 0, 0]}>
-                      {quoteValueData.map((entry, i) => (
-                        <Cell key={i} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Timeline */}
-      <div className="glass rounded-xl p-3 sm:p-5">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-            <Clock className="w-4 h-4 text-purple-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Kapcsolat idővonal</p>
-            <p className="text-[10px] text-gray-500">Fontos események időrendben</p>
-          </div>
-        </div>
-        {timeline.length === 0 ? (
-          <div className="text-center py-8">
-            <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">Még nincs esemény</p>
-          </div>
-        ) : (
-          <div className="relative">
-            <div className="absolute left-[18px] top-2 bottom-2 w-px bg-white/10" />
-            <div className="space-y-4">
-              {timeline.map((event, i) => {
-                const Icon = event.icon
-                return (
-                  <div key={i} className="flex items-start gap-4 relative">
-                    <div className={`w-9 h-9 rounded-full ${event.color} flex items-center justify-center shrink-0 z-10 shadow-lg`}>
-                      <Icon className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 pt-1.5">
-                      <p className="text-sm text-gray-200 font-medium">{event.label}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-[10px] text-gray-500">{formatDate(event.date)}</p>
-                        {event.extra && <p className="text-[10px] text-gray-400 font-medium">{event.extra}</p>}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
             </div>
           </div>
         )}
       </div>
+    )}
+
+    {/* Timeline */}
+    <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-3 sm:p-5'}`}>
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+          <Clock className="w-4 h-4 text-purple-400" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white">Kapcsolat idővonal</p>
+          <p className="text-[10px] text-gray-500">Fontos események időrendben</p>
+        </div>
+      </div>
+      {timeline.length === 0 ? (
+        <div className="text-center py-8">
+          <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+          <p className="text-xs text-gray-500">Még nincs esemény</p>
+        </div>
+      ) : (
+        <div className="relative">
+          <div className="absolute left-[18px] top-2 bottom-2 w-px bg-white/10" />
+          <div className="space-y-4">
+            {timeline.map((event, i) => {
+              const Icon = event.icon
+              return (
+                <div key={i} className="flex items-start gap-4 relative">
+                  <div className={`w-9 h-9 rounded-full ${event.color} flex items-center justify-center shrink-0 z-10 shadow-lg`}>
+                    <Icon className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 pt-1.5">
+                    <p className="text-sm text-gray-200 font-medium">{event.label}</p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <p className="text-[10px] text-gray-500">{formatDate(event.date)}</p>
+                      {event.extra && <p className="text-[10px] text-gray-400 font-medium">{event.extra}</p>}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
-  )
-}
+  </div>
+)

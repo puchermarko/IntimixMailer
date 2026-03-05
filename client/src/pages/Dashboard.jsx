@@ -1,6 +1,6 @@
 // Fő dashboard nézet - az oldalsáv és a tartalom itt van összerakva
 import { useState } from 'react'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import Sidebar from '../components/Sidebar'
 import MailView from '../components/MailView'
 import TemplateGallery from '../components/TemplateGallery'
@@ -16,6 +16,7 @@ import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
   const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
+  const { uiMode } = useUI()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [showTour, setShowTour] = useState(false)
@@ -35,6 +36,8 @@ export default function Dashboard() {
     'global-settings': <GlobalSettings />,
   }
 
+  const isModern = uiMode === 'modern'
+
   if (showWizard) {
     return <SetupWizard onComplete={() => {
       setShowWizard(false)
@@ -45,7 +48,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : ''}`}>
       {impersonating && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500/90 backdrop-blur-sm text-black px-4 py-2 flex items-center justify-center gap-3 text-sm font-medium shadow-lg">
           <Eye className="w-4 h-4" />
@@ -61,8 +64,15 @@ export default function Dashboard() {
       )}
       {showTour && <QuickTour onComplete={() => setShowTour(false)} setActiveView={setActiveView} setSidebarOpen={setSidebarOpen} />}
       <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
-      <main className={`pt-16 lg:pt-0 p-4 sm:p-6 lg:p-8 min-h-screen transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[68px]' : 'lg:ml-64'} ${impersonating ? 'mt-10' : ''}`}>
-        <div className="max-w-5xl mx-auto fade-in" key={activeView}>
+      <main className={`pt-16 lg:pt-0 min-h-screen transition-all duration-300 
+        ${sidebarCollapsed 
+          ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
+          : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
+        } 
+        ${impersonating ? 'mt-10' : ''}
+        ${isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8'}
+      `}>
+        <div className={`mx-auto fade-in ${isModern ? 'max-w-[1600px]' : 'max-w-5xl'}`} key={activeView}>
           {views[activeView]}
         </div>
       </main>

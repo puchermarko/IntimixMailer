@@ -4,7 +4,8 @@ import {
   Inbox as InboxIcon, SendHorizontal, PenLine, Users, RefreshCw, Search, X,
   Paperclip, ChevronLeft, ChevronRight, ArrowLeft, Download, User, Clock,
   FileText, Loader2, Trash2, Reply, Send, Eye, Code, ChevronDown, ChevronUp,
-  LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock
+  LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock,
+  MoreVertical, CheckSquare, Star
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
@@ -13,7 +14,7 @@ import {
   getDownloadToken
 } from '../lib/api'
 import { emailTemplates as builtinTemplates } from '../lib/templates'
-import { useBranding, useAuth } from '../App'
+import { useBranding, useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import SimpleRichEditor from './SimpleRichEditor'
 
@@ -27,15 +28,40 @@ const TABS = [
 export default function MailView() {
   const [activeTab, setActiveTab] = useState('inbox')
   const { hasSubscription } = useAuth()
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
 
   return (
-    <div className="space-y-6 fade-in">
+    <div className={`space-y-6 fade-in ${isModern ? 'max-w-[1600px] mx-auto' : ''}`}>
       {/* Fül sáv */}
-      <div className="flex items-center gap-1 border-b border-white/5 pb-0 overflow-x-auto scrollbar-hide">
+      <div className={`flex items-center gap-1 overflow-x-auto scrollbar-hide ${isModern ? 'p-1 bg-white/5 rounded-2xl w-fit' : 'border-b border-white/5 pb-0'}`}>
         {TABS.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
           const disabled = tab.requiresSub && !hasSubscription
+          
+          if (isModern) {
+            return (
+              <button
+                key={tab.id}
+                onClick={() => !disabled && setActiveTab(tab.id)}
+                disabled={disabled}
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-all rounded-xl whitespace-nowrap ${
+                  disabled
+                    ? 'text-gray-600 cursor-not-allowed opacity-50'
+                    : isActive
+                      ? 'bg-[#2EC4BE] text-black shadow-lg shadow-[#2EC4BE]/20'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+                title={disabled ? 'Aktív előfizetés szükséges' : ''}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {disabled && <Lock className="w-3 h-3 opacity-70" />}
+              </button>
+            )
+          }
+
           return (
             <button
               key={tab.id}
@@ -60,10 +86,10 @@ export default function MailView() {
 
       {/* Fül tartalom */}
       <div key={activeTab} className="fade-in">
-        {activeTab === 'inbox' && <InboxTab />}
-        {activeTab === 'sent' && <SentTab />}
-        {activeTab === 'compose' && <ComposeTab />}
-        {activeTab === 'bulk' && <BulkTab />}
+        {activeTab === 'inbox' && <InboxTab isModern={isModern} />}
+        {activeTab === 'sent' && <SentTab isModern={isModern} />}
+        {activeTab === 'compose' && <ComposeTab isModern={isModern} />}
+        {activeTab === 'bulk' && <BulkTab isModern={isModern} />}
       </div>
     </div>
   )
@@ -72,7 +98,7 @@ export default function MailView() {
 /* ═══════════════════════════════════════════════════════════════
    BEJÖVŐ FÜL - itt jönnek be a levelek IMAP-ról
    ═══════════════════════════════════════════════════════════════ */
-function InboxTab() {
+function InboxTab({ isModern }) {
   const { hasSubscription } = useAuth()
   const [emails, setEmails] = useState([])
   const [total, setTotal] = useState(0)
@@ -255,7 +281,7 @@ function InboxTab() {
           <ArrowLeft className="w-4 h-4" /> Vissza
         </button>
 
-        <div className="glass rounded-xl p-4 sm:p-6 space-y-4">
+        <div className={`${isModern ? 'modern-card p-6' : 'glass rounded-xl p-4 sm:p-6'} space-y-4`}>
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-base sm:text-lg font-semibold text-white mb-2">{emailDetail.subject}</h2>
@@ -270,7 +296,7 @@ function InboxTab() {
                   {new Date(emailDetail.date).toLocaleString('hu-HU')}
                 </div>
                 {emailDetail.contact_name ? (
-                  <span className="px-2 py-0.5 rounded-full bg-[#1AA19C]/15 text-[#2EC4BE] text-xs font-medium">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>
                     {emailDetail.contact_name}
                   </span>
                 ) : (
@@ -413,21 +439,21 @@ function InboxTab() {
         <form onSubmit={handleSearch} className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input type="text" placeholder="Keresés a bejövőben..." value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)} className="input-field w-full pl-10 pr-10 py-2.5" />
+            onChange={(e) => setSearchInput(e.target.value)} className={`input-field w-full pl-10 pr-10 py-2.5 ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           {searchInput && (
             <button type="button" onClick={() => { setSearchInput(''); setSearch(''); fetchEmails(1, '') }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
           )}
         </form>
         <button onClick={handleSync} disabled={syncing || !hasSubscription}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0 ${isModern ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' : 'bg-[#1AA19C] hover:bg-[#2EC4BE]'}`}
           title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
           {!hasSubscription ? <Lock className="w-4 h-4" /> : <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />}
           <span className="sm:inline">{syncing ? 'Szinkronizálás...' : 'Szinkronizálás'}</span>
         </button>
       </div>
 
-      <div className="glass rounded-xl overflow-hidden">
+      <div className={isModern ? 'space-y-2' : 'glass rounded-xl overflow-hidden'}>
         {loading ? (
           <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" /><p className="text-gray-500 text-sm">Betöltés...</p></div>
         ) : emails.length === 0 ? (
@@ -436,29 +462,57 @@ function InboxTab() {
             <p className="text-gray-400 text-sm">{search ? 'Nincs találat a keresésre' : 'A bejövő üres. Kattints a Szinkronizálásra a levelek letöltéséhez.'}</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
-            {emails.map(email => (
-              <button key={email.id} onClick={() => openEmail(email)}
-                className="w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-white/5 transition-all text-left">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
-                  {(email.from_name || email.from_address)?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-xs sm:text-sm font-medium text-gray-200 truncate">{email.from_name || email.from_address}</span>
-                    {email.contact_name && (
-                      <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0 hidden sm:inline">Kapcsolat</span>
-                    )}
+          isModern ? (
+            // Modern View - Cards
+            <div className="space-y-2">
+              {emails.map(email => (
+                <button key={email.id} onClick={() => openEmail(email)}
+                  className="w-full flex items-center gap-4 p-4 modern-card hover:bg-white/5 transition-all text-left group">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg">
+                    {(email.from_name || email.from_address)?.[0]?.toUpperCase() || '?'}
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-400 truncate">{email.subject}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {email.has_attachments === 1 && <Paperclip className="w-3.5 h-3.5 text-gray-500" />}
-                  <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-200 truncate pr-2 group-hover:text-[#2EC4BE] transition-colors">{email.from_name || email.from_address}</span>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
+                    </div>
+                    <p className="text-sm text-gray-400 truncate mb-1">{email.subject}</p>
+                    <div className="flex items-center gap-2">
+                      {email.contact_name && (
+                        <span className="px-2 py-0.5 rounded-md bg-[#2EC4BE]/10 text-[#2EC4BE] text-[10px] font-medium border border-[#2EC4BE]/20">Kapcsolat</span>
+                      )}
+                      {email.has_attachments === 1 && <Paperclip className="w-3 h-3 text-gray-500" />}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Legacy View - List
+            <div className="divide-y divide-white/5">
+              {emails.map(email => (
+                <button key={email.id} onClick={() => openEmail(email)}
+                  className="w-full flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-white/5 transition-all text-left">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
+                    {(email.from_name || email.from_address)?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs sm:text-sm font-medium text-gray-200 truncate">{email.from_name || email.from_address}</span>
+                      {email.contact_name && (
+                        <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0 hidden sm:inline">Kapcsolat</span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-400 truncate">{email.subject}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {email.has_attachments === 1 && <Paperclip className="w-3.5 h-3.5 text-gray-500" />}
+                    <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -480,7 +534,7 @@ function InboxTab() {
 /* ═══════════════════════════════════════════════════════════════
    ELKÜLDÖTT FÜL - helyi + IMAP-ról szinkronizált kimenő levelek
    ═══════════════════════════════════════════════════════════════ */
-function SentTab() {
+function SentTab({ isModern }) {
   const { hasSubscription } = useAuth()
   const [emails, setEmails] = useState([])
   const [total, setTotal] = useState(0)
@@ -584,7 +638,7 @@ function SentTab() {
           className="flex items-center gap-2 text-sm text-gray-400 hover:text-[#2EC4BE] transition-colors">
           <ArrowLeft className="w-4 h-4" /> Vissza
         </button>
-        <div className="glass rounded-xl p-6 space-y-4">
+        <div className={`${isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'} space-y-4`}>
           <div>
             <h2 className="text-lg font-semibold text-white mb-2">{emailDetail.subject}</h2>
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
@@ -596,7 +650,7 @@ function SentTab() {
                 <Clock className="w-3.5 h-3.5" />{new Date(dateStr).toLocaleString('hu-HU')}
               </div>
               {emailDetail.contact_name && (
-                <span className="px-2 py-0.5 rounded-full bg-[#1AA19C]/15 text-[#2EC4BE] text-xs font-medium">{emailDetail.contact_name}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>{emailDetail.contact_name}</span>
               )}
             </div>
           </div>
@@ -644,21 +698,21 @@ function SentTab() {
         <form onSubmit={handleSearch} className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input type="text" placeholder="Keresés az elküldöttben..." value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)} className="input-field w-full pl-10 pr-10 py-2.5" />
+            onChange={(e) => setSearchInput(e.target.value)} className={`input-field w-full pl-10 pr-10 py-2.5 ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           {searchInput && (
             <button type="button" onClick={() => { setSearchInput(''); setSearch(''); fetchEmails(1, '') }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
           )}
         </form>
         <button onClick={handleSync} disabled={syncing || !hasSubscription}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1AA19C] hover:bg-[#2EC4BE] text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0"
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-all disabled:opacity-50 shrink-0 ${isModern ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' : 'bg-[#1AA19C] hover:bg-[#2EC4BE]'}`}
           title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
           {!hasSubscription ? <Lock className="w-4 h-4" /> : <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />}
           {syncing ? 'Szinkronizálás...' : 'Kimenő szinkronizálása'}
         </button>
       </div>
 
-      <div className="glass rounded-xl overflow-hidden">
+      <div className={isModern ? 'space-y-2' : 'glass rounded-xl overflow-hidden'}>
         {loading ? (
           <div className="p-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" /><p className="text-gray-500 text-sm">Betöltés...</p></div>
         ) : emails.length === 0 ? (
@@ -667,29 +721,57 @@ function SentTab() {
             <p className="text-gray-400 text-sm">{search ? 'Nincs találat a keresésre' : 'Még nincs elküldött levél.'}</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
-            {emails.map(email => (
-              <button key={`${email.source}-${email.id}`} onClick={() => openEmail(email)}
-                className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-all text-left">
-                <div className="w-9 h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
-                  {(email.contact_name || email.recipient)?.[0]?.toUpperCase() || '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-sm font-medium text-gray-200 truncate">{email.contact_name || email.recipient}</span>
-                    {email.contact_name && (
-                      <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0">Kapcsolat</span>
-                    )}
+          isModern ? (
+            // Modern Card List
+            <div className="space-y-2">
+              {emails.map(email => (
+                <button key={`${email.source}-${email.id}`} onClick={() => openEmail(email)}
+                  className="w-full flex items-center gap-4 p-4 modern-card hover:bg-white/5 transition-all text-left group">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-lg">
+                    {(email.contact_name || email.recipient)?.[0]?.toUpperCase() || '?'}
                   </div>
-                  <p className="text-sm text-gray-400 truncate">{email.subject}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {email.has_attachments > 0 && <Paperclip className="w-3.5 h-3.5 text-gray-500" />}
-                  <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-200 truncate pr-2 group-hover:text-[#2EC4BE] transition-colors">{email.contact_name || email.recipient}</span>
+                      <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
+                    </div>
+                    <p className="text-sm text-gray-400 truncate mb-1">{email.subject}</p>
+                    <div className="flex items-center gap-2">
+                      {email.contact_name && (
+                        <span className="px-2 py-0.5 rounded-md bg-[#2EC4BE]/10 text-[#2EC4BE] text-[10px] font-medium border border-[#2EC4BE]/20">Kapcsolat</span>
+                      )}
+                      {email.has_attachments > 0 && <Paperclip className="w-3 h-3 text-gray-500" />}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            // Legacy List
+            <div className="divide-y divide-white/5">
+              {emails.map(email => (
+                <button key={`${email.source}-${email.id}`} onClick={() => openEmail(email)}
+                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-all text-left">
+                  <div className="w-9 h-9 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold shrink-0">
+                    {(email.contact_name || email.recipient)?.[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-sm font-medium text-gray-200 truncate">{email.contact_name || email.recipient}</span>
+                      {email.contact_name && (
+                        <span className="px-1.5 py-0.5 rounded bg-[#1AA19C]/10 text-[#2EC4BE] text-[10px] font-medium shrink-0">Kapcsolat</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 truncate">{email.subject}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {email.has_attachments > 0 && <Paperclip className="w-3.5 h-3.5 text-gray-500" />}
+                    <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(email.date)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )
         )}
       </div>
 
@@ -711,7 +793,7 @@ function SentTab() {
 /* ═══════════════════════════════════════════════════════════════
    ÚJ LEVÉL FÜL - innen küldesz egy darab emailt valakinek
    ═══════════════════════════════════════════════════════════════ */
-function ComposeTab() {
+function ComposeTab({ isModern }) {
   const { login_domain } = useBranding()
   const [to, setTo] = useState('')
   const [recipientName, setRecipientName] = useState('')
@@ -799,9 +881,9 @@ function ComposeTab() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
         {/* Sablon választó */}
-        <div className="glass rounded-xl p-4">
+        <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
           <button onClick={() => setShowTemplateSelector(!showTemplateSelector)}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl glass-light hover:border-[#1AA19C]/30 transition-all">
+            className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
             <div className="flex items-center gap-3">
               <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
               <span className="text-sm font-medium">
@@ -814,10 +896,10 @@ function ComposeTab() {
             <div className="mt-3 grid grid-cols-2 gap-2 fade-in max-h-[300px] overflow-y-auto">
               {allTemplates.map(t => (
                 <button key={t.id} onClick={() => applyTemplate(t)}
-                  className={`template-card p-3 rounded-xl text-left ${selectedTemplate === t.id ? 'selected' : ''}`}>
+                  className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${selectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
                   <p className="text-sm font-medium text-gray-200">{t.name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
-                  <span className="inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full bg-[#1AA19C]/10 text-[#2EC4BE]">{t.category}</span>
+                  <span className={`inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE]' : 'bg-[#1AA19C]/10 text-[#2EC4BE]'}`}>{t.category}</span>
                 </button>
               ))}
             </div>
@@ -825,24 +907,28 @@ function ComposeTab() {
         </div>
 
         {/* Címzett */}
-        <div className="glass rounded-xl p-4 space-y-3">
+        <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'} space-y-3`}>
           <div className="flex items-center gap-2">
             <button onClick={() => { setRecipientMode('contact'); clearContact() }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                recipientMode === 'contact' ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+                recipientMode === 'contact' 
+                  ? (isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
               }`}><BookUser className="w-3.5 h-3.5" />Kapcsolat</button>
             <button onClick={() => { setRecipientMode('manual'); setSelectedContact(null) }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                recipientMode === 'manual' ? 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20' : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+                recipientMode === 'manual' 
+                  ? (isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
               }`}><UserPen className="w-3.5 h-3.5" />Kézi</button>
           </div>
 
           {recipientMode === 'contact' && (
             <div className="fade-in">
               {selectedContact ? (
-                <div className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
+                <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs font-bold">{selectedContact.name?.[0]?.toUpperCase()}</div>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white shadow-lg' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>{selectedContact.name?.[0]?.toUpperCase()}</div>
                     <div><p className="text-sm font-medium text-gray-200">{selectedContact.name}</p><p className="text-xs text-gray-500">{selectedContact.email}</p></div>
                   </div>
                   <button onClick={clearContact} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
@@ -852,13 +938,13 @@ function ComposeTab() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                     <input type="text" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)}
-                      placeholder="Kapcsolat keresése..." className="input-field w-full pl-10 py-2 text-sm" autoFocus />
+                      placeholder="Kapcsolat keresése..." className={`input-field w-full pl-10 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} autoFocus />
                   </div>
                   <div className="mt-2 max-h-[160px] overflow-y-auto space-y-1">
                     {filteredContacts.map(c => (
                       <button key={c.id} onClick={() => selectContact(c)}
                         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-white/5 transition-all">
-                        <div className="w-7 h-7 rounded-full bg-[#1AA19C]/10 flex items-center justify-center text-[#2EC4BE] text-[10px] font-bold shrink-0">{c.name?.[0]?.toUpperCase()}</div>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white' : 'bg-[#1AA19C]/10 text-[#2EC4BE]'}`}>{c.name?.[0]?.toUpperCase()}</div>
                         <div className="min-w-0"><p className="text-sm text-gray-200 truncate">{c.name}</p><p className="text-xs text-gray-500 truncate">{c.email}</p></div>
                       </button>
                     ))}
@@ -872,14 +958,14 @@ function ComposeTab() {
           {recipientMode === 'manual' && (
             <div className="grid grid-cols-2 gap-3 fade-in">
               <div><label className="block text-xs text-gray-400 mb-1">Email *</label>
-                <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="vevo@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="vevo@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div><label className="block text-xs text-gray-400 mb-1">Név</label>
-                <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Kiss Anna" className="input-field w-full px-3 py-2 text-sm" /></div>
+                <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Kiss Anna" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
             </div>
           )}
 
           <button onClick={() => setShowEcommerce(!showEcommerce)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full glass-light hover:border-[#1AA19C]/20">
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
             <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-gray-300">E-commerce mezők</span>
             <span className="text-[10px] text-gray-500 ml-1">(rendelés, nyomkövetés, szállítás)</span>
@@ -889,17 +975,17 @@ function ComposeTab() {
             <div className="space-y-3 fade-in pl-1 border-l-2 border-amber-500/20 ml-1">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-400 mb-1">Rendelés azon.</label>
-                  <input type="text" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="12345" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <input type="text" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="12345" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                 <div><label className="block text-xs text-gray-400 mb-1">Nyomkövetési szám</label>
-                  <input type="text" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="HU1234567890" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <input type="text" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="HU1234567890" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               </div>
               <div><label className="block text-xs text-gray-400 mb-1">Nyomkövetési link</label>
-                <input type="url" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} placeholder="https://..." className="input-field w-full px-3 py-2 text-sm" /></div>
+                <input type="url" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} placeholder="https://..." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-xs text-gray-400 mb-1">Szállítási idő</label>
-                  <input type="text" value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} placeholder="11:00-14:00" className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <input type="text" value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} placeholder="11:00-14:00" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                 <div><label className="block text-xs text-gray-400 mb-1">Futár telefon</label>
-                  <input type="tel" value={deliveryPhone} onChange={(e) => setDeliveryPhone(e.target.value)} placeholder="+3630..." className="input-field w-full px-3 py-2 text-sm" /></div>
+                  <input type="tel" value={deliveryPhone} onChange={(e) => setDeliveryPhone(e.target.value)} placeholder="+3630..." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               </div>
             </div>
           )}
@@ -911,21 +997,21 @@ function ComposeTab() {
           {showAdvanced && (
             <div className="grid grid-cols-2 gap-3 fade-in">
               <div><label className="block text-xs text-gray-400 mb-1">CC</label>
-                <input type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="cc@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                <input type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="cc@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
               <div><label className="block text-xs text-gray-400 mb-1">BCC</label>
-                <input type="text" value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder="bcc@example.com" className="input-field w-full px-3 py-2 text-sm" /></div>
+                <input type="text" value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder="bcc@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
             </div>
           )}
         </div>
 
         {/* Tárgy */}
-        <div className="glass rounded-xl p-4">
+        <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
           <label className="block text-xs text-gray-400 mb-1">Tárgy *</label>
-          <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email tárgya" className="input-field w-full px-3 py-2 text-sm" />
+          <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email tárgya" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
         </div>
 
         {/* HTML szerkesztő */}
-        <div className="glass rounded-xl p-4">
+        <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <label className="text-xs text-gray-400">Törzs (HTML) *</label>
@@ -964,13 +1050,13 @@ function ComposeTab() {
               />
             ) : (
               <textarea value={html} onChange={(e) => setHtml(e.target.value)} placeholder="HTML tartalom..."
-                className="input-field w-full px-3 py-2 text-sm font-mono min-h-[250px] resize-y" spellCheck={false} />
+                className={`input-field w-full px-3 py-2 text-sm font-mono min-h-[250px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
             )
           )}
         </div>
 
         {/* Csatolmányok */}
-        <div className="glass rounded-xl p-4">
+        <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs text-gray-400">Csatolmányok</label>
             <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C]">
@@ -981,7 +1067,7 @@ function ComposeTab() {
           {attachments.length > 0 ? (
             <div className="space-y-1.5">
               {attachments.map((f, i) => (
-                <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg glass-light text-xs">
+                <div key={i} className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-[#1AA19C]" /><span className="text-gray-300">{f.name}</span><span className="text-gray-500">({(f.size/1024).toFixed(1)}KB)</span></div>
                   <button onClick={() => setAttachments(prev => prev.filter((_,j) => j !== i))} className="text-gray-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
                 </div>
@@ -993,7 +1079,7 @@ function ComposeTab() {
 
       {/* Jobb oldali előnézet */}
       <div className="space-y-4">
-        <div className="glass rounded-xl p-4 sticky top-8">
+        <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'} sticky top-8`}>
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Előnézet</h3>
           <div className="rounded-lg overflow-hidden max-h-[350px]">
             {html ? (
@@ -1009,7 +1095,7 @@ function ComposeTab() {
             )}
           </div>
           <button onClick={handleSend} disabled={sending || !to || !subject || !html}
-            className="btn-primary w-full mt-4 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+            className={`btn-primary w-full mt-4 py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
             {sending ? <><Loader2 className="w-4 h-4 animate-spin" />Küldés...</> : <><Send className="w-4 h-4" />Email küldése</>}
           </button>
         </div>
@@ -1021,7 +1107,7 @@ function ComposeTab() {
 /* ═══════════════════════════════════════════════════════════════
    TÖMEGES KÜLDÉS FÜL - egyszerre több címzettnek megy ki a levél
    ═══════════════════════════════════════════════════════════════ */
-function BulkTab() {
+function BulkTab({ isModern }) {
   const { login_domain } = useBranding()
   const [recipients, setRecipients] = useState([{ name: '', email: '', order_id: '', tracking_number: '', tracking_url: '', delivery_time: '', delivery_phone: '' }])
   const [subject, setSubject] = useState('')
@@ -1084,9 +1170,9 @@ function BulkTab() {
   return (
     <div className="space-y-4">
       {/* Sablon */}
-      <div className="glass rounded-xl p-4">
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <button onClick={() => setShowTemplateSelector(!showTemplateSelector)}
-          className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl glass-light hover:border-[#1AA19C]/30 transition-all">
+          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
           <div className="flex items-center gap-3">
             <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
             <span className="text-sm font-medium">{selectedTemplate ? allTemplates.find(t => t.id === selectedTemplate)?.name : 'Válassz sablont'}</span>
@@ -1097,7 +1183,7 @@ function BulkTab() {
           <div className="mt-3 grid grid-cols-2 gap-2 fade-in max-h-[250px] overflow-y-auto">
             {allTemplates.map(t => (
               <button key={t.id} onClick={() => applyTemplate(t)}
-                className={`template-card p-3 rounded-xl text-left ${selectedTemplate === t.id ? 'selected' : ''}`}>
+                className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${selectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
                 <p className="text-sm font-medium text-gray-200">{t.name}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
               </button>
@@ -1107,14 +1193,14 @@ function BulkTab() {
       </div>
 
       {/* Tárgy */}
-      <div className="glass rounded-xl p-4">
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <label className="block text-xs text-gray-400 mb-1">Tárgy *</label>
         <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-          placeholder="Tárgy (használd: {{name}}, {{order_id}}...)" className="input-field w-full px-3 py-2 text-sm" />
+          placeholder="Tárgy (használd: {{name}}, {{order_id}}...)" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
       </div>
 
       {/* Címzettek */}
-      <div className="glass rounded-xl p-4">
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#1AA19C]" />
@@ -1129,7 +1215,7 @@ function BulkTab() {
         </div>
 
         <button onClick={() => setShowEcommerce(!showEcommerce)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full glass-light hover:border-[#1AA19C]/20 mb-3">
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full mb-3 ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
           <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-gray-300">E-commerce mezők</span>
           <span className="text-[10px] text-gray-500 ml-1">(rendelés, nyomkövetés, szállítás)</span>
@@ -1138,18 +1224,18 @@ function BulkTab() {
 
         <div className="space-y-2 max-h-[350px] overflow-y-auto">
           {recipients.map((r, i) => (
-            <div key={i} className="space-y-2 p-3 rounded-xl glass-light">
+            <div key={i} className={`space-y-2 p-3 rounded-xl ${isModern ? 'bg-white/5' : 'glass-light'}`}>
               <div className="grid grid-cols-12 gap-2 items-center">
                 <input type="email" value={r.email} onChange={(e) => updateRecipient(i, 'email', e.target.value)}
-                  onPaste={i === 0 ? handleCsvPaste : undefined} placeholder="Email *" className={`input-field px-2 py-1.5 rounded-lg text-xs ${showEcommerce ? 'col-span-4' : 'col-span-6'}`} />
+                  onPaste={i === 0 ? handleCsvPaste : undefined} placeholder="Email *" className={`input-field px-2 py-1.5 rounded-lg text-xs ${showEcommerce ? 'col-span-4' : 'col-span-6'} ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 <input type="text" value={r.name} onChange={(e) => updateRecipient(i, 'name', e.target.value)}
-                  placeholder="Név" className={`input-field px-2 py-1.5 rounded-lg text-xs ${showEcommerce ? 'col-span-3' : 'col-span-5'}`} />
+                  placeholder="Név" className={`input-field px-2 py-1.5 rounded-lg text-xs ${showEcommerce ? 'col-span-3' : 'col-span-5'} ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 {showEcommerce && (
                   <>
                     <input type="text" value={r.order_id} onChange={(e) => updateRecipient(i, 'order_id', e.target.value)}
-                      placeholder="Rend. azon." className="input-field col-span-2 px-2 py-1.5 rounded-lg text-xs" />
+                      placeholder="Rend. azon." className={`input-field col-span-2 px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                     <input type="text" value={r.tracking_number} onChange={(e) => updateRecipient(i, 'tracking_number', e.target.value)}
-                      placeholder="Nyomkövetés" className="input-field col-span-2 px-2 py-1.5 rounded-lg text-xs" />
+                      placeholder="Nyomkövetés" className={`input-field col-span-2 px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </>
                 )}
                 <button onClick={() => removeRecipient(i)} disabled={recipients.length === 1}
@@ -1158,12 +1244,12 @@ function BulkTab() {
               {showEcommerce && (
                 <>
                   <input type="url" value={r.tracking_url} onChange={(e) => updateRecipient(i, 'tracking_url', e.target.value)}
-                    placeholder="Nyomkövetési link" className="input-field w-full px-2 py-1.5 rounded-lg text-xs" />
+                    placeholder="Nyomkövetési link" className={`input-field w-full px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   <div className="grid grid-cols-2 gap-2">
                     <input type="text" value={r.delivery_time} onChange={(e) => updateRecipient(i, 'delivery_time', e.target.value)}
-                      placeholder="Szállítási idő" className="input-field px-2 py-1.5 rounded-lg text-xs" />
+                      placeholder="Szállítási idő" className={`input-field px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                     <input type="tel" value={r.delivery_phone} onChange={(e) => updateRecipient(i, 'delivery_phone', e.target.value)}
-                      placeholder="Futár telefon" className="input-field px-2 py-1.5 rounded-lg text-xs" />
+                      placeholder="Futár telefon" className={`input-field px-2 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </>
               )}
@@ -1173,7 +1259,7 @@ function BulkTab() {
       </div>
 
       {/* HTML */}
-      <div className="glass rounded-xl p-4">
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <label className="block text-xs text-gray-400">Törzs (HTML) *</label>
@@ -1197,23 +1283,23 @@ function BulkTab() {
           />
         ) : (
           <textarea value={html} onChange={(e) => setHtml(e.target.value)}
-            placeholder="HTML tartalom {{name}}, {{order_id}}..." className="input-field w-full px-3 py-2 text-sm font-mono min-h-[180px] resize-y" spellCheck={false} />
+            placeholder="HTML tartalom {{name}}, {{order_id}}..." className={`input-field w-full px-3 py-2 text-sm font-mono min-h-[180px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
         )}
       </div>
 
       {/* Csatolmányok */}
-      <div className="glass rounded-xl p-4">
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs text-gray-400">Csatolmányok</label>
           <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C]">
-            <Paperclip className="w-3.5 h-3.5" /> Hozzáadás
+            <Paperclip className="w-3.5 h-3.5" /> Fájl hozzáadása
           </button>
           <input ref={fileInputRef} type="file" multiple onChange={(e) => setAttachments(prev => [...prev, ...Array.from(e.target.files)])} className="hidden" />
         </div>
         {attachments.length > 0 && (
           <div className="space-y-1.5">
             {attachments.map((f, i) => (
-              <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg glass-light text-xs">
+              <div key={i} className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                 <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-[#1AA19C]" /><span className="text-gray-300">{f.name}</span></div>
                 <button onClick={() => setAttachments(prev => prev.filter((_,j) => j !== i))} className="text-gray-500 hover:text-red-400"><X className="w-3.5 h-3.5" /></button>
               </div>
@@ -1224,16 +1310,16 @@ function BulkTab() {
 
       {/* Küldés */}
       <button onClick={handleSend} disabled={sending || !recipients.some(r => r.email) || !subject || !html}
-        className="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+        className={`btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
         {sending ? <><Loader2 className="w-4 h-4 animate-spin" />Küldés {recipients.filter(r => r.email).length} címzettnek...</> : <><Send className="w-4 h-4" />Küldés {recipients.filter(r => r.email).length} címzettnek</>}
       </button>
 
       {results && (
-        <div className="glass rounded-xl p-4 fade-in">
+        <div className={isModern ? 'modern-card p-4 fade-in' : 'glass rounded-xl p-4 fade-in'}>
           <h3 className="text-sm font-semibold text-gray-300 mb-2">Eredmények</h3>
           <div className="space-y-1">
             {results.map((r, i) => (
-              <div key={i} className="flex items-center justify-between px-3 py-1.5 rounded-lg glass-light text-xs">
+              <div key={i} className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                 <span className="text-gray-300">{r.email}</span>
                 <span className={r.status === 'sent' ? 'text-green-400' : 'text-red-400'}>{r.status === 'sent' ? '✓ Elküldve' : `✗ ${r.error}`}</span>
               </div>

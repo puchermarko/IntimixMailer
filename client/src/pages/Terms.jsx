@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Shield, CreditCard, AlertTriangle, Scale, Mail } from 'lucide-react'
+import { useUI } from '../App'
 
 export default function Terms() {
   const navigate = useNavigate()
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
 
   return (
-    <div className="min-h-screen bg-[#1a1d23] text-[#e0e2e7]">
+    <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+      <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/5 ${isModern ? 'bg-[#0f1115]/80 backdrop-blur-xl' : 'glass'}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
@@ -19,15 +22,15 @@ export default function Terms() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20">
+      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20 fade-in">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-2">Általános Szerződési Feltételek</h1>
         <p className="text-gray-500 text-sm mb-10">Utolsó frissítés: 2026. február 15.</p>
 
         <div className="space-y-8">
           {/* Szolgáltató */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <FileText className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">1. A Szolgáltató</h2>
@@ -39,9 +42,9 @@ export default function Terms() {
           </section>
 
           {/* Szolgáltatás leírása */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Shield className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">2. A Szolgáltatás leírása</h2>
@@ -60,9 +63,9 @@ export default function Terms() {
           </section>
 
           {/* Regisztráció */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <FileText className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">3. Regisztráció és fiókkezelés</h2>
@@ -75,9 +78,9 @@ export default function Terms() {
           </section>
 
           {/* Próbaidőszak és előfizetés */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <CreditCard className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">4. Próbaidőszak és előfizetés</h2>
@@ -90,9 +93,9 @@ export default function Terms() {
           </section>
 
           {/* Felhasználó kötelezettségei */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <AlertTriangle className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">5. A Felhasználó kötelezettségei</h2>
@@ -111,9 +114,9 @@ export default function Terms() {
           </section>
 
           {/* Felelősségkorlátozás */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Scale className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">6. Felelősségkorlátozás</h2>
@@ -131,9 +134,9 @@ export default function Terms() {
           </section>
 
           {/* Szellemi tulajdon */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Shield className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">7. Szellemi tulajdon</h2>
@@ -145,9 +148,9 @@ export default function Terms() {
           </section>
 
           {/* ÁSZF módosítása */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <FileText className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">8. Az ÁSZF módosítása</h2>
@@ -158,9 +161,9 @@ export default function Terms() {
           </section>
 
           {/* Irányadó jog */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Scale className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">9. Irányadó jog és jogviták</h2>
@@ -171,16 +174,16 @@ export default function Terms() {
           </section>
 
           {/* Kapcsolat */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Mail className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">10. Kapcsolat</h2>
             </div>
             <div className="text-sm text-gray-400 leading-relaxed space-y-3">
               <p>Az ÁSZF-fel kapcsolatos kérdéseit az alábbi elérhetőségeken teheti fel:</p>
-              <div className="glass-light rounded-xl p-4 mt-2">
+              <div className={`rounded-xl p-4 mt-2 ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                 <p className="text-gray-300 font-medium text-sm">TM Infotech Kft.</p>
                 <p className="text-xs text-gray-500 mt-1">Email: <a href="mailto:info@tm-it.hu" className="text-[#2EC4BE] hover:text-white transition-colors">info@tm-it.hu</a></p>
                 <p className="text-xs text-gray-500">Telefon: +36 30 442 9707</p>

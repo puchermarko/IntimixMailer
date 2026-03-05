@@ -4,6 +4,7 @@ import {
   X, Inbox, SendHorizontal, PenLine, RefreshCw, Sparkles, Check,
   Zap, Shield, CreditCard, Image
 } from 'lucide-react'
+import { useUI } from '../App'
 
 const TOUR_STEPS = [
   {
@@ -85,6 +86,8 @@ const TOUR_STEPS = [
 ]
 
 export default function QuickTour({ onComplete, setActiveView, setSidebarOpen }) {
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
   const [step, setStep] = useState(0)
   const [spotlightRect, setSpotlightRect] = useState(null)
   const [tooltipStyle, setTooltipStyle] = useState({})
@@ -207,7 +210,7 @@ export default function QuickTour({ onComplete, setActiveView, setSidebarOpen })
       {/* Spotlight ring glow */}
       {spotlightRect && (
         <div
-          className="fixed rounded-xl border-2 border-[#2EC4BE]/60 shadow-[0_0_20px_rgba(46,196,190,0.3)] transition-all duration-300 ease-out"
+          className={`fixed rounded-xl border-2 transition-all duration-300 ease-out ${isModern ? 'border-[#2EC4BE]/60 shadow-[0_0_20px_rgba(46,196,190,0.3)]' : 'border-[#1AA19C]/60 shadow-[0_0_20px_rgba(26,161,156,0.3)]'}`}
           style={{
             pointerEvents: 'none',
             top: spotlightRect.top,
@@ -224,7 +227,7 @@ export default function QuickTour({ onComplete, setActiveView, setSidebarOpen })
         style={{ ...tooltipStyle, pointerEvents: 'auto', zIndex: 101 }}
         key={step}
       >
-        <div className="glass glow rounded-2xl overflow-hidden fade-in">
+        <div className={`rounded-2xl overflow-hidden fade-in ${isModern ? 'modern-card' : 'glass glow'}`}>
           {/* Top accent */}
           <div className="h-1 bg-gradient-to-r from-[#1AA19C] via-[#2EC4BE] to-[#1AA19C]" />
 
@@ -246,7 +249,7 @@ export default function QuickTour({ onComplete, setActiveView, setSidebarOpen })
 
             {/* Icon + title */}
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/15 flex items-center justify-center shrink-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/15'}`}>
                 <Icon className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <div>
@@ -294,7 +297,7 @@ export default function QuickTour({ onComplete, setActiveView, setSidebarOpen })
                 )}
 
                 <button onClick={goNext}
-                  className="btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5">
+                  className={`btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                   {isLast ? (
                     <><Check className="w-3.5 h-3.5" /> Kezdjünk!</>
                   ) : (

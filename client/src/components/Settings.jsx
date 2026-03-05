@@ -1,19 +1,20 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
 import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount } from '../lib/api'
-import { useBranding, useAuth } from '../App'
+import { useBranding, useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
   Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink, RefreshCw,
-  Lock, UserX
+  Lock, UserX, Layout, Monitor
 } from 'lucide-react'
 
 export default function Settings({ onStartTour }) {
   const [testing, setTesting] = useState(false)
   const [smtpStatus, setSmtpStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('general')
+  const { uiMode, toggleUiMode } = useUI()
   const [apiKeys, setApiKeys] = useState([])
   const [newKeyName, setNewKeyName] = useState('')
   const [creatingKey, setCreatingKey] = useState(false)
@@ -68,6 +69,8 @@ export default function Settings({ onStartTour }) {
   const [deletingAccount, setDeletingAccount] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [showDeletePw, setShowDeletePw] = useState(false)
+
+  const isModern = uiMode === 'modern'
 
   // Handle Stripe redirect URL params
   useEffect(() => {
@@ -286,18 +289,20 @@ export default function Settings({ onStartTour }) {
   const baseUrl = 'https://pultify.hu'
 
   return (
-    <div>
+    <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="mb-6 mt-2">
         <h2 className="text-xl sm:text-2xl font-bold text-white">Beállítások</h2>
         <p className="text-xs sm:text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
       </div>
 
       {/* Fülek */}
-      <div className="flex items-center gap-1 border-b border-white/5 mb-6 overflow-x-auto scrollbar-hide">
+      <div className={`flex items-center gap-1 overflow-x-auto scrollbar-hide mb-6 ${isModern ? 'p-1 bg-white/5 rounded-2xl w-fit' : 'border-b border-white/5'}`}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-all whitespace-nowrap ${
-              activeTab === tab.id ? 'text-[#2EC4BE] border-[#1AA19C]' : 'text-gray-400 border-transparent hover:text-gray-200'
+            className={`transition-all whitespace-nowrap ${
+              isModern 
+                ? `px-4 py-2 rounded-xl text-sm font-medium ${activeTab === tab.id ? 'bg-[#2EC4BE] text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`
+                : `px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px ${activeTab === tab.id ? 'text-[#2EC4BE] border-[#1AA19C]' : 'text-gray-400 border-transparent hover:text-gray-200'}`
             }`}>{tab.label}</button>
         ))}
       </div>
@@ -306,9 +311,9 @@ export default function Settings({ onStartTour }) {
       {activeTab === 'account' && (
         <div className="space-y-6 max-w-2xl fade-in">
           {/* Jelszó változtatás */}
-          <div className="glass rounded-xl p-6">
+          <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Lock className="w-5 h-5 text-[#1AA19C]" /></div>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}><Lock className="w-5 h-5 text-[#1AA19C]" /></div>
               <div><h3 className="text-base font-semibold text-white">Jelszó változtatás</h3><p className="text-xs text-gray-500">Változtasd meg a jelenlegi jelszavadat</p></div>
             </div>
             <div className="space-y-4">
@@ -316,7 +321,7 @@ export default function Settings({ onStartTour }) {
                 <label className="block text-xs text-gray-400 mb-1">Jelenlegi jelszó</label>
                 <div className="relative">
                   <input type={showCurrentPw ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                    placeholder="••••••••" className={`input-field w-full px-3 py-2 text-sm pr-10 ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                     {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -327,7 +332,7 @@ export default function Settings({ onStartTour }) {
                 <label className="block text-xs text-gray-400 mb-1">Új jelszó</label>
                 <div className="relative">
                   <input type={showNewPw ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Legalább 6 karakter" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                    placeholder="Legalább 6 karakter" className={`input-field w-full px-3 py-2 text-sm pr-10 ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   <button type="button" onClick={() => setShowNewPw(!showNewPw)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                     {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -337,7 +342,7 @@ export default function Settings({ onStartTour }) {
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Új jelszó megerősítése</label>
                 <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Írd be újra az új jelszót" className="input-field w-full px-3 py-2 text-sm" />
+                  placeholder="Írd be újra az új jelszót" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 {confirmPassword && newPassword !== confirmPassword && (
                   <p className="text-xs text-red-400 mt-1">A jelszavak nem egyeznek</p>
                 )}
@@ -356,7 +361,7 @@ export default function Settings({ onStartTour }) {
                   finally { setChangingPassword(false) }
                 }}
                 disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-                className="btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                className={`btn-primary px-6 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                 {changingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                 Jelszó változtatás
               </button>
@@ -365,13 +370,13 @@ export default function Settings({ onStartTour }) {
 
           {/* Fiók törlés */}
           {!isAdmin && (
-            <div className="glass rounded-xl p-6 border border-red-500/20">
+            <div className={`${isModern ? 'modern-card p-6 border-red-500/20' : 'glass rounded-xl p-6 border border-red-500/20'}`}>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center"><UserX className="w-5 h-5 text-red-400" /></div>
                 <div><h3 className="text-base font-semibold text-white">Fiók törlése</h3><p className="text-xs text-gray-500">Véglegesen töröld a fiókodat és minden adatodat</p></div>
               </div>
 
-              <div className="glass rounded-lg p-4 flex items-start gap-3 border border-red-500/20 mb-5">
+              <div className={`rounded-lg p-4 flex items-start gap-3 border border-red-500/20 mb-5 ${isModern ? 'bg-red-500/5' : 'glass'}`}>
                 <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm text-red-300 font-medium">Figyelem — ez a művelet visszavonhatatlan!</p>
@@ -383,13 +388,13 @@ export default function Settings({ onStartTour }) {
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Írd be: <span className="font-mono text-red-400">TÖRLÉS</span> a megerősítéshez</label>
                   <input type="text" value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)}
-                    placeholder="TÖRLÉS" className="input-field w-full px-3 py-2 text-sm" />
+                    placeholder="TÖRLÉS" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Jelszó megerősítés</label>
                   <div className="relative">
                     <input type={showDeletePw ? 'text' : 'password'} value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)}
-                      placeholder="Add meg a jelszavadat" className="input-field w-full px-3 py-2 text-sm pr-10" />
+                      placeholder="Add meg a jelszavadat" className={`input-field w-full px-3 py-2 text-sm pr-10 ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                     <button type="button" onClick={() => setShowDeletePw(!showDeletePw)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                       {showDeletePw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -428,21 +433,58 @@ export default function Settings({ onStartTour }) {
       {/* ═══ ÁLTALÁNOS FÜL ═══ */}
       {activeTab === 'general' && (
         <div className="space-y-6 max-w-2xl fade-in">
-          <div className="glass rounded-xl p-6">
+          {/* UI Beállítások */}
+          <div className={`${isModern ? 'modern-card p-6 border-[#2EC4BE]/20' : 'glass rounded-xl p-6 border border-[#2EC4BE]/20'} relative overflow-hidden group`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2EC4BE]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-3 mb-5 relative">
+              <div className="w-10 h-10 rounded-xl bg-[#2EC4BE]/10 flex items-center justify-center">
+                <Layout className="w-5 h-5 text-[#2EC4BE]" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Felhasználói Felület</h3>
+                <p className="text-xs text-gray-500">Válassz a klasszikus és a modern megjelenés között</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 relative">
+              <div className="flex items-center gap-3">
+                <Monitor className={`w-5 h-5 ${uiMode === 'modern' ? 'text-[#2EC4BE]' : 'text-gray-400'}`} />
+                <div>
+                  <p className="text-sm font-medium text-white">Modern Felület</p>
+                  <p className="text-xs text-gray-400">Új, letisztultabb dizájn és intuitívabb működés</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => toggleUiMode()}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
+                  uiMode === 'modern' ? 'bg-[#2EC4BE]' : 'bg-gray-700'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${
+                    uiMode === 'modern' ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Server className="w-5 h-5 text-[#1AA19C]" /></div>
               <div><h3 className="text-base font-semibold text-white">SMTP Szerver</h3><p className="text-xs text-gray-500">Levelezőszerver kapcsolat</p></div>
             </div>
             <div className="space-y-2">
               {[['Hoszt', envConfig.smtp_host || '—'],['Port', envConfig.smtp_port ? `${envConfig.smtp_port} (${envConfig.smtp_port === '465' ? 'SSL' : 'TLS'})` : '—'],['Felhasználó', envConfig.smtp_user || '—'],['Titkosítás', envConfig.smtp_port === '465' ? 'SSL' : 'TLS'],['Feladó', envConfig.smtp_from_name || envConfig.smtp_user || '—']].map(([l,v]) => (
-                <div key={l} className="flex items-center justify-between px-4 py-2.5 rounded-lg glass-light">
+                <div key={l} className={`flex items-center justify-between px-4 py-2.5 rounded-lg ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <span className="text-xs text-gray-400">{l}</span><span className="text-sm text-gray-200 font-mono">{v}</span>
                 </div>
               ))}
             </div>
             <div className="mt-4 flex items-center gap-3">
               <button onClick={handleTestSmtp} disabled={testing}
-                className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50">
+                className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
                 {testing ? <><Loader2 className="w-4 h-4 animate-spin" />Tesztelés...</> : 'Kapcsolat tesztelése'}
               </button>
               {smtpStatus === 'success' && <span className="flex items-center gap-1.5 text-green-400 text-sm"><CheckCircle className="w-4 h-4" />Kapcsolódva</span>}
@@ -450,7 +492,7 @@ export default function Settings({ onStartTour }) {
             </div>
           </div>
 
-          <div className="glass rounded-xl p-6">
+          <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center"><Shield className="w-5 h-5 text-green-400" /></div>
               <div><h3 className="text-base font-semibold text-white">Biztonság</h3></div>
@@ -462,28 +504,28 @@ export default function Settings({ onStartTour }) {
             </div>
           </div>
 
-          <div className="glass rounded-xl p-6">
+          <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><Info className="w-5 h-5 text-blue-400" /></div>
               <div><h3 className="text-base font-semibold text-white">Sablon változók</h3></div>
             </div>
             <div className="space-y-2">
               {[['{{name}}','Címzett neve'],['{{email}}','Email cím'],['{{order_id}}','Rendelés azonosító'],['{{tracking_number}}','Nyomkövetési szám'],['{{tracking_url}}','Nyomkövetési link'],['{{delivery_time}}','Szállítási idő'],['{{delivery_phone}}','Futár telefonszáma']].map(([v,d]) => (
-                <div key={v} className="flex items-center justify-between px-4 py-2 rounded-lg glass-light">
+                <div key={v} className={`flex items-center justify-between px-4 py-2 rounded-lg ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <code className="text-xs text-[#2EC4BE] font-mono">{v}</code><span className="text-xs text-gray-400">{d}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="glass rounded-xl p-6">
+          <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Play className="w-5 h-5 text-[#1AA19C]" /></div>
               <div><h3 className="text-base font-semibold text-white">Gyors Bemutató</h3><p className="text-xs text-gray-500">Nézd meg újra a funkciók bemutatóját</p></div>
             </div>
             <p className="text-sm text-gray-400 mb-4">Ha szeretnéd újra megnézni a rendszer funkcióinak bemutatóját, kattints az alábbi gombra.</p>
             <button onClick={() => { if (onStartTour) { localStorage.removeItem('intimix_tour_completed'); onStartTour() } }}
-              className="btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2">
+              className={`btn-primary px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}>
               <Play className="w-4 h-4" /> Bemutató Újraindítása
             </button>
           </div>
@@ -498,19 +540,19 @@ export default function Settings({ onStartTour }) {
           ) : (
             <>
               {/* Logó feltöltés */}
-              <div className="glass rounded-xl p-6">
+              <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center"><Palette className="w-5 h-5 text-purple-400" /></div>
                   <div><h3 className="text-base font-semibold text-white">Logó</h3><p className="text-xs text-gray-500">Az alkalmazás logója (fejléc, bejelentkezés)</p></div>
                 </div>
                 <div className="flex items-center gap-6">
-                  <div className="w-24 h-24 rounded-xl glass-light flex items-center justify-center overflow-hidden p-2">
+                  <div className={`w-24 h-24 rounded-xl flex items-center justify-center overflow-hidden p-2 ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                     <img src={brandLogo} alt="Logo" className="max-h-full max-w-full object-contain" />
                   </div>
                   <div className="space-y-3">
                     <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/png,image/jpeg,image/svg+xml,image/webp,image/gif" className="hidden" />
                     <button onClick={() => logoInputRef.current?.click()} disabled={logoUploading}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-light hover:border-[#1AA19C]/20 text-sm text-gray-300 transition-all disabled:opacity-50">
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-gray-300 transition-all disabled:opacity-50 ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
                       {logoUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                       Új logó feltöltése
                     </button>
@@ -520,7 +562,7 @@ export default function Settings({ onStartTour }) {
               </div>
 
               {/* Alkalmazás neve */}
-              <div className="glass rounded-xl p-6">
+              <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Settings2 className="w-5 h-5 text-[#1AA19C]" /></div>
                   <div><h3 className="text-base font-semibold text-white">Alkalmazás neve</h3><p className="text-xs text-gray-500">Ez jelenik meg a fejlécben és a bejelentkezésnél</p></div>
@@ -529,17 +571,17 @@ export default function Settings({ onStartTour }) {
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Név (pl. cég neve)</label>
                     <input type="text" value={brandName} onChange={(e) => { setBrandName(e.target.value); setBrandDirty(true) }}
-                      placeholder="Pultify" className="input-field w-full px-3 py-2 text-sm" />
+                      placeholder="Pultify" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Alcím</label>
                     <input type="text" value={brandSubtitle} onChange={(e) => { setBrandSubtitle(e.target.value); setBrandDirty(true) }}
-                      placeholder="Mailer" className="input-field w-full px-3 py-2 text-sm" />
+                      placeholder="Mailer" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                   </div>
                 </div>
 
                 {/* Előnézet */}
-                <div className="mt-5 p-4 rounded-xl glass-light">
+                <div className={`mt-5 p-4 rounded-xl ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <p className="text-[10px] text-gray-500 mb-2 uppercase tracking-wider">Előnézet</p>
                   <div className="flex items-center gap-3">
                     <img src={brandLogo} alt="Preview" className="h-8 object-contain" />
@@ -551,7 +593,7 @@ export default function Settings({ onStartTour }) {
               </div>
 
               {/* Cégadatok */}
-              <div className="glass rounded-xl p-6">
+              <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center"><Info className="w-5 h-5 text-blue-400" /></div>
                   <div><h3 className="text-base font-semibold text-white">Cégadatok</h3><p className="text-xs text-gray-500">Árajánlatokon és emailekben megjelenő adatok</p></div>
@@ -559,23 +601,22 @@ export default function Settings({ onStartTour }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs text-gray-400 mb-1">Cégnév</label>
                     <input type="text" value={companyName} onChange={(e) => { setCompanyName(e.target.value); setBrandDirty(true) }}
-                      placeholder="Cég neve" className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="Cég neve" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Adószám</label>
                     <input type="text" value={companyVat} onChange={(e) => { setCompanyVat(e.target.value); setBrandDirty(true) }}
-                      placeholder="12345678-1-23" className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="12345678-1-23" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Email</label>
                     <input type="email" value={companyEmail} onChange={(e) => { setCompanyEmail(e.target.value); setBrandDirty(true) }}
-                      placeholder="info@ceg.hu" className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="info@ceg.hu" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Telefon</label>
                     <input type="tel" value={companyPhone} onChange={(e) => { setCompanyPhone(e.target.value); setBrandDirty(true) }}
-                      placeholder="+3630..." className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="+3630..." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   <div className="col-span-2"><label className="block text-xs text-gray-400 mb-1">Utca, házszám</label>
                     <input type="text" value={companyStreet} onChange={(e) => { setCompanyStreet(e.target.value); setBrandDirty(true) }}
-                      placeholder="Példa utca 1." className="input-field w-full px-3 py-2 text-sm" /></div>
+                      placeholder="Példa utca 1." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Irányítószám</label>
                     <input type="text" value={companyZip} onChange={(e) => { setCompanyZip(e.target.value); setBrandDirty(true) }}
-                      placeholder="1234" className="input-field w-full px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs text-gray-400 mb-1">Város</label>
+                      placeholder="1234" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>                  <div><label className="block text-xs text-gray-400 mb-1">Város</label>
                     <input type="text" value={companyCity} onChange={(e) => { setCompanyCity(e.target.value); setBrandDirty(true) }}
                       placeholder="Budapest" className="input-field w-full px-3 py-2 text-sm" /></div>
                   <div><label className="block text-xs text-gray-400 mb-1">Ország</label>
@@ -1109,247 +1150,68 @@ export default function Settings({ onStartTour }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <BookOpen className="w-5 h-5 text-[#1AA19C]" />
-              <h3 className="text-lg font-semibold text-white">API Dokumentáció</h3>
+              <h3 className="text-base font-semibold text-white">API Dokumentáció</h3>
             </div>
-            <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
-              <button onClick={() => setDocLang('en')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${docLang === 'en' ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'}`}>
-                🇬🇧 English
-              </button>
-              <button onClick={() => setDocLang('hu')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${docLang === 'hu' ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'}`}>
-                🇭🇺 Magyar
-              </button>
+            <div className="flex bg-white/5 rounded-lg p-0.5">
+              <button onClick={() => setDocLang('hu')} className={`px-2 py-1 rounded text-xs font-medium transition-all ${docLang === 'hu' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>HU</button>
+              <button onClick={() => setDocLang('en')} className={`px-2 py-1 rounded text-xs font-medium transition-all ${docLang === 'en' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>EN</button>
             </div>
           </div>
 
-          <div className="glass rounded-xl p-6">
-            <h4 className="text-sm font-semibold text-white mb-2">
-              {docLang === 'en' ? 'Authentication' : 'Hitelesítés'}
-            </h4>
-            <p className="text-sm text-gray-400 mb-3">
-              {docLang === 'en'
-                ? 'All external API endpoints require an API key. Pass it via the X-Api-Key header or as a query parameter.'
-                : 'Minden külső API végpont API kulcsot igényel. Küldd el az X-Api-Key fejlécben vagy api_key query paraméterként.'}
-            </p>
-            <div className="space-y-2">
-              <CodeBlock label="Header" code={`X-Api-Key: imx_your_api_key_here`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-              <CodeBlock label="Query" code={`${baseUrl}/api/v1/contacts?api_key=imx_your_api_key_here`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-            </div>
-          </div>
-
-          <div className="glass rounded-xl p-6">
-            <h4 className="text-sm font-semibold text-white mb-1">{docLang === 'en' ? 'Base URL' : 'Alap URL'}</h4>
-            <CodeBlock code={`${baseUrl}/api/v1`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-          </div>
-
-          {/* Sablonok */}
-          <ApiSection title={docLang === 'en' ? 'Templates' : 'Sablonok'}
-            desc={docLang === 'en' ? 'Read email templates.' : 'Email sablonok lekérdezése.'}>
-            <Endpoint method="GET" path="/api/v1/templates"
-              desc={docLang === 'en' ? 'List all custom templates' : 'Összes egyéni sablon listázása'}
-              response={`{\n  "templates": [\n    {\n      "id": "uuid",\n      "name": "Order Confirmation",\n      "description": "...",\n      "category": "Orders",\n      "subject": "Your order #{{order_id}}",\n      "html": "<html>...</html>",\n      "created_at": "2025-01-01T00:00:00",\n      "updated_at": "2025-01-01T00:00:00"\n    }\n  ]\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/templates/:id"
-              desc={docLang === 'en' ? 'Get a single template by ID' : 'Egy sablon lekérdezése ID alapján'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Kapcsolatok */}
-          <ApiSection title={docLang === 'en' ? 'Contacts' : 'Kapcsolatok'}
-            desc={docLang === 'en' ? 'Full CRUD for the contact manager.' : 'Teljes CRUD a kapcsolatkezelőhöz.'}>
-            <Endpoint method="GET" path="/api/v1/contacts"
-              desc={docLang === 'en' ? 'List contacts (paginated)' : 'Kapcsolatok listázása (lapozható)'}
-              params={docLang === 'en'
-                ? 'search (optional), page (default 1), limit (default 50)'
-                : 'search (opcionális), page (alapértelmezett 1), limit (alapértelmezett 50)'}
-              response={`{\n  "contacts": [\n    {\n      "id": "uuid",\n      "name": "Kiss Anna",\n      "email": "anna@example.com",\n      "phone": "+3630...",\n      "notes": "...",\n      "sent_count": 5,\n      "received_count": 3\n    }\n  ],\n  "total": 42,\n  "page": 1,\n  "limit": 50\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/contacts/:id"
-              desc={docLang === 'en' ? 'Get a single contact' : 'Egy kapcsolat lekérdezése'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="POST" path="/api/v1/contacts"
-              desc={docLang === 'en' ? 'Create a new contact' : 'Új kapcsolat létrehozása'}
-              body={`{\n  "name": "Kiss Anna",       // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "email": "anna@ex.com",   // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "phone": "+3630...",      // ${docLang === 'en' ? 'optional' : 'opcionális'}\n  "notes": "VIP customer"   // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="PUT" path="/api/v1/contacts/:id"
-              desc={docLang === 'en' ? 'Update a contact' : 'Kapcsolat módosítása'}
-              body={`{\n  "name": "Kiss Anna",\n  "email": "anna@ex.com",\n  "phone": "+3630...",\n  "notes": "Updated notes"\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="DELETE" path="/api/v1/contacts/:id"
-              desc={docLang === 'en' ? 'Delete a contact' : 'Kapcsolat törlése'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Email küldés */}
-          <ApiSection title={docLang === 'en' ? 'Send Email' : 'Email küldés'}
-            desc={docLang === 'en' ? 'Send emails programmatically, optionally using templates.' : 'Email küldés programozottan, opcionálisan sablonokkal.'}>
-            <Endpoint method="POST" path="/api/v1/send"
-              desc={docLang === 'en' ? 'Send an email' : 'Email küldése'}
-              body={`{\n  "to": "customer@example.com",  // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "subject": "Your order",       // ${docLang === 'en' ? 'required' : 'kötelező'}\n  "html": "<h1>Hello</h1>",      // ${docLang === 'en' ? 'required if no template_id' : 'kötelező ha nincs template_id'}\n  "template_id": "uuid",         // ${docLang === 'en' ? 'optional, uses template HTML' : 'opcionális, sablon HTML-t használ'}\n  "variables": {                  // ${docLang === 'en' ? 'optional, replaces {{key}}' : 'opcionális, {{key}} cserélése'}\n    "name": "Kiss Anna",\n    "order_id": "10042"\n  },\n  "cc": "cc@ex.com",             // ${docLang === 'en' ? 'optional' : 'opcionális'}\n  "bcc": "bcc@ex.com"            // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
-              response={`{\n  "success": true,\n  "messageId": "<msg-id@mail.pultify.hu>"\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Tömeges küldés */}
-          <ApiSection title={docLang === 'en' ? 'Bulk Send' : 'Tömeges küldés'}
-            desc={docLang === 'en' ? 'Send personalized emails to multiple recipients.' : 'Személyre szabott emailek küldése több címzettnek.'}>
-            <Endpoint method="POST" path="/api/v1/send-bulk"
-              desc={docLang === 'en' ? 'Send bulk emails' : 'Tömeges email küldés'}
-              body={`{\n  "subject": "Monthly Newsletter",\n  "html": "<p>Hi {{name}}, check out our updates...</p>",\n  "recipients": [\n    { "email": "alice@ex.com", "name": "Alice" },\n    { "email": "bob@ex.com", "name": "Bob" }\n  ],\n  "template_id": "uuid" // ${docLang === 'en' ? 'optional' : 'opcionális'}\n}`}
-              response={`{\n  "success": true,\n  "results": [\n    { "email": "alice@ex.com", "status": "sent", "messageId": "..." },\n    { "email": "bob@ex.com", "status": "failed", "error": "..." }\n  ]\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Árajánlatok */}
-          <ApiSection title={docLang === 'en' ? 'Quotes' : 'Árajánlatok'}
-            desc={docLang === 'en' ? 'Manage price quotes.' : 'Árajánlatok kezelése.'}>
-            <Endpoint method="GET" path="/api/v1/quotes"
-              desc={docLang === 'en' ? 'List quotes' : 'Árajánlatok listázása'}
-              params="page, limit"
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/quotes/:id"
-              desc={docLang === 'en' ? 'Get a quote' : 'Egy árajánlat lekérdezése'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="POST" path="/api/v1/quotes"
-              desc={docLang === 'en' ? 'Create quote' : 'Új árajánlat'}
-              body={`{\n  "title": "Web Development",\n  "contact_email": "client@example.com",\n  "items": [\n    { "description": "Frontend", "quantity": 10, "unit_price": 15000 }\n  ],\n  "currency": "HUF",\n  "valid_until": "2026-12-31"\n}`}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="DELETE" path="/api/v1/quotes/:id"
-              desc={docLang === 'en' ? 'Delete quote' : 'Árajánlat törlése'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Levelezés (Read-only) */}
-          <ApiSection title={docLang === 'en' ? 'Mailbox (Read-only)' : 'Levelezés (Csak olvasás)'}
-            desc={docLang === 'en' ? 'Access sent and received emails.' : 'Elküldött és fogadott levelek elérése.'}>
-            <Endpoint method="GET" path="/api/v1/inbox"
-              desc={docLang === 'en' ? 'List received emails' : 'Bejövő levelek listázása'}
-              params="page, limit"
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/inbox/:id"
-              desc={docLang === 'en' ? 'Get received email details' : 'Bejövő levél részletei'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/sent"
-              desc={docLang === 'en' ? 'List sent emails' : 'Elküldött levelek listázása'}
-              params="page, limit"
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-            <Endpoint method="GET" path="/api/v1/sent/:id"
-              desc={docLang === 'en' ? 'Get sent email details' : 'Elküldött levél részletei'}
-              copyToClipboard={copyToClipboard} copiedKey={copiedKey} docLang={docLang} />
-          </ApiSection>
-
-          {/* Kód példák */}
-          <div className="glass rounded-xl p-6">
-            <h4 className="text-sm font-semibold text-white mb-4">
-              {docLang === 'en' ? 'Code Examples' : 'Kód példák'}
-            </h4>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs text-amber-400 font-medium mb-2">Laravel (PHP)</p>
-                <CodeBlock code={`use Illuminate\\Support\\Facades\\Http;
-
-$response = Http::withHeaders([
-    'X-Api-Key' => 'imx_your_api_key_here',
-    'Content-Type' => 'application/json',
-])->post('${baseUrl}/api/v1/send', [
-    'to' => 'customer@example.com',
-    'subject' => 'Rendelés visszaigazolás',
-    'template_id' => 'your-template-uuid',
-    'variables' => [
-        'name' => 'Kiss Anna',
-        'order_id' => '10042',
-    ],
-]);
-
-// Kapcsolat létrehozása
-$contact = Http::withHeaders([
-    'X-Api-Key' => 'imx_your_api_key_here',
-    'Content-Type' => 'application/json',
-])->post('${baseUrl}/api/v1/contacts', [
-    'name' => 'Kiss Anna',
-    'email' => 'anna@example.com',
-    'phone' => '+36301234567',
-]);`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-              </div>
-
-              <div>
-                <p className="text-xs text-orange-400 font-medium mb-2">Rust (reqwest)</p>
-                <CodeBlock code={`use reqwest::Client;
-use serde_json::json;
-
-let client = Client::new();
-
-// Email küldés sablonnal
-let res = client.post("${baseUrl}/api/v1/send")
-    .header("X-Api-Key", "imx_your_api_key_here")
-    .json(&json!({
-        "to": "customer@example.com",
-        "subject": "Rendelés visszaigazolás",
-        "template_id": "your-template-uuid",
-        "variables": {
-            "name": "Kiss Anna",
-            "order_id": "10042"
-        }
-    }))
-    .send()
-    .await?;
-
-// Kapcsolatok listázása
-let contacts = client.get("${baseUrl}/api/v1/contacts")
-    .header("X-Api-Key", "imx_your_api_key_here")
-    .query(&[("search", "anna"), ("limit", "10")])
-    .send()
-    .await?;`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-              </div>
-
-              <div>
-                <p className="text-xs text-yellow-400 font-medium mb-2">cURL</p>
-                <CodeBlock code={`# Sablonok listázása
-curl -H "X-Api-Key: imx_your_api_key_here" \\
-  ${baseUrl}/api/v1/templates
-
-# Kapcsolat létrehozása
-curl -X POST -H "X-Api-Key: imx_your_api_key_here" \\
-  -H "Content-Type: application/json" \\
-  -d '{"name":"Kiss Anna","email":"anna@ex.com"}' \\
-  ${baseUrl}/api/v1/contacts
-
-# Email küldés
-curl -X POST -H "X-Api-Key: imx_your_api_key_here" \\
-  -H "Content-Type: application/json" \\
-  -d '{"to":"anna@ex.com","subject":"Hello","html":"<h1>Hi</h1>"}' \\
-  ${baseUrl}/api/v1/send`} onCopy={copyToClipboard} copiedKey={copiedKey} />
-              </div>
-            </div>
-          </div>
-
-          {/* Hibakódok */}
-          <div className="glass rounded-xl p-6">
-            <h4 className="text-sm font-semibold text-white mb-3">
-              {docLang === 'en' ? 'Error Codes' : 'Hibakódok'}
-            </h4>
-            <div className="space-y-1.5">
-              {[
-                ['400', docLang === 'en' ? 'Bad Request — missing or invalid parameters' : 'Hibás kérés — hiányzó vagy érvénytelen paraméterek'],
-                ['401', docLang === 'en' ? 'Unauthorized — missing or invalid API key' : 'Jogosulatlan — hiányzó vagy érvénytelen API kulcs'],
-                ['403', docLang === 'en' ? 'Forbidden — API key is disabled' : 'Tiltott — az API kulcs le van tiltva'],
-                ['404', docLang === 'en' ? 'Not Found — resource does not exist' : 'Nem található — az erőforrás nem létezik'],
-                ['409', docLang === 'en' ? 'Conflict — resource already exists (e.g. duplicate email)' : 'Ütközés — az erőforrás már létezik (pl. duplikált email)'],
-                ['500', docLang === 'en' ? 'Server Error — internal error, check logs' : 'Szerverhiba — belső hiba, ellenőrizd a logokat'],
-              ].map(([code, desc]) => (
-                <div key={code} className="flex items-center gap-3 px-4 py-2 rounded-lg glass-light">
-                  <span className={`text-xs font-mono font-bold ${code.startsWith('4') ? 'text-amber-400' : 'text-red-400'}`}>{code}</span>
-                  <span className="text-xs text-gray-400">{desc}</span>
+          <div className="space-y-4">
+            {[
+              {
+                method: 'POST', path: '/api/v1/email/send',
+                desc: docLang === 'hu' ? 'Email küldése' : 'Send an email',
+                body: `{
+  "to": "user@example.com",
+  "subject": "Hello",
+  "html": "<p>Message...</p>",
+  "template_id": "OPTIONAL_TEMPLATE_ID",
+  "variables": { "name": "John" }
+}`
+              },
+              {
+                method: 'POST', path: '/api/v1/contact',
+                desc: docLang === 'hu' ? 'Kapcsolat létrehozása/frissítése' : 'Create or update contact',
+                body: `{
+  "email": "user@example.com",
+  "name": "John Doe",
+  "phone": "+36301234567"
+}`
+              }
+            ].map(ep => (
+              <div key={ep.path} className={isModern ? 'modern-card p-5' : 'glass rounded-xl p-5'}>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="px-2 py-1 rounded bg-[#1AA19C]/20 text-[#2EC4BE] text-xs font-bold">{ep.method}</span>
+                  <code className="text-sm text-gray-300 font-mono">{ep.path}</code>
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-3">
-              {docLang === 'en'
-                ? 'All error responses return JSON: { "error": "description" }'
-                : 'Minden hibaválasz JSON formátumú: { "error": "leírás" }'}
+                <p className="text-sm text-gray-400 mb-3">{ep.desc}</p>
+                <div className="relative group">
+                  <pre className={`text-xs font-mono text-gray-400 p-3 rounded-lg overflow-x-auto ${isModern ? 'bg-black/30' : 'bg-black/30'}`}>
+                    {ep.body}
+                  </pre>
+                  <button
+                    onClick={() => copyToClipboard(ep.body, ep.path)}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-white/5 text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-white/10 hover:text-white transition-all"
+                  >
+                    {copiedKey === ep.path ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={isModern ? 'modern-card p-5' : 'glass rounded-xl p-5'}>
+            <h4 className="text-sm font-medium text-white mb-2">{docLang === 'hu' ? 'Hitelesítés' : 'Authentication'}</h4>
+            <p className="text-xs text-gray-400 mb-3">
+              {docLang === 'hu' 
+                ? 'Minden kéréshez szükséges az X-API-Key fejléc.' 
+                : 'All requests require the X-API-Key header.'}
             </p>
+            <div className={`p-3 rounded-lg font-mono text-xs text-gray-300 ${isModern ? 'bg-black/30' : 'bg-black/30'}`}>
+              Authorization: Bearer YOUR_API_KEY
+            </div>
           </div>
         </div>
       )}

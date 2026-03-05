@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getAnalytics } from '../lib/api'
+import { useUI } from '../App'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
@@ -9,9 +10,12 @@ import {
 } from 'lucide-react'
 
 export default function Analytics() {
+  const { uiMode } = useUI()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState(30)
+
+  const isModern = uiMode === 'modern'
 
   useEffect(() => {
     setLoading(true)
@@ -59,7 +63,7 @@ export default function Analytics() {
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null
     return (
-      <div className="glass rounded-lg px-3 py-2 text-xs border border-white/10 shadow-xl">
+      <div className={`rounded-lg px-3 py-2 text-xs border shadow-xl ${isModern ? 'bg-[#15171b] border-white/10' : 'glass border-white/10'}`}>
         <p className="text-gray-400 mb-1">{formatDay(label)}</p>
         {payload.map((p, i) => (
           <p key={i} style={{ color: p.color }} className="font-medium">
@@ -71,16 +75,16 @@ export default function Analytics() {
   }
 
   const statCards = [
-    { label: 'Küldött', value: summary.totalSent, icon: Send, color: 'bg-[#1AA19C]/10', iconColor: 'text-[#2EC4BE]', trend: sentTrend },
-    { label: 'Fogadott', value: summary.totalReceived, icon: Inbox, color: 'bg-blue-500/10', iconColor: 'text-blue-400', trend: receivedTrend },
-    { label: 'Kapcsolatok', value: summary.totalContacts, icon: BookUser, color: 'bg-purple-500/10', iconColor: 'text-purple-400' },
-    { label: 'Árajánlatok', value: summary.totalQuotes, icon: FileText, color: 'bg-amber-500/10', iconColor: 'text-amber-400' },
-    { label: 'Elfogadva', value: summary.acceptedQuotes, icon: ThumbsUp, color: 'bg-green-500/10', iconColor: 'text-green-400' },
-    { label: 'Elutasítva', value: summary.rejectedQuotes, icon: ThumbsDown, color: 'bg-red-500/10', iconColor: 'text-red-400' },
+    { label: 'Küldött', value: summary.totalSent, icon: Send, color: isModern ? 'bg-gradient-to-br from-[#1AA19C]/20 to-[#1AA19C]/5' : 'bg-[#1AA19C]/10', iconColor: 'text-[#2EC4BE]', trend: sentTrend },
+    { label: 'Fogadott', value: summary.totalReceived, icon: Inbox, color: isModern ? 'bg-gradient-to-br from-blue-500/20 to-blue-500/5' : 'bg-blue-500/10', iconColor: 'text-blue-400', trend: receivedTrend },
+    { label: 'Kapcsolatok', value: summary.totalContacts, icon: BookUser, color: isModern ? 'bg-gradient-to-br from-purple-500/20 to-purple-500/5' : 'bg-purple-500/10', iconColor: 'text-purple-400' },
+    { label: 'Árajánlatok', value: summary.totalQuotes, icon: FileText, color: isModern ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5' : 'bg-amber-500/10', iconColor: 'text-amber-400' },
+    { label: 'Elfogadva', value: summary.acceptedQuotes, icon: ThumbsUp, color: isModern ? 'bg-gradient-to-br from-green-500/20 to-green-500/5' : 'bg-green-500/10', iconColor: 'text-green-400' },
+    { label: 'Elutasítva', value: summary.rejectedQuotes, icon: ThumbsDown, color: isModern ? 'bg-gradient-to-br from-red-500/20 to-red-500/5' : 'bg-red-500/10', iconColor: 'text-red-400' },
   ]
 
   return (
-    <div>
+    <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2 mb-6">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Analitika</h2>
@@ -94,7 +98,7 @@ export default function Analytics() {
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
                 a.download = `analitika-${range}nap.csv`; a.click(); URL.revokeObjectURL(a.href)
               })
-          }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-light text-xs text-gray-300 hover:text-white transition-all" title="CSV exportálás">
+          }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light'}`} title="CSV exportálás">
             <FileSpreadsheet className="w-3.5 h-3.5" /> CSV
           </button>
           <button onClick={() => {
@@ -104,14 +108,16 @@ export default function Analytics() {
                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob)
                 a.download = `analitika-${range}nap.pdf`; a.click(); URL.revokeObjectURL(a.href)
               })
-          }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass-light text-xs text-gray-300 hover:text-white transition-all" title="PDF exportálás">
+          }} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-300 hover:text-white transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light'}`} title="PDF exportálás">
             <Download className="w-3.5 h-3.5" /> PDF
           </button>
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+          <div className={`flex items-center gap-1 rounded-lg p-1 ${isModern ? 'bg-white/5' : 'bg-white/5'}`}>
             {[7, 30, 90].map(d => (
               <button key={d} onClick={() => setRange(d)}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  range === d ? 'bg-[#1AA19C] text-white' : 'text-gray-400 hover:text-gray-200'
+                  range === d 
+                    ? (isModern ? 'bg-[#2EC4BE] text-black shadow-lg' : 'bg-[#1AA19C] text-white')
+                    : 'text-gray-400 hover:text-gray-200'
                 }`}>
                 {d}n
               </button>
@@ -126,7 +132,7 @@ export default function Analytics() {
           const Icon = card.icon
           const TrendIcon = card.trend?.icon
           return (
-            <div key={card.label} className="glass rounded-xl p-4">
+            <div key={card.label} className={isModern ? 'modern-card p-5' : 'glass rounded-xl p-4'}>
               <div className="flex items-center gap-3 mb-3">
                 <div className={`w-9 h-9 rounded-lg ${card.color} flex items-center justify-center`}>
                   <Icon className={`w-4.5 h-4.5 ${card.iconColor}`} />
@@ -146,9 +152,9 @@ export default function Analytics() {
       </div>
 
       {/* Response rate */}
-      <div className="glass rounded-xl p-5 mb-6">
+      <div className={`${isModern ? 'modern-card p-6' : 'glass rounded-xl p-5'} mb-6`}>
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-lg bg-green-500/10 flex items-center justify-center">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isModern ? 'bg-green-500/10' : 'bg-green-500/10'}`}>
             <ArrowUpRight className="w-4.5 h-4.5 text-green-400" />
           </div>
           <div>
@@ -166,9 +172,9 @@ export default function Analytics() {
       </div>
 
       {/* Email timeline chart */}
-      <div className="glass rounded-xl p-5 mb-6">
+      <div className={`${isModern ? 'modern-card p-6' : 'glass rounded-xl p-5'} mb-6`}>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-9 h-9 rounded-lg bg-[#1AA19C]/10 flex items-center justify-center">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
             <BarChart3 className="w-4.5 h-4.5 text-[#2EC4BE]" />
           </div>
           <div>
@@ -203,9 +209,9 @@ export default function Analytics() {
 
       {/* Top contacts */}
       {topContacts.length > 0 && (
-        <div className="glass rounded-xl p-5">
+        <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-5'}>
           <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isModern ? 'bg-purple-500/10' : 'bg-purple-500/10'}`}>
               <Users className="w-4.5 h-4.5 text-purple-400" />
             </div>
             <div>
@@ -219,9 +225,9 @@ export default function Analytics() {
               const maxTotal = topContacts[0].sent_count + topContacts[0].received_count
               const pct = maxTotal > 0 ? (total / maxTotal) * 100 : 0
               return (
-                <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg glass-light">
+                <div key={c.id} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                   <span className="text-xs text-gray-500 w-5 text-right font-mono">{i + 1}.</span>
-                  <div className="w-7 h-7 rounded-full bg-[#1AA19C]/20 flex items-center justify-center text-[10px] font-bold text-[#2EC4BE] shrink-0">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-[#2EC4BE] shrink-0 ${isModern ? 'bg-[#1AA19C]/20' : 'bg-[#1AA19C]/20'}`}>
                     {(c.name || c.email)?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">

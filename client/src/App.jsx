@@ -13,6 +13,7 @@ import './App.css'
 
 const AuthContext = createContext(null)
 const BrandingContext = createContext(null)
+const UIContext = createContext(null)
 
 export function useAuth() {
   return useContext(AuthContext)
@@ -20,6 +21,10 @@ export function useAuth() {
 
 export function useBranding() {
   return useContext(BrandingContext)
+}
+
+export function useUI() {
+  return useContext(UIContext)
 }
 
 function App() {
@@ -34,6 +39,28 @@ function App() {
     if (!t) return null
     try { const p = JSON.parse(atob(t.split('.')[1])); return p.impersonating ? { id: p.impersonating, name: p.impersonatingName, email: p.impersonatingEmail } : null } catch { return null }
   })
+  
+  // UI Mode State
+  const [uiMode, setUiMode] = useState(() => localStorage.getItem('intimix_ui_mode') || 'legacy')
+
+  const toggleUiMode = (mode) => {
+    const newMode = mode || (uiMode === 'legacy' ? 'modern' : 'legacy')
+    setUiMode(newMode)
+    localStorage.setItem('intimix_ui_mode', newMode)
+    // Add/remove class from body for global styling if needed
+    if (newMode === 'modern') {
+      document.body.classList.add('ui-modern')
+    } else {
+      document.body.classList.remove('ui-modern')
+    }
+  }
+
+  useEffect(() => {
+    // Initialize body class
+    if (uiMode === 'modern') {
+      document.body.classList.add('ui-modern')
+    }
+  }, [])
 
   const login = (newToken, userEmail, userRole, userName, subStatus, setupDone) => {
     localStorage.setItem('intimix_token', newToken)
@@ -104,9 +131,10 @@ function App() {
   useEffect(() => { if (isAuthenticated) refreshBranding() }, [token])
 
   return (
-    <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
-      <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
-        <Routes>
+    <UIContext.Provider value={{ uiMode, toggleUiMode }}>
+      <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
+        <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
+          <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login registrationEnabled={siteConfig.registration_enabled} />} />
           <Route path="/register" element={
             isAuthenticated ? <Navigate to="/dashboard" /> :
@@ -126,6 +154,7 @@ function App() {
         </Routes>
       </AuthContext.Provider>
     </BrandingContext.Provider>
+    </UIContext.Provider>
   )
 }
 

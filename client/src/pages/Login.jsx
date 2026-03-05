@@ -1,16 +1,19 @@
 // Bejelentkezés oldal - ide érkezel ha nincs token
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import { Mail, Lock, Loader2, Send, ArrowLeft } from 'lucide-react'
 
 export default function Login({ registrationEnabled = true }) {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { uiMode } = useUI()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const isModern = uiMode === 'modern'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -33,14 +36,14 @@ export default function Login({ registrationEnabled = true }) {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className={`min-h-screen flex items-center justify-center p-4 ${isModern ? 'bg-[#0f1115]' : ''}`}>
       {/* Háttér díszítések */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-teal-600/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-500/6 rounded-full blur-3xl" />
+        <div className={`absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl ${isModern ? 'bg-[#1AA19C]/5' : 'bg-teal-600/8'}`} />
+        <div className={`absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl ${isModern ? 'bg-[#2EC4BE]/5' : 'bg-teal-500/6'}`} />
       </div>
 
-      <div className="glass glow rounded-2xl p-8 w-full max-w-md fade-in relative z-10">
+      <div className={`${isModern ? 'modern-card p-8' : 'glass glow rounded-2xl p-8'} w-full max-w-md fade-in relative z-10`}>
         {/* Generic header — no company branding */}
         <div className="text-center mb-8">
           <img src="/pultify-logo.png" alt="Pultify" className="h-12 object-contain mx-auto mb-5" />
@@ -58,7 +61,7 @@ export default function Login({ registrationEnabled = true }) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="address@email.com"
-                className="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm"
+                className={`input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`}
                 required
               />
             </div>
@@ -73,7 +76,7 @@ export default function Login({ registrationEnabled = true }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Add meg a jelszavad"
-                className="input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm"
+                className={`input-field w-full pl-11 pr-4 py-3 rounded-xl text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`}
                 required
               />
             </div>
@@ -82,7 +85,7 @@ export default function Login({ registrationEnabled = true }) {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className={`btn-primary w-full py-3 rounded-xl text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}
           >
             {loading ? (
               <>

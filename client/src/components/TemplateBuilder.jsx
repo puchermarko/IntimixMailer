@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react'
 import { uploadTemplateImage } from '../lib/api'
+import { useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
   Type, Image, MousePointerClick, Minus, MoveVertical, Columns, GripVertical,
   Trash2, ChevronUp, ChevronDown, Copy, AlignLeft, AlignCenter, AlignRight,
-  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText, X, Upload
+  Bold, Italic, Underline, Link, Palette, Plus, Code, Eye, FileText, X, Upload,
+  Layout
 } from 'lucide-react'
 
 // ─── Block Types ─────────────────────────────────────────────
@@ -132,7 +134,7 @@ ${inner}
 }
 
 // ─── Block Editor Panel ─────────────────────────────────────
-function BlockSettings({ block, onChange }) {
+function BlockSettings({ block, onChange, isModern }) {
   const update = (key, value) => onChange({ ...block, [key]: value })
 
   const ColorInput = ({ label, value, field }) => (
@@ -142,7 +144,7 @@ function BlockSettings({ block, onChange }) {
         <input type="color" value={value || '#333333'} onChange={(e) => update(field, e.target.value)}
           className="w-7 h-7 rounded border-0 cursor-pointer bg-transparent" />
         <input type="text" value={value || ''} onChange={(e) => update(field, e.target.value)}
-          placeholder="#333333" className="input-field flex-1 px-2 py-1 text-xs font-mono" />
+          placeholder="#333333" className={`input-field flex-1 px-2 py-1 text-xs font-mono ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
       </div>
     </div>
   )
@@ -151,7 +153,7 @@ function BlockSettings({ block, onChange }) {
     <div className="flex gap-1">
       {[['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]].map(([a, Icon]) => (
         <button key={a} type="button" onClick={() => update(field, a)}
-          className={`p-1.5 rounded transition-all ${value === a ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+          className={`p-1.5 rounded transition-all ${value === a ? (isModern ? 'bg-[#2EC4BE]/20 text-[#2EC4BE]' : 'bg-[#1AA19C]/20 text-[#2EC4BE]') : 'text-gray-500 hover:text-gray-300'}`}>
           <Icon className="w-3.5 h-3.5" />
         </button>
       ))}
@@ -162,7 +164,7 @@ function BlockSettings({ block, onChange }) {
     <div>
       <label className="block text-[10px] text-gray-500 mb-1">{label}: {value}{unit}</label>
       <input type="range" min={min} max={max} value={value} onChange={(e) => update(field, parseInt(e.target.value))}
-        className="w-full accent-[#1AA19C]" />
+        className={`w-full ${isModern ? 'accent-[#2EC4BE]' : 'accent-[#1AA19C]'}`} />
     </div>
   )
 
@@ -173,7 +175,7 @@ function BlockSettings({ block, onChange }) {
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Tartalom (HTML)</label>
             <textarea value={block.content} onChange={(e) => update('content', e.target.value)}
-              className="input-field w-full px-2 py-1.5 text-xs font-mono min-h-[120px] resize-y" spellCheck={false} />
+              className={`input-field w-full px-2 py-1.5 text-xs font-mono min-h-[120px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
           </div>
           <div className="flex items-center justify-between">
             <label className="text-[10px] text-gray-500">Igazítás</label>
@@ -193,8 +195,8 @@ function BlockSettings({ block, onChange }) {
             <label className="block text-[10px] text-gray-500 mb-1">Kép forrás</label>
             <div className="flex gap-2">
               <input type="text" value={block.src} onChange={(e) => update('src', e.target.value)}
-                placeholder="https://example.com/image.jpg" className="input-field w-full px-2 py-1.5 text-xs" />
-              <label className="cursor-pointer flex items-center justify-center p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 transition-all shrink-0" title="Kép feltöltése">
+                placeholder="https://example.com/image.jpg" className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
+              <label className={`cursor-pointer flex items-center justify-center p-1.5 rounded-lg transition-all shrink-0 ${isModern ? 'bg-white/5 hover:bg-white/10 border-white/5' : 'bg-white/5 hover:bg-white/10 border border-white/5'}`} title="Kép feltöltése">
                 <Upload className="w-4 h-4 text-gray-400" />
                 <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                   const file = e.target.files?.[0]
@@ -216,17 +218,17 @@ function BlockSettings({ block, onChange }) {
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Alt szöveg</label>
             <input type="text" value={block.alt} onChange={(e) => update('alt', e.target.value)}
-              className="input-field w-full px-2 py-1.5 text-xs" />
+              className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Link (opcionális)</label>
             <input type="text" value={block.link} onChange={(e) => update('link', e.target.value)}
-              placeholder="https://" className="input-field w-full px-2 py-1.5 text-xs" />
+              placeholder="https://" className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Szélesség</label>
             <input type="text" value={block.width} onChange={(e) => update('width', e.target.value)}
-              placeholder="100% vagy 300px" className="input-field w-full px-2 py-1.5 text-xs" />
+              placeholder="100% vagy 300px" className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
           <div className="flex items-center justify-between">
             <label className="text-[10px] text-gray-500">Igazítás</label>
@@ -242,12 +244,12 @@ function BlockSettings({ block, onChange }) {
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Gomb szöveg</label>
             <input type="text" value={block.text} onChange={(e) => update('text', e.target.value)}
-              className="input-field w-full px-2 py-1.5 text-xs" />
+              className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Link URL</label>
             <input type="text" value={block.url} onChange={(e) => update('url', e.target.value)}
-              placeholder="https://" className="input-field w-full px-2 py-1.5 text-xs" />
+              placeholder="https://" className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
           <div className="flex items-center justify-between">
             <label className="text-[10px] text-gray-500">Igazítás</label>
@@ -270,7 +272,7 @@ function BlockSettings({ block, onChange }) {
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Szélesség</label>
             <input type="text" value={block.width} onChange={(e) => update('width', e.target.value)}
-              placeholder="100% vagy 80%" className="input-field w-full px-2 py-1.5 text-xs" />
+              placeholder="100% vagy 80%" className={`input-field w-full px-2 py-1.5 text-xs ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
         </div>
       )
@@ -288,12 +290,12 @@ function BlockSettings({ block, onChange }) {
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Bal oszlop (HTML)</label>
             <textarea value={block.left} onChange={(e) => update('left', e.target.value)}
-              className="input-field w-full px-2 py-1.5 text-xs font-mono min-h-[80px] resize-y" spellCheck={false} />
+              className={`input-field w-full px-2 py-1.5 text-xs font-mono min-h-[80px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
           </div>
           <div>
             <label className="block text-[10px] text-gray-500 mb-1">Jobb oszlop (HTML)</label>
             <textarea value={block.right} onChange={(e) => update('right', e.target.value)}
-              className="input-field w-full px-2 py-1.5 text-xs font-mono min-h-[80px] resize-y" spellCheck={false} />
+              className={`input-field w-full px-2 py-1.5 text-xs font-mono min-h-[80px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
           </div>
           <RangeInput label="Belső margó" value={block.padding} field="padding" min={0} max={40} />
           <RangeInput label="Oszlop köz" value={block.gap} field="gap" min={0} max={40} />
@@ -373,6 +375,8 @@ function parseSettingsFromHtml(html) {
 
 // ─── Main Template Builder ──────────────────────────────────
 export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChange, onBlocksChange }) {
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
   const initSettings = parseSettingsFromHtml(initialHtml)
   const [blocks, setBlocks] = useState(initialBlocks || [])
   const [selectedBlockId, setSelectedBlockId] = useState(null)
@@ -514,7 +518,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
   return (
     <div className="space-y-4">
       {/* Mode tabs */}
-      <div className="flex items-center gap-1 p-1 rounded-xl glass-light w-fit overflow-x-auto scrollbar-hide">
+      <div className={`flex items-center gap-1 p-1 rounded-xl w-fit overflow-x-auto scrollbar-hide ${isModern ? 'bg-white/5' : 'glass-light'}`}>
         {[
           { id: 'visual', label: 'Vizuális', icon: Columns },
           { id: 'html', label: 'HTML', icon: Code },
@@ -526,7 +530,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               if (tab.id === 'plaintext') setPlainText(generatePlainText())
               setMode(tab.id)
             }}
-            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${mode === tab.id ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-400 hover:text-gray-200'}`}>
+            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${mode === tab.id ? (isModern ? 'bg-[#2EC4BE]/20 text-[#2EC4BE]' : 'bg-[#1AA19C]/20 text-[#2EC4BE]') : 'text-gray-400 hover:text-gray-200'}`}>
             <tab.icon className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{tab.label}</span>
           </button>
@@ -542,8 +546,8 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
             <div className="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide pb-1 lg:pb-0">
               {BLOCK_TYPES.map(bt => (
                 <button key={bt.type} type="button" onClick={() => addBlock(bt.type)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg glass-light hover:border-[#1AA19C]/20 border border-transparent text-left transition-all group shrink-0 lg:w-full">
-                  <bt.icon className="w-4 h-4 text-gray-500 group-hover:text-[#2EC4BE] transition-colors" />
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-transparent text-left transition-all group shrink-0 lg:w-full ${isModern ? 'bg-white/5 hover:border-[#2EC4BE]/20 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
+                  <bt.icon className={`w-4 h-4 text-gray-500 transition-colors ${isModern ? 'group-hover:text-[#2EC4BE]' : 'group-hover:text-[#2EC4BE]'}`} />
                   <div>
                     <p className="text-xs text-gray-300 font-medium whitespace-nowrap">{bt.label}</p>
                     <p className="text-[10px] text-gray-600 whitespace-nowrap hidden lg:block">{bt.desc}</p>
@@ -561,7 +565,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
                   <input type="color" value={bodyBg} onChange={(e) => { setBodyBgTracked(e.target.value); applyBlocks(blocks, { bodyBg: e.target.value }) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
                   <input type="text" value={bodyBg} onChange={(e) => { setBodyBgTracked(e.target.value); applyBlocks(blocks, { bodyBg: e.target.value }) }}
-                    className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
+                    className={`input-field flex-1 px-2 py-1 text-[10px] font-mono ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 </div>
               </div>
               <div>
@@ -570,14 +574,14 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
                   <input type="color" value={contentBg} onChange={(e) => { setContentBgTracked(e.target.value); applyBlocks(blocks, { contentBg: e.target.value }) }}
                     className="w-6 h-6 rounded border-0 cursor-pointer bg-transparent" />
                   <input type="text" value={contentBg} onChange={(e) => { setContentBgTracked(e.target.value); applyBlocks(blocks, { contentBg: e.target.value }) }}
-                    className="input-field flex-1 px-2 py-1 text-[10px] font-mono" />
+                    className={`input-field flex-1 px-2 py-1 text-[10px] font-mono ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] text-gray-500 mb-1">Szélesség: {contentWidth}px</label>
                 <input type="range" min={400} max={800} value={contentWidth}
                   onChange={(e) => { const v = parseInt(e.target.value); setContentWidthTracked(v); applyBlocks(blocks, { contentWidth: v }) }}
-                  className="w-full accent-[#1AA19C]" />
+                  className={`w-full ${isModern ? 'accent-[#2EC4BE]' : 'accent-[#1AA19C]'}`} />
               </div>
             </div>
 
@@ -587,7 +591,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               <div className="flex flex-wrap gap-1">
                 {['{{name}}', '{{email}}', '{{order_id}}'].map(v => (
                   <button key={v} type="button" onClick={() => navigator.clipboard.writeText(v).then(() => toast.success(`${v} másolva`))}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500 font-mono hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all cursor-pointer">
+                    className={`text-[9px] px-1.5 py-0.5 rounded text-gray-500 font-mono transition-all cursor-pointer ${isModern ? 'bg-white/5 hover:text-[#2EC4BE] hover:bg-white/10' : 'bg-white/5 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}>
                     {v}
                   </button>
                 ))}
@@ -597,7 +601,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
 
           {/* Canvas (center) */}
           <div className="lg:col-span-6">
-            <div className="glass rounded-xl p-4 min-h-[400px]">
+            <div className={`${isModern ? 'modern-card p-4 min-h-[400px]' : 'glass rounded-xl p-4 min-h-[400px]'}`}>
               {blocks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Plus className="w-10 h-10 text-gray-600 mb-3" />
@@ -618,7 +622,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
                         onClick={() => setSelectedBlockId(block.id)}
                         className={`relative group rounded-lg border transition-all cursor-pointer ${
                           selectedBlockId === block.id
-                            ? 'border-[#1AA19C]/50 bg-[#1AA19C]/5'
+                            ? (isModern ? 'border-[#2EC4BE]/50 bg-[#2EC4BE]/5' : 'border-[#1AA19C]/50 bg-[#1AA19C]/5')
                             : dragOverIdx === idx
                             ? 'border-amber-500/50 bg-amber-500/5'
                             : 'border-white/5 hover:border-white/10'
@@ -651,7 +655,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
 
           {/* Settings panel (right / bottom on mobile) */}
           <div className="lg:col-span-4">
-            <div className="glass rounded-xl p-3 sm:p-4 sticky top-4">
+            <div className={`${isModern ? 'modern-card p-3 sm:p-4 sticky top-4' : 'glass rounded-xl p-3 sm:p-4 sticky top-4'}`}>
               {selectedBlock ? (
                 <>
                   <div className="flex items-center justify-between mb-3">
@@ -660,7 +664,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <BlockSettings block={selectedBlock} onChange={updateBlock} />
+                  <BlockSettings block={selectedBlock} onChange={updateBlock} isModern={isModern} />
                 </>
               ) : (
                 <div className="text-center py-8">
@@ -676,12 +680,12 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
       {/* ─── HTML Source Editor ─── */}
       {mode === 'html' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="glass rounded-xl p-4">
+          <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
             <label className="block text-xs text-gray-400 mb-2">HTML forráskód</label>
             <textarea value={htmlSource} onChange={(e) => handleHtmlSourceChange(e.target.value)}
-              className="input-field w-full px-3 py-2 text-xs font-mono min-h-[500px] resize-y" spellCheck={false} />
+              className={`input-field w-full px-3 py-2 text-xs font-mono min-h-[500px] resize-y ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} spellCheck={false} />
           </div>
-          <div className="glass rounded-xl p-4 sticky top-4">
+          <div className={`${isModern ? 'modern-card p-4 sticky top-4' : 'glass rounded-xl p-4 sticky top-4'}`}>
             <label className="block text-xs text-gray-400 mb-2">Előnézet</label>
             <iframe srcDoc={htmlSource} className="w-full h-[500px] border-0 bg-white rounded-lg" sandbox="allow-same-origin" title="HTML preview" />
           </div>
@@ -691,7 +695,7 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
       {/* ─── Plain Text Editor ─── */}
       {mode === 'plaintext' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="glass rounded-xl p-4">
+          <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
             <label className="block text-xs text-gray-400 mb-2">Sima szöveg sablon</label>
             <textarea value={plainText} onChange={(e) => {
               setPlainText(e.target.value)
@@ -701,9 +705,9 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
               onHtmlChange?.(html)
             }}
               placeholder="Írd meg az email szövegét egyszerű szövegként...&#10;&#10;Kedves {{name}},&#10;&#10;Köszönjük a rendelését!&#10;&#10;Üdvözlettel,&#10;A csapat"
-              className="input-field w-full px-3 py-2 text-sm min-h-[500px] resize-y font-mono" />
+              className={`input-field w-full px-3 py-2 text-sm min-h-[500px] resize-y font-mono ${uiMode === 'modern' ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
           </div>
-          <div className="glass rounded-xl p-4">
+          <div className={uiMode === 'modern' ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
             <label className="block text-xs text-gray-400 mb-2">Előnézet</label>
             <div className="bg-white rounded-lg p-6 min-h-[500px] text-sm text-gray-800 font-mono whitespace-pre-wrap">
               {plainText || 'Írj szöveget a bal oldalon...'}
@@ -714,19 +718,9 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
 
       {/* ─── Full Preview ─── */}
       {mode === 'preview' && (
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-xs text-gray-400">Email előnézet ({contentWidth}px)</label>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => navigator.clipboard.writeText(currentHtml).then(() => toast.success('HTML másolva'))}
-                className="flex items-center gap-1 text-xs text-[#2EC4BE] hover:text-[#1AA19C] px-2 py-1 rounded-lg hover:bg-[#1AA19C]/10 transition-all">
-                <Copy className="w-3 h-3" /> Másolás
-              </button>
-            </div>
-          </div>
-          <div className="flex justify-center" style={{ backgroundColor: bodyBg, borderRadius: '8px', padding: '20px' }}>
-            <iframe srcDoc={currentHtml} style={{ width: `${contentWidth}px`, maxWidth: '100%' }}
-              className="h-[600px] border-0 bg-white rounded-lg" sandbox="allow-same-origin" title="Full preview" />
+        <div className="flex justify-center">
+          <div className={`${isModern ? 'modern-card p-8' : 'glass rounded-xl p-8'} max-w-[800px] w-full`}>
+            <iframe srcDoc={currentHtml} className="w-full h-[800px] border-0 bg-white rounded-lg shadow-xl" sandbox="allow-same-origin" title="Full preview" />
           </div>
         </div>
       )}

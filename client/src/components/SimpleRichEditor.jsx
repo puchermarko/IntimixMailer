@@ -3,8 +3,11 @@ import {
   Bold, Italic, Underline, List, ListOrdered, Link,
   AlignLeft, AlignCenter, AlignRight, RemoveFormatting
 } from 'lucide-react'
+import { useUI } from '../App'
 
 export default function SimpleRichEditor({ initialHtml, onChange, className }) {
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
   const editorRef = useRef(null)
   const [html, setHtml] = useState(initialHtml || '')
 
@@ -48,7 +51,7 @@ export default function SimpleRichEditor({ initialHtml, onChange, className }) {
           exec(command, value)
         }
       }}
-      className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+      className={`p-1.5 rounded transition-colors ${isModern ? 'hover:bg-white/10 text-gray-400 hover:text-[#2EC4BE]' : 'hover:bg-white/10 text-gray-400 hover:text-white'}`}
       title={title}
     >
       <Icon className="w-4 h-4" />
@@ -56,9 +59,9 @@ export default function SimpleRichEditor({ initialHtml, onChange, className }) {
   )
 
   return (
-    <div className={`flex flex-col border border-white/10 rounded-lg overflow-hidden ${className}`}>
+    <div className={`flex flex-col rounded-lg overflow-hidden ${className} ${isModern ? 'bg-white/5 border border-white/5' : 'border border-white/10'}`}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 bg-white/5 border-b border-white/5 overflow-x-auto">
+      <div className={`flex items-center gap-1 p-2 border-b overflow-x-auto ${isModern ? 'bg-white/5 border-white/5' : 'bg-white/5 border-white/5'}`}>
         <ToolbarBtn icon={Bold} command="bold" title="Bold" />
         <ToolbarBtn icon={Italic} command="italic" title="Italic" />
         <ToolbarBtn icon={Underline} command="underline" title="Underline" />

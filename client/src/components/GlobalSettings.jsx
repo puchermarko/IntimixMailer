@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
 import { getGlobalSettings, updateGlobalSettings } from '../lib/api'
+import { useUI } from '../App'
 import toast from 'react-hot-toast'
 import { Globe, Loader2, Shield, UserPlus, Layout } from 'lucide-react'
 
 export default function GlobalSettings() {
+  const { uiMode } = useUI()
   const [settings, setSettings] = useState({
     landing_page_enabled: 'true',
     registration_enabled: 'true',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+
+  const isModern = uiMode === 'modern'
 
   useEffect(() => {
     loadSettings()
@@ -72,7 +76,7 @@ export default function GlobalSettings() {
   ]
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className={isModern ? 'max-w-3xl mx-auto fade-in' : 'max-w-3xl mx-auto'}>
       <div className="flex items-center gap-3 mt-2 mb-6">
         <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
           <Globe className="w-5 h-5 text-[#2EC4BE]" />
@@ -88,10 +92,10 @@ export default function GlobalSettings() {
           const Icon = item.icon
           const isEnabled = settings[item.key] === 'true'
           return (
-            <div key={item.key} className="glass rounded-2xl p-5 sm:p-6">
+            <div key={item.key} className={isModern ? 'modern-card p-6' : 'glass rounded-2xl p-5 sm:p-6'}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isEnabled ? 'bg-[#1AA19C]/15' : 'bg-red-500/10'}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isEnabled ? (isModern ? 'bg-[#1AA19C]/20' : 'bg-[#1AA19C]/15') : 'bg-red-500/10'}`}>
                     <Icon className={`w-5 h-5 ${isEnabled ? 'text-[#2EC4BE]' : 'text-red-400'}`} />
                   </div>
                   <div>
@@ -108,7 +112,7 @@ export default function GlobalSettings() {
                 <button
                   onClick={() => handleToggle(item.key)}
                   disabled={saving}
-                  className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-300 ${isEnabled ? 'bg-[#1AA19C]' : 'bg-gray-600'}`}
+                  className={`relative shrink-0 w-12 h-7 rounded-full transition-colors duration-300 ${isEnabled ? (isModern ? 'bg-[#2EC4BE]' : 'bg-[#1AA19C]') : 'bg-gray-600'} ${isModern && isEnabled ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}
                 >
                   <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${isEnabled ? 'left-6' : 'left-1'}`} />
                 </button>
@@ -118,7 +122,7 @@ export default function GlobalSettings() {
         })}
       </div>
 
-      <div className="glass rounded-2xl p-5 mt-6">
+      <div className={isModern ? 'modern-card p-5 mt-6 border-white/5' : 'glass rounded-2xl p-5 mt-6'}>
         <div className="flex items-start gap-3">
           <Shield className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
           <p className="text-xs text-gray-500 leading-relaxed">

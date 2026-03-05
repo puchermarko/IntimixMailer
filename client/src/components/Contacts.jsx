@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { getContacts, createContact, updateContact, deleteContact } from '../lib/api'
 import ContactDetail from './ContactDetail'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
   Plus, Search, User, Mail, Phone, Trash2, Edit3, X,
@@ -11,6 +11,7 @@ import {
 
 export default function Contacts({ onNavigate }) {
   const { hasSubscription } = useAuth()
+  const { uiMode } = useUI()
   const [contacts, setContacts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -19,6 +20,8 @@ export default function Contacts({ onNavigate }) {
   const [selectedContactId, setSelectedContactId] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', notes: '', company: '', vat_id: '', street: '', street_number: '', city: '', zip: '', country: '', region: '' })
   const [saving, setSaving] = useState(false)
+
+  const isModern = uiMode === 'modern'
 
   const fetchContacts = async () => {
     try {
@@ -101,14 +104,14 @@ export default function Contacts({ onNavigate }) {
   }
 
   return (
-    <div>
+    <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between mt-2 gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-white">Kapcsolatok</h2>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">Vásárlói kapcsolatok kezelése</p>
         </div>
         <button onClick={openCreate} disabled={!hasSubscription}
-          className="btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`btn-primary px-4 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed ${isModern ? 'shadow-lg shadow-[#2EC4BE]/20' : ''}`}
           title={!hasSubscription ? 'Aktív előfizetés szükséges' : ''}>
           {!hasSubscription ? <Lock className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           Új kapcsolat
@@ -116,7 +119,7 @@ export default function Contacts({ onNavigate }) {
       </div>
 
       {/* Keresés */}
-      <div className="glass rounded-xl p-4 mb-4">
+      <div className={`${isModern ? 'modern-card p-4 mb-6' : 'glass rounded-xl p-4 mb-4'}`}>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           <input
@@ -124,7 +127,7 @@ export default function Contacts({ onNavigate }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Keresés név, email vagy telefon alapján..."
-            className="input-field w-full pl-10 pr-4 py-2.5 rounded-lg text-sm"
+            className={`input-field w-full pl-10 pr-4 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`}
           />
         </div>
       </div>
@@ -135,22 +138,25 @@ export default function Contacts({ onNavigate }) {
           <Loader2 className="w-6 h-6 text-[#1AA19C] animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="glass rounded-xl p-12 text-center">
+        <div className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-12 text-center`}>
           <User className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <p className="text-gray-400 text-sm">
             {search ? 'Nincs találat a keresésre' : 'Még nincs kapcsolat. Hozd létre az elsőt!'}
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className={isModern ? 'grid grid-cols-1 xl:grid-cols-2 gap-4' : 'space-y-2'}>
           {filtered.map(contact => (
             <div
               key={contact.id}
-              className="glass rounded-xl p-4 flex items-center justify-between hover:border-[#1AA19C]/20 transition-all cursor-pointer group"
+              className={`${isModern 
+                ? 'modern-card p-5 hover:border-[#2EC4BE]/30' 
+                : 'glass rounded-xl p-4 hover:border-[#1AA19C]/20'} 
+                flex items-center justify-between transition-all cursor-pointer group`}
               onClick={() => setSelectedContactId(contact.id)}
             >
               <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1AA19C]/15 flex items-center justify-center text-[#2EC4BE] text-xs sm:text-sm font-bold shrink-0">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white shadow-lg' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>
                   {contact.name?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -171,15 +177,11 @@ export default function Contacts({ onNavigate }) {
                 <div className="hidden md:flex items-center gap-4 shrink-0">
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
                     <BookOpen className="w-3 h-3" />
-                    {contact.email_count} küldött
-                  </span>
-                  <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                    <BookOpen className="w-3 h-3" />
-                    {contact.received_count || 0} fogadott
+                    {contact.email_count}
                   </span>
                   <span className="text-[10px] text-gray-500 flex items-center gap-1">
                     <Paperclip className="w-3 h-3" />
-                    {contact.attachment_count} fájl
+                    {contact.attachment_count}
                   </span>
                 </div>
               </div>
@@ -187,7 +189,7 @@ export default function Contacts({ onNavigate }) {
                 <button
                   onClick={(e) => { e.stopPropagation(); openEdit(contact) }}
                   disabled={!hasSubscription}
-                  className={`p-2 rounded-lg transition-all sm:opacity-0 sm:group-hover:opacity-100 ${!hasSubscription ? 'text-gray-600 cursor-not-allowed' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}
+                  className={`p-2 rounded-lg transition-all sm:opacity-0 sm:group-hover:opacity-100 ${!hasSubscription ? 'text-gray-600 cursor-not-allowed' : isModern ? 'text-gray-400 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}
                   title={!hasSubscription ? 'Aktív előfizetés szükséges' : 'Szerkesztés'}
                 >
                   {!hasSubscription ? <Lock className="w-3.5 h-3.5" /> : <Edit3 className="w-3.5 h-3.5" />}

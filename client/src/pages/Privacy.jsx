@@ -1,13 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Shield, Database, Eye, UserCheck, Clock, Mail } from 'lucide-react'
+import { useUI } from '../App'
 
 export default function Privacy() {
   const navigate = useNavigate()
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
 
   return (
-    <div className="min-h-screen bg-[#1a1d23] text-[#e0e2e7]">
+    <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+      <nav className={`fixed top-0 left-0 right-0 z-50 border-b border-white/5 ${isModern ? 'bg-[#0f1115]/80 backdrop-blur-xl' : 'glass'}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <button onClick={() => navigate('/')} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
@@ -19,15 +22,15 @@ export default function Privacy() {
         </div>
       </nav>
 
-      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20">
+      <div className="max-w-3xl mx-auto px-4 pt-28 pb-20 fade-in">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white mb-2">Adatvédelmi Tájékoztató</h1>
         <p className="text-gray-500 text-sm mb-10">Utolsó frissítés: 2026. február 15.</p>
 
         <div className="space-y-8">
           {/* Bevezetés */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Shield className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">1. Bevezetés</h2>
@@ -39,9 +42,9 @@ export default function Privacy() {
           </section>
 
           {/* Adatkezelő */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <UserCheck className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">2. Az Adatkezelő adatai</h2>
@@ -57,9 +60,9 @@ export default function Privacy() {
           </section>
 
           {/* Kezelt adatok */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Database className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">3. Kezelt személyes adatok köre</h2>
@@ -78,9 +81,9 @@ export default function Privacy() {
           </section>
 
           {/* Adatkezelés célja */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Eye className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">4. Az adatkezelés célja és jogalapja</h2>
@@ -99,9 +102,9 @@ export default function Privacy() {
           </section>
 
           {/* Adatmegőrzés */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Clock className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">5. Adatmegőrzés időtartama</h2>
@@ -113,9 +116,9 @@ export default function Privacy() {
           </section>
 
           {/* Adatbiztonság */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Shield className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">6. Adatbiztonság</h2>
@@ -133,9 +136,9 @@ export default function Privacy() {
           </section>
 
           {/* Jogok */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <UserCheck className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">7. Az érintett jogai</h2>
@@ -154,16 +157,16 @@ export default function Privacy() {
           </section>
 
           {/* Jogorvoslat */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className={isModern ? 'modern-card p-6 sm:p-8' : 'glass rounded-2xl p-6 sm:p-8'}>
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-[#1AA19C]/10' : 'bg-[#1AA19C]/10'}`}>
                 <Mail className="w-5 h-5 text-[#2EC4BE]" />
               </div>
               <h2 className="text-lg font-bold text-white">8. Jogorvoslat</h2>
             </div>
             <div className="text-sm text-gray-400 leading-relaxed space-y-3">
               <p>Amennyiben úgy érzi, hogy személyes adatainak kezelése sérti a jogszabályi előírásokat, panasszal fordulhat a Nemzeti Adatvédelmi és Információszabadság Hatósághoz (NAIH):</p>
-              <div className="glass-light rounded-xl p-4 mt-2">
+              <div className={`rounded-xl p-4 mt-2 ${isModern ? 'bg-white/5' : 'glass-light'}`}>
                 <p className="text-gray-300 font-medium text-sm">Nemzeti Adatvédelmi és Információszabadság Hatóság</p>
                 <p className="text-xs text-gray-500 mt-1">1055 Budapest, Falk Miksa utca 9-11.</p>
                 <p className="text-xs text-gray-500">Telefon: +36 1 391 1400</p>
