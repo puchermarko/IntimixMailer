@@ -409,6 +409,10 @@ export default function EnhancedMailView() {
           console.log('Calling getEmailDetail for:', email.id)
           detail = await getEmailDetail(email.id)
         }
+      } else if (activeFolder === 'trash') {
+        // For trash emails, use the email data directly since we stored it locally
+        console.log('Using local trash email data for:', email.id)
+        detail = email
       }
       
       console.log('Email detail loaded:', detail)
@@ -429,7 +433,9 @@ export default function EnhancedMailView() {
         preview: detail.preview,
         html: detail.html,
         recipient_email: detail.recipient_email,
-        sent_at: detail.sent_at
+        sent_at: detail.sent_at,
+        deleted_at: detail.deleted_at,
+        original_folder: detail.original_folder
       })
       
       setEmailDetail(detail)
