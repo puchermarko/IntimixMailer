@@ -388,14 +388,9 @@ export default function EnhancedMailView() {
       console.log('Active folder:', activeFolder)
       console.log('Email ID:', email.id)
       
-      let detail = null
-      if (activeFolder === 'inbox') {
-        console.log('Calling getInboxEmail for:', email.id)
-        detail = await getInboxEmail(email.id)
-      } else if (activeFolder === 'sent') {
-        console.log('Calling getSentImapEmail for:', email.id)
-        detail = await getSentImapEmail(email.id)
-      }
+      // Use the generic getEmailDetail for both inbox and sent emails
+      console.log('Calling getEmailDetail for:', email.id)
+      const detail = await getEmailDetail(email.id)
       
       console.log('Email detail loaded:', detail)
       setEmailDetail(detail)
