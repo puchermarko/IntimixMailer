@@ -1,8 +1,9 @@
 // Fő dashboard nézet - az oldalsáv és a tartalom itt van összerakva
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth, useUI } from '../App'
 import Sidebar from '../components/Sidebar'
 import MailView from '../components/MailView'
+import EnhancedMailView from '../components/EnhancedMailView'
 import TemplateGallery from '../components/TemplateGallery'
 import Settings from '../components/Settings'
 import Contacts from '../components/Contacts'
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
   const { uiMode } = useUI()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
+  const [useEnhancedMail, setUseEnhancedMail] = useState(() => localStorage.getItem('intimix_enhanced_mail') === 'true')
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [showTour, setShowTour] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -25,13 +27,17 @@ export default function Dashboard() {
 
   const startTour = () => setShowTour(true)
 
+  useEffect(() => {
+    localStorage.setItem('intimix_enhanced_mail', useEnhancedMail.toString())
+  }, [useEnhancedMail])
+
   const views = {
-    mail: <MailView />,
+    mail: useEnhancedMail ? <EnhancedMailView /> : <MailView />,
     contacts: <Contacts onNavigate={setActiveView} />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,
-    settings: <Settings onStartTour={startTour} />,
+    settings: <Settings onStartTour={startTour} enhancedMail={useEnhancedMail} setEnhancedMail={setUseEnhancedMail} />,
     users: <UserManagement />,
     'global-settings': <GlobalSettings />,
   }

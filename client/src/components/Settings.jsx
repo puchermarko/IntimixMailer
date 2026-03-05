@@ -7,10 +7,10 @@ import {
   Server, CheckCircle, XCircle, Loader2, Shield, Info, Key, Plus, Trash2,
   Copy, Check, Eye, EyeOff, BookOpen, Globe, Settings2, Save, AlertTriangle, Upload, Palette,
   Download, UploadCloud, Database, FileJson, Users, HardDrive, CreditCard, Play, ExternalLink, RefreshCw,
-  Lock, UserX, Layout, Monitor
+  Lock, UserX, Layout, Monitor, Mail
 } from 'lucide-react'
 
-export default function Settings({ onStartTour }) {
+export default function Settings({ onStartTour, enhancedMail, setEnhancedMail }) {
   const [testing, setTesting] = useState(false)
   const [smtpStatus, setSmtpStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('general')
@@ -464,6 +464,43 @@ export default function Settings({ onStartTour }) {
                 <div
                   className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${
                     uiMode === 'legacy' ? 'translate-x-0' : 'translate-x-6'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Enhanced Mail Toggle */}
+          <div className={`${isModern ? 'modern-card p-6 border-[#2EC4BE]/20' : 'glass rounded-xl p-6 border border-[#2EC4BE]/20'} relative overflow-hidden group`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#2EC4BE]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-3 mb-5 relative">
+              <div className="w-10 h-10 rounded-xl bg-[#2EC4BE]/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-[#2EC4BE]" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">Továbbfejlesztett Levelezés</h3>
+                <p className="text-xs text-gray-500">Apple Mail stílusú, modern levelező felület</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-white/5 relative">
+              <div className="flex items-center gap-3">
+                <Mail className={`w-5 h-5 ${enhancedMail ? 'text-[#2EC4BE]' : 'text-gray-400'}`} />
+                <div>
+                  <p className="text-sm font-medium text-white">Modern Levelező</p>
+                  <p className="text-xs text-gray-400">Oszlopos elrendezés, jobb UX</p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => setEnhancedMail(!enhancedMail)}
+                className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${
+                  enhancedMail ? 'bg-[#2EC4BE]' : 'bg-gray-700'
+                }`}
+              >
+                <div
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${
+                    enhancedMail ? 'translate-x-6' : 'translate-x-0'
                   }`}
                 />
               </button>
