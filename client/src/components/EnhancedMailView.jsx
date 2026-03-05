@@ -6,7 +6,7 @@ import {
   FileText, Loader2, Trash2, Reply, ReplyAll, Forward, Send, Eye, Code, ChevronDown, ChevronUp,
   LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock,
   MoreVertical, CheckSquare, Star, Archive, Flag, MoreHorizontal,
-  Maximize2, Minimize2, Sidebar, Mail, MailOpen, AtSign
+  Maximize2, Minimize2, Sidebar, Mail, MailOpen, AtSign, ChevronsLeft, ChevronsRight
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
@@ -332,6 +332,12 @@ export default function EnhancedMailView({ onNavigate }) {
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   const [sending, setSending] = useState(false)
   const [isReplyAll, setIsReplyAll] = useState(false)
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 0,
+    total: 0,
+    limit: 50
+  })
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [emailToDelete, setEmailToDelete] = useState(null)
   const [trashEmails, setTrashEmails] = useState(() => {
@@ -352,15 +358,15 @@ export default function EnhancedMailView({ onNavigate }) {
   const emailListRef = useRef(null)
 
   // Load emails for current folder
-  const loadEmails = async () => {
+  const loadEmails = async (page = 1) => {
     setLoading(true)
     try {
-      let data = { emails: [] }
+      let data = { emails: [], total: 0, page: 1, totalPages: 0 }
       if (activeFolder === 'inbox') {
-        data = await getInbox()
+        data = await getInbox({ page, limit: pagination.limit, search: searchQuery })
         console.log('Inbox emails loaded:', data)
       } else if (activeFolder === 'sent') {
-        data = await getSentEmails()
+        data = await getSentEmails({ page, limit: pagination.limit, search: searchQuery })
         console.log('Sent emails loaded:', data)
         console.log('First sent email structure:', data.emails?.[0] ? Object.keys(data.emails[0]) : 'No emails')
         console.log('Sample sent email:', data.emails?.[0])
@@ -368,6 +374,9 @@ export default function EnhancedMailView({ onNavigate }) {
       } else if (activeFolder === 'trash') {
         // Load deleted emails from client-side trash storage
         data.emails = trashEmails
+        data.total = trashEmails.length
+        data.page = page
+        data.totalPages = Math.ceil(trashEmails.length / pagination.limit)
         console.log('Trash folder loaded with emails:', trashEmails.length)
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
@@ -378,9 +387,24 @@ export default function EnhancedMailView({ onNavigate }) {
       } else if (activeFolder === 'archive') {
         // TODO: Implement archive API
         data.emails = []
+      } else if (activeFolder === 'trash') {
+        // TODO: Implement trash API
+        data.emails = []
       }
+      
       setEmails(data.emails || [])
+      setPagination({
+        currentPage: page,
+        totalPages: data.totalPages || Math.ceil((data.total || 0) / pagination.limit),
+        total: data.total || 0,
+        limit: pagination.limit
+      })
       console.log('Final emails array:', data.emails || [])
+      console.log('Pagination info:', {
+        page: data.page,
+        total: data.total,
+        totalPages: data.totalPages
+      })
     } catch (err) {
       console.error('Failed to load emails:', err)
       toast.error(err.message || 'Hiba a levelek betöltésekor')
@@ -416,8 +440,37 @@ export default function EnhancedMailView({ onNavigate }) {
     })
   }, [emails, searchQuery, activeFolder])
 
+  // Pagination functions
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      loadEmails(newPage)
+    }
+  }
+
+  const handlePreviousPage = () => {
+    if (pagination.currentPage > 1) {
+      handlePageChange(pagination.currentPage - 1)
+    }
+  }
+
+  const handleNextPage = () => {
+    if (pagination.currentPage < pagination.totalPages) {
+      handlePageChange(pagination.currentPage + 1)
+    }
+  }
+
+  const handleFirstPage = () => {
+    handlePageChange(1)
+  }
+
+  const handleLastPage = () => {
+    handlePageChange(pagination.totalPages)
+  }
+
   useEffect(() => {
-    loadEmails()
+    // Reset pagination when changing folders
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+    loadEmails(1)
   }, [activeFolder])
 
   // Save trash emails to localStorage whenever they change
@@ -832,7 +885,10 @@ export default function EnhancedMailView({ onNavigate }) {
                 />
               </div>
               <button
-                onClick={loadEmails}
+                onClick={() => {
+                  setPagination(prev => ({ ...prev, currentPage: 1 }))
+                  loadEmails(1)
+                }}
                 className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -909,6 +965,57 @@ export default function EnhancedMailView({ onNavigate }) {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="border-t border-white/10 p-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-400">
+                  <span>
+                    {pagination.total > 0 
+                      ? `${(pagination.currentPage - 1) * pagination.limit + 1}-${Math.min(pagination.currentPage * pagination.limit, pagination.total)} / ${pagination.total} levelek`
+                      : 'Nincs levél'
+                    }
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFirstPage}
+                    disabled={pagination.currentPage === 1}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handlePreviousPage}
+                    disabled={pagination.currentPage === 1}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-gray-400 px-3 py-1 bg-white/5 rounded">
+                      {pagination.currentPage} / {pagination.totalPages}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleNextPage}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleLastPage}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
