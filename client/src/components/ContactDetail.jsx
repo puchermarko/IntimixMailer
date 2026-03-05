@@ -128,6 +128,13 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
     loadContactEmails()
   }, [contact, contactId])
 
+  // Debug reply modal state
+  useEffect(() => {
+    if (showReply && replyToEmail) {
+      console.log('Reply modal is open, replyToEmail:', replyToEmail)
+    }
+  }, [showReply, replyToEmail])
+
   const handleExpandEmail = async (emailId) => {
     // Always use inline expansion for contact details, regardless of enhanced mail setting
     // Enhanced mail view should only be accessed from main navigation
@@ -1195,7 +1202,6 @@ function ContactJourney({ contact }) {
               <X className="w-5 h-5" />
             </button>
           </div>
-          console.log('Reply modal is open, replyToEmail:', replyToEmail)
           
           <div className="mb-4">
             <p className="text-sm text-gray-400 mb-2">Válasz erre:</p>
