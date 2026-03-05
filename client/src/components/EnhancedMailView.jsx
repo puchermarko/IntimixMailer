@@ -689,7 +689,7 @@ export default function EnhancedMailView() {
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium text-gray-200 truncate">
                           {activeFolder === 'sent' 
-                            ? (email.to_address || email.recipient_email)
+                            ? (email.recipient || email.to_address || email.recipient_email || 'Nincs címzett')
                             : (email.from_name || email.from_address)
                           }
                         </span>
@@ -701,7 +701,7 @@ export default function EnhancedMailView() {
                       
                       <div className="text-sm text-gray-500 truncate">
                         {activeFolder === 'sent' 
-                          ? `To: ${email.to_address || email.recipient_email || 'Nincs címzett'}`
+                          ? `To: ${email.recipient || email.to_address || email.recipient_email || 'Nincs címzett'}`
                           : (email.text_body || email.preview || email.body || email.content || 'Nincs tartalom')
                         }
                       </div>
