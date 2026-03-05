@@ -47,6 +47,21 @@ export default function EnhancedMailView() {
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   
+  // Compose state
+  const [composeData, setComposeData] = useState({
+    to: '',
+    subject: '',
+    html: '',
+    cc: '',
+    bcc: '',
+    attachments: []
+  })
+  const [sending, setSending] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [templates, setTemplates] = useState([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+  
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
   const isModern = uiMode === 'modern'
@@ -57,16 +72,29 @@ export default function EnhancedMailView() {
   const loadEmails = async () => {
     setLoading(true)
     try {
+      let data = { emails: [] }
       if (activeFolder === 'inbox') {
-        const data = await getInbox()
-        setEmails(data.emails || [])
+        data = await getInbox()
       } else if (activeFolder === 'sent') {
-        const data = await getSentEmails()
-        setEmails(data.emails || [])
+        data = await getSentEmails()
+      } else if (activeFolder === 'drafts') {
+        // TODO: Implement drafts API
+        data.emails = []
+      } else if (activeFolder === 'starred') {
+        // TODO: Implement starred API
+        data.emails = []
+      } else if (activeFolder === 'archive') {
+        // TODO: Implement archive API
+        data.emails = []
+      } else if (activeFolder === 'trash') {
+        // TODO: Implement trash API
+        data.emails = []
       }
-      // Add other folders as needed
+      setEmails(data.emails || [])
     } catch (err) {
-      toast.error(err.message)
+      console.error('Failed to load emails:', err)
+      toast.error(err.message || 'Hiba a levelek betöltésekor')
+      setEmails([])
     } finally {
       setLoading(false)
     }
@@ -113,8 +141,84 @@ export default function EnhancedMailView() {
     setShowReplyTemplateSelector(false)
   }
 
+  // Compose functions
+  const loadTemplates = async () => {
+    setLoadingTemplates(true)
+    try {
+      const customTemplates = await getCustomTemplates()
+      setTemplates(customTemplates)
+    } catch (err) {
+      console.error('Failed to load templates:', err)
+      setTemplates([])
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }
+
+  const applyTemplate = (template) => {
+    setSelectedTemplate(template.id)
+    setComposeData(prev => ({
+      ...prev,
+      subject: template.subject || '',
+      html: template.html || ''
+    }))
+    setShowTemplateSelector(false)
+  }
+
+  const handleCompose = () => {
+    setShowCompose(true)
+    setComposeData({
+      to: '',
+      subject: '',
+      html: '',
+      cc: '',
+      bcc: '',
+      attachments: []
+    })
+    setSelectedTemplate(null)
+    loadTemplates()
+  }
+
+  const handleSendEmail = async () => {
+    if (!composeData.to.trim()) return toast.error('Add meg a címzettet')
+    if (!composeData.subject.trim()) return toast.error('Add meg a tárgyat')
+    if (!composeData.html.trim()) return toast.error('Írj valamit az emailbe')
+
+    setSending(true)
+    try {
+      await sendEmail({
+        to: composeData.to,
+        subject: composeData.subject,
+        html: composeData.html,
+        cc: composeData.cc || undefined,
+        bcc: composeData.bcc || undefined,
+        attachments: composeData.attachments.length > 0 ? composeData.attachments : undefined
+      })
+      toast.success('Email elküldve!')
+      setShowCompose(false)
+      setComposeData({
+        to: '',
+        subject: '',
+        html: '',
+        cc: '',
+        bcc: '',
+        attachments: []
+      })
+      setSelectedTemplate(null)
+      // Refresh sent emails if we're in sent folder
+      if (activeFolder === 'sent') {
+        loadEmails()
+      }
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
   const handleSendReply = async () => {
     if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
+    setSending(true)
     try {
       const originalDate = new Date(emailDetail.date).toLocaleString('hu-HU')
       const originalFrom = emailDetail.from_name
@@ -137,8 +241,11 @@ export default function EnhancedMailView() {
       toast.success('Válasz elküldve!')
       setShowReply(false)
       setReplyHtml('')
+      setReplyTemplate(null)
     } catch (err) {
       toast.error(err.message)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -163,6 +270,138 @@ export default function EnhancedMailView() {
 
   return (
     <div className={`h-screen flex ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
+      {/* Compose Modal */}
+      {showCompose && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl ${isModern ? 'modern-card' : 'glass'} flex flex-col`}>
+            {/* Compose Header */}
+            <div className="flex items-center justify-between p-6 border-b border-white/10">
+              <h2 className="text-xl font-semibold text-white">Új levél</h2>
+              <button
+                onClick={() => setShowCompose(false)}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Compose Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Template Selector */}
+              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                <button onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
+                  <div className="flex items-center gap-3">
+                    <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
+                    <span className="text-sm font-medium">
+                      {selectedTemplate ? templates.find(t => t.id === selectedTemplate)?.name : 'Válassz sablont'}
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showTemplateSelector ? 'rotate-180' : ''}`} />
+                </button>
+                {showTemplateSelector && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 fade-in max-h-[300px] overflow-y-auto">
+                    {loadingTemplates ? (
+                      <div className="col-span-2 p-3 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto mb-1 text-gray-400" /><p className="text-xs text-gray-500">Betöltés...</p></div>
+                    ) : templates.length === 0 ? (
+                      <p className="col-span-2 text-xs text-gray-500 text-center py-2">Nincs elérhető sablon</p>
+                    ) : (
+                      templates.map(t => (
+                        <button key={t.id} onClick={() => applyTemplate(t)}
+                          className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${selectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
+                          <p className="text-sm font-medium text-gray-200">{t.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Recipient */}
+              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                <label className="block text-xs text-gray-400 mb-2">Címzett *</label>
+                <input
+                  type="email"
+                  value={composeData.to}
+                  onChange={(e) => setComposeData(prev => ({ ...prev, to: e.target.value }))}
+                  placeholder="email@example.com"
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
+                />
+              </div>
+
+              {/* CC and BCC */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                  <label className="block text-xs text-gray-400 mb-2">CC</label>
+                  <input
+                    type="email"
+                    value={composeData.cc}
+                    onChange={(e) => setComposeData(prev => ({ ...prev, cc: e.target.value }))}
+                    placeholder="cc@example.com"
+                    className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
+                  />
+                </div>
+                <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                  <label className="block text-xs text-gray-400 mb-2">BCC</label>
+                  <input
+                    type="email"
+                    value={composeData.bcc}
+                    onChange={(e) => setComposeData(prev => ({ ...prev, bcc: e.target.value }))}
+                    placeholder="bcc@example.com"
+                    className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
+                  />
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                <label className="block text-xs text-gray-400 mb-2">Tárgy *</label>
+                <input
+                  type="text"
+                  value={composeData.subject}
+                  onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="Email tárgya"
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
+                />
+              </div>
+
+              {/* Message */}
+              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+                <label className="block text-xs text-gray-400 mb-2">Üzenet *</label>
+                <SimpleRichEditor
+                  initialHtml={composeData.html}
+                  onChange={(html) => setComposeData(prev => ({ ...prev, html }))}
+                  className="min-h-[200px]"
+                />
+              </div>
+            </div>
+
+            {/* Compose Footer */}
+            <div className="flex items-center justify-between p-6 border-t border-white/10">
+              <button
+                onClick={() => setShowCompose(false)}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Mégse
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={sending}
+                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-medium transition-all disabled:opacity-50 ${
+                  isModern 
+                    ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
+                    : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
+                }`}
+              >
+                {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Küldés...</> : <><Send className="w-4 h-4" /> Küldés</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Layout */}
       {/* Sidebar */}
       <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r border-white/10 flex flex-col transition-all duration-300`}>
         {/* Sidebar Header */}
@@ -181,7 +420,7 @@ export default function EnhancedMailView() {
         {/* Compose Button */}
         <div className="p-4">
           <button
-            onClick={() => setShowCompose(true)}
+            onClick={handleCompose}
             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
               isModern 
                 ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
