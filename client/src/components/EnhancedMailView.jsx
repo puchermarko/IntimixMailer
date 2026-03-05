@@ -334,6 +334,8 @@ export default function EnhancedMailView() {
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   const [sending, setSending] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [emailToDelete, setEmailToDelete] = useState(null)
   
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
@@ -355,6 +357,11 @@ export default function EnhancedMailView() {
         console.log('First sent email structure:', data.emails?.[0] ? Object.keys(data.emails[0]) : 'No emails')
         console.log('Sample sent email:', data.emails?.[0])
         console.log('All field names in first sent email:', data.emails?.[0] ? Object.keys(data.emails[0]).map(key => `${key}: ${data.emails[0][key]}`).join(', ') : 'No emails')
+      } else if (activeFolder === 'trash') {
+        // Load deleted emails from trash
+        // TODO: Implement trash API - for now show empty
+        data.emails = []
+        console.log('Trash folder loaded (empty for now)')
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
         data.emails = []
@@ -363,9 +370,6 @@ export default function EnhancedMailView() {
         data.emails = []
       } else if (activeFolder === 'archive') {
         // TODO: Implement archive API
-        data.emails = []
-      } else if (activeFolder === 'trash') {
-        // TODO: Implement trash API
         data.emails = []
       }
       setEmails(data.emails || [])
@@ -526,21 +530,36 @@ export default function EnhancedMailView() {
   }
 
   const handleDelete = async (emailId) => {
-    if (!confirm('Törlöd ezt a levelet?')) return
+    setEmailToDelete(emailId)
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = async () => {
     try {
       if (activeFolder === 'inbox') {
-        await deleteInboxEmail(emailId)
+        await deleteInboxEmail(emailToDelete)
+        toast.success('Levél a kukába helyezve')
       } else if (activeFolder === 'sent') {
         // TODO: Implement sent email delete API
         toast.warning('Kimenő levelek törlése hamarosan elérhető lesz')
+        setShowDeleteConfirm(false)
+        setEmailToDelete(null)
+        return
+      } else if (activeFolder === 'trash') {
+        // TODO: Implement permanent delete from trash
+        toast.warning('Levelek végleges törlése hamarosan elérhető lesz')
+        setShowDeleteConfirm(false)
+        setEmailToDelete(null)
         return
       }
-      toast.success('Levél törölve')
       setSelectedEmail(null)
       setEmailDetail(null)
       loadEmails()
     } catch (err) {
       toast.error(err.message || 'Hiba a levél törlésekor')
+    } finally {
+      setShowDeleteConfirm(false)
+      setEmailToDelete(null)
     }
   }
 
@@ -568,6 +587,37 @@ export default function EnhancedMailView() {
                 onClose={() => setShowCompose(false)}
                 onSendSuccess={handleComposeSuccess}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-2xl ${isModern ? 'modern-card' : 'glass'} p-6`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-500/20 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-white">Levél törlése</h3>
+            </div>
+            <p className="text-gray-300 mb-6">
+              Biztosan törölni szeretnéd ezt a levelet? A levél a kukába kerül, ahonnan később visszaállítható.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-gray-300"
+              >
+                Mégse
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+              >
+                Törlés
+              </button>
             </div>
           </div>
         </div>
