@@ -6,7 +6,8 @@ import {
   FileText, Loader2, Trash2, Reply, ReplyAll, Forward, Send, Eye, Code, ChevronDown, ChevronUp,
   LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock,
   MoreVertical, CheckSquare, Star, Archive, Flag, MoreHorizontal,
-  Maximize2, Minimize2, Sidebar, Mail, MailOpen, AtSign, ChevronsLeft, ChevronsRight
+  Maximize2, Minimize2, Sidebar, Mail, MailOpen, AtSign, ChevronsLeft, ChevronsRight,
+  Settings, BarChart3, FileText as FileTextIcon, Globe, Users as UsersIcon, LogOut
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
@@ -313,13 +314,42 @@ const MAIL_FOLDERS = [
 ]
 
 export default function EnhancedMailView({ onNavigate }) {
+  const { isAdmin, email, logout } = useAuth()
+  const { uiMode } = useUI()
+  const [activeView, setActiveView] = useState('mail')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('intimix_sidebar_collapsed') === 'true')
+  const [useEnhancedMail, setUseEnhancedMail] = useState(() => localStorage.getItem('intimix_enhanced_mail') === 'true')
+
+  const isModern = uiMode === 'modern'
+
+  // Navigation items from Sidebar
+  const baseNavItems = [
+    { id: 'mail', label: 'Levelezés', icon: Mail },
+    { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
+    { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
+    { id: 'quotes', label: 'Árajánlatok', icon: FileTextIcon },
+    { id: 'analytics', label: 'Analitika', icon: BarChart3 },
+    { id: 'settings', label: 'Beállítások', icon: Settings },
+  ]
+
+  const adminNavItems = [
+    { id: 'users', label: 'Felhasználók', icon: UsersIcon },
+    { id: 'global-settings', label: 'Globális Beállítások', icon: Globe },
+  ]
+
+  const allNavItems = [...baseNavItems, ...(isAdmin ? adminNavItems : [])]
+
+  const handleNav = (id) => {
+    setActiveView(id)
+    onNavigate(id)
+  }
+
   const [activeFolder, setActiveFolder] = useState('inbox')
   const [selectedEmail, setSelectedEmail] = useState(null)
   const [emailDetail, setEmailDetail] = useState(null)
   const [emails, setEmails] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [viewMode, setViewMode] = useState('list') // 'list' | 'conversation'
   const [selectedEmails, setSelectedEmails] = useState(new Set())
   const [showCompose, setShowCompose] = useState(false)
@@ -352,8 +382,6 @@ export default function EnhancedMailView({ onNavigate }) {
   })
   
   const { hasSubscription } = useAuth()
-  const { uiMode } = useUI()
-  const isModern = uiMode === 'modern'
   
   const emailListRef = useRef(null)
 
@@ -822,18 +850,37 @@ export default function EnhancedMailView({ onNavigate }) {
       )}
 
       {/* Main Layout */}
-      {/* Header with Back Button */}
+      {/* Top Navigation Bar */}
       <div className="w-full border-b border-white/10 bg-[#1a1d23]">
         <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-2">
+            {allNavItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNav(item.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    item.id === 'mail' 
+                      ? 'bg-[#2EC4BE] text-white' 
+                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => onNavigate('analytics')}
-              className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-gray-300"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Vissza
-            </button>
             <h1 className="text-xl font-semibold text-white">Levelezés</h1>
+            <button
+              onClick={logout}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-300"
+              title="Kijelentkezés"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
