@@ -7,7 +7,7 @@ import {
   LayoutGrid, BookUser, UserPen, Plus, UserPlus, ShoppingBag, Lock,
   MoreVertical, CheckSquare, Star, Archive, Flag, MoreHorizontal,
   Maximize2, Minimize2, Sidebar, Mail, MailOpen, AtSign, ChevronsLeft, ChevronsRight,
-  Settings, BarChart3, FileText as FileTextIcon, Globe, Users as UsersIcon, LogOut
+  Settings, BarChart3, FileText as FileTextIcon, Globe, Users as UsersIcon, LogOut, Edit3
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
@@ -899,7 +899,7 @@ export default function EnhancedMailView({ onNavigate }) {
                   : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
               }`}
             >
-              <PenLine className="w-4 h-4" />
+              <Edit3 className="w-4 h-4" />
               {!sidebarCollapsed && 'Új levél'}
             </button>
           </div>
