@@ -416,29 +416,43 @@ export default function EnhancedMailView({ onNavigate }) {
 
   // Filter emails based on search query
   const filteredEmails = useMemo(() => {
-    if (!searchQuery.trim()) return emails
+    // For trash folder, filter the local trash emails
+    if (activeFolder === 'trash') {
+      if (!searchQuery.trim()) return trashEmails
+      
+      const query = searchQuery.toLowerCase()
+      return trashEmails.filter(email => {
+        // Search in subject
+        if (email.subject && email.subject.toLowerCase().includes(query)) return true
+        
+        // Search in sender/recipient
+        if (email.original_folder === 'sent') {
+          const recipient = email.recipient || email.to_address || email.recipient_email || ''
+          if (recipient.toLowerCase().includes(query)) return true
+        } else {
+          const sender = email.from_name || email.from_address || ''
+          if (sender.toLowerCase().includes(query)) return true
+        }
+        
+        // Search in content
+        const content = email.text_body || email.preview || email.body || email.content || ''
+        if (content.toLowerCase().includes(query)) return true
+        
+        return false
+      })
+    }
     
-    const query = searchQuery.toLowerCase()
-    return emails.filter(email => {
-      // Search in subject
-      if (email.subject && email.subject.toLowerCase().includes(query)) return true
-      
-      // Search in sender/recipient
-      if (activeFolder === 'sent') {
-        const recipient = email.recipient || email.to_address || email.recipient_email || ''
-        if (recipient.toLowerCase().includes(query)) return true
-      } else {
-        const sender = email.from_name || email.from_address || ''
-        if (sender.toLowerCase().includes(query)) return true
-      }
-      
-      // Search in content
-      const content = email.text_body || email.preview || email.body || email.content || ''
-      if (content.toLowerCase().includes(query)) return true
-      
-      return false
-    })
-  }, [emails, searchQuery, activeFolder])
+    // For inbox and sent, return all emails (search is handled by API)
+    return emails
+  }, [emails, searchQuery, activeFolder, trashEmails])
+
+  // Handle search with pagination
+  const handleSearch = (query) => {
+    setSearchQuery(query)
+    // Reset to first page when searching
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+    // Load emails will be called by useEffect when searchQuery changes
+  }
 
   // Pagination functions
   const handlePageChange = (newPage) => {
@@ -472,6 +486,16 @@ export default function EnhancedMailView({ onNavigate }) {
     setPagination(prev => ({ ...prev, currentPage: 1 }))
     loadEmails(1)
   }, [activeFolder])
+
+  // Trigger loadEmails when search query changes (for inbox and sent)
+  useEffect(() => {
+    if (activeFolder !== 'trash') {
+      const timer = setTimeout(() => {
+        loadEmails(1)
+      }, 300) // Debounce search to avoid too many API calls
+      return () => clearTimeout(timer)
+    }
+  }, [searchQuery, activeFolder])
 
   // Save trash emails to localStorage whenever they change
   useEffect(() => {
@@ -878,7 +902,7 @@ export default function EnhancedMailView({ onNavigate }) {
                   type="text"
                   placeholder="Keresés..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearch(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm ${
                     isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'
                   }`}
