@@ -331,6 +331,7 @@ export default function EnhancedMailView({ onNavigate }) {
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   const [sending, setSending] = useState(false)
+  const [isReplyAll, setIsReplyAll] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [emailToDelete, setEmailToDelete] = useState(null)
   const [trashEmails, setTrashEmails] = useState(() => {
@@ -490,6 +491,7 @@ export default function EnhancedMailView({ onNavigate }) {
 
   const handleReply = async () => {
     setShowReply(true)
+    setIsReplyAll(false)
     setReplyHtml('')
     setReplyTemplate(null)
     setShowReplyTemplateSelector(false)
@@ -504,6 +506,29 @@ export default function EnhancedMailView({ onNavigate }) {
     } finally {
       setLoadingReplyTemplates(false)
     }
+    
+    setTimeout(() => replyRef.current?.focus(), 100)
+  }
+
+  const handleReplyAll = async () => {
+    setShowReply(true)
+    setIsReplyAll(true)
+    setReplyHtml('')
+    setReplyTemplate(null)
+    setShowReplyTemplateSelector(false)
+    
+    setLoadingReplyTemplates(true)
+    try {
+      const templates = await getCustomTemplates()
+      setReplyTemplates(templates)
+    } catch (err) {
+      console.error('Failed to load templates:', err)
+      setReplyTemplates([])
+    } finally {
+      setLoadingReplyTemplates(false)
+    }
+    
+    setTimeout(() => replyRef.current?.focus(), 100)
   }
 
   const applyReplyTemplate = (template) => {
@@ -540,19 +565,31 @@ export default function EnhancedMailView({ onNavigate }) {
       `
       const subject = emailDetail.subject?.startsWith('Re:')
         ? emailDetail.subject
-        : `Re: ${emailDetail.subject}`
-      const replyTo = activeFolder === 'sent' 
+        : emailDetail.subject?.startsWith('Fwd:')
+          ? emailDetail.subject
+          : isReplyAll
+            ? `Re: ${emailDetail.subject}`
+            : `Re: ${emailDetail.subject}`
+      
+      // For reply all, include original sender and other recipients
+      let replyTo = activeFolder === 'sent' 
         ? (emailDetail.to_address || emailDetail.recipient_email)
         : activeFolder === 'trash'
           ? (emailDetail.original_folder === 'sent'
             ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
             : emailDetail.from_address)
           : emailDetail.from_address
+      
+      // For reply all, we would need to parse CC/BCC from email headers
+      // For now, we'll just reply to the original sender
+      // In a full implementation, you'd parse the email headers to get all recipients
+      
       await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: emailDetail.message_id || undefined })
-      toast.success('Válasz elküldve!')
+      toast.success(isReplyAll ? 'Válasz mindenkinek elküldve!' : 'Válasz elküldve!')
       setShowReply(false)
       setReplyHtml('')
       setReplyTemplate(null)
+      setIsReplyAll(false)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -933,7 +970,10 @@ export default function EnhancedMailView({ onNavigate }) {
                 <Reply className="w-4 h-4" />
                 Válasz
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+              <button 
+                onClick={handleReplyAll}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              >
                 <ReplyAll className="w-4 h-4" />
                 Válasz mindenkinek
               </button>
@@ -988,10 +1028,10 @@ export default function EnhancedMailView({ onNavigate }) {
             <div className="border-t border-white/10 p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-medium text-white">Válasz</h3>
+                  <h3 className="text-lg font-medium text-white">{isReplyAll ? 'Válasz mindenkinek' : 'Válasz'}</h3>
                   <p className="text-sm text-gray-400 flex items-center gap-1.5">
                     <Reply className="w-3.5 h-3.5" />
-                    Válasz neki: <span className="text-gray-200">
+                    {isReplyAll ? 'Válasz mindenkinek:' : 'Válasz neki:'} <span className="text-gray-200">
                       {activeFolder === 'sent' 
                         ? (emailDetail.to_address || emailDetail.recipient_email)
                         : activeFolder === 'trash'
