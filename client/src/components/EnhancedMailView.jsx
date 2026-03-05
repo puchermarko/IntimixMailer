@@ -685,7 +685,10 @@ export default function EnhancedMailView() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium text-gray-200 truncate">
-                          {email.from_name || email.from_address}
+                          {activeFolder === 'sent' 
+                            ? (email.to_address || email.recipient_email)
+                            : (email.from_name || email.from_address)
+                          }
                         </span>
                         <span className="text-xs text-gray-500">{formatDate(email.date)}</span>
                       </div>
@@ -693,7 +696,15 @@ export default function EnhancedMailView() {
                         {email.subject}
                       </div>
                       <div className="text-sm text-gray-500 truncate">
-                        {email.text_body || email.preview || email.body || email.content || 'Nincs tartalom'}
+                        {(() => {
+                          if (activeFolder === 'sent') {
+                            // For sent emails, try different field names
+                            return email.text_body || email.preview || email.body || email.content || email.message || 'Nincs tartalom'
+                          } else {
+                            // For inbox emails, use the original logic
+                            return email.text_body || email.preview || email.body || email.content || 'Nincs tartalom'
+                          }
+                        })()}
                       </div>
                     </div>
                     {!email.read && (
