@@ -1195,6 +1195,7 @@ function ContactJourney({ contact }) {
               <X className="w-5 h-5" />
             </button>
           </div>
+          console.log('Reply modal is open, replyToEmail:', replyToEmail)
           
           <div className="mb-4">
             <p className="text-sm text-gray-400 mb-2">Válasz erre:</p>
