@@ -1,6 +1,6 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect, useMemo } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getContactEmails, getContactReceivedEmails } from '../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth, useUI } from '../App'
 import {
@@ -89,26 +89,26 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
 
   useEffect(() => {
     const loadContactEmails = async () => {
-      if (!contact) return
+      if (!contact || !contact.email) return
       
       setLoadingContactEmails(true)
       try {
-        console.log('Fetching emails for contact:', contactId)
+        console.log('Fetching emails for contact:', contactId, 'email:', contact.email)
         
-        // Fetch sent emails
+        // Search for sent emails to/from this contact
         try {
-          const sentData = await getContactEmails(contactId)
-          console.log('Contact sent emails:', sentData)
+          const sentData = await getSentEmails({ page: 1, limit: 100, search: contact.email })
+          console.log('Contact sent emails (search):', sentData)
           setContactEmails(sentData.emails || [])
         } catch (err) {
           console.warn('Failed to fetch contact sent emails:', err)
           setContactEmails([])
         }
         
-        // Fetch received emails
+        // Search for received emails from/to this contact
         try {
-          const receivedData = await getContactReceivedEmails(contactId)
-          console.log('Contact received emails:', receivedData)
+          const receivedData = await getInbox({ page: 1, limit: 100, search: contact.email })
+          console.log('Contact received emails (search):', receivedData)
           setContactReceivedEmails(receivedData.emails || [])
         } catch (err) {
           console.warn('Failed to fetch contact received emails:', err)
