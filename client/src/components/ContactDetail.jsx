@@ -1192,10 +1192,10 @@ function ContactJourney({ contact }) {
       )}
     </div>
     
-    {/* Reply Modal */}
+    {/* Reply Modal - Outside main container */}
     {showReply && replyToEmail && (
       <>
-        <div className="absolute top-0 left-0 w-full h-full bg-red-600 z-[10000] flex items-center justify-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-red-600 z-[10000] flex items-center justify-center">
           <div className="bg-white text-black p-8 rounded-lg max-w-md">
             <h2 className="text-2xl font-bold mb-4">REPLY MODAL TEST</h2>
             <p className="mb-2">Subject: {replyToEmail.subject}</p>
