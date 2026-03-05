@@ -197,12 +197,14 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   }
 
   const handleReply = (email, emailType) => {
+    console.log('handleReply called with:', { email, emailType })
     setReplyToEmail({ ...email, type: emailType })
     setShowReply(true)
     setReplyHtml('')
   }
 
   const handleSendReply = async () => {
+    console.log('handleSendReply called with:', { replyToEmail, replyHtml })
     if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
     setSendingReply(true)
     try {
@@ -213,6 +215,8 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
         : (email.from_name 
           ? `${email.from_name} <${email.from_address}>` 
           : email.from_address)
+      
+      console.log('Email data:', { email, originalDate, originalFrom })
       
       const fullHtml = `
         <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
