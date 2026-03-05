@@ -4,8 +4,8 @@ import { useUI } from '../App'
 
 export default function Impressum() {
   const navigate = useNavigate()
-  const { uiMode } = useUI()
-  const isModern = uiMode === 'modern'
+  const { uiMode, globalModernUI } = useUI()
+  const isModern = uiMode === 'modern' || globalModernUI
 
   return (
     <div className={`min-h-screen ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>

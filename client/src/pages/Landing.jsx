@@ -213,8 +213,8 @@ function AnimatedStat({ target, suffix, label }) {
 
 export default function Landing() {
   const navigate = useNavigate()
-  const { uiMode } = useUI()
-  const isModern = uiMode === 'modern'
+  const { uiMode, globalModernUI } = useUI()
+  const isModern = uiMode === 'modern' || globalModernUI
   const [navScrolled, setNavScrolled] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 

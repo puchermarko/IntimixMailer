@@ -8,12 +8,12 @@ import { Mail, Lock, Loader2, Send, ArrowLeft } from 'lucide-react'
 export default function Login({ registrationEnabled = true }) {
   const navigate = useNavigate()
   const { login } = useAuth()
-  const { uiMode } = useUI()
+  const { uiMode, globalModernUI } = useUI()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const isModern = uiMode === 'modern'
+  const isModern = uiMode === 'modern' || globalModernUI
 
   const handleSubmit = async (e) => {
     e.preventDefault()

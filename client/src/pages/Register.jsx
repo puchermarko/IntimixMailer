@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../App'
+import { useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import { Mail, Lock, Loader2, Send, ArrowLeft, User, ShieldCheck, Clock } from 'lucide-react'
 
@@ -9,6 +9,7 @@ const ANTI_BOT_SECONDS = 5
 export default function Register() {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { uiMode, globalModernUI } = useUI()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -16,6 +17,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(ANTI_BOT_SECONDS)
   const formLoadedAt = useRef(Date.now())
+
+  const isModern = uiMode === 'modern' || globalModernUI
 
   useEffect(() => {
     formLoadedAt.current = Date.now()

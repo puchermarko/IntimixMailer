@@ -1,7 +1,7 @@
 // Fő app komponens - autentikáció kontextus és routing itt van
 import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { getBranding, getSiteConfig } from './lib/api'
+import { getBranding, getSiteConfig, getGlobalSettings } from './lib/api'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
@@ -41,7 +41,13 @@ function App() {
   })
   
   // UI Mode State
-  const [uiMode, setUiMode] = useState(() => localStorage.getItem('intimix_ui_mode') || 'legacy')
+  const [uiMode, setUiMode] = useState(() => {
+    const savedMode = localStorage.getItem('intimix_ui_mode')
+    if (savedMode) return savedMode
+    // If no saved preference, check if modern UI is globally enabled
+    return 'legacy' // Default to legacy, will be updated by global settings
+  })
+  const [globalModernUI, setGlobalModernUI] = useState(false)
 
   const toggleUiMode = (mode) => {
     const newMode = mode || (uiMode === 'legacy' ? 'modern' : 'legacy')
@@ -60,6 +66,29 @@ function App() {
     if (uiMode === 'modern') {
       document.body.classList.add('ui-modern')
     }
+  }, [])
+
+  // Fetch global settings and update UI mode if needed
+  useEffect(() => {
+    const loadGlobalSettings = async () => {
+      try {
+        const settings = await getGlobalSettings()
+        const globalEnabled = settings.modern_ui_enabled === 'true'
+        setGlobalModernUI(globalEnabled)
+        
+        // If user hasn't set a preference and global modern UI is enabled, set it
+        const savedMode = localStorage.getItem('intimix_ui_mode')
+        if (!savedMode && globalEnabled) {
+          setUiMode('modern')
+          localStorage.setItem('intimix_ui_mode', 'modern')
+          document.body.classList.add('ui-modern')
+        }
+      } catch (error) {
+        console.error('Failed to load global settings:', error)
+      }
+    }
+    
+    loadGlobalSettings()
   }, [])
 
   const login = (newToken, userEmail, userRole, userName, subStatus, setupDone) => {
@@ -131,7 +160,7 @@ function App() {
   useEffect(() => { if (isAuthenticated) refreshBranding() }, [token])
 
   return (
-    <UIContext.Provider value={{ uiMode, toggleUiMode }}>
+    <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI }}>
       <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
         <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
           <Routes>

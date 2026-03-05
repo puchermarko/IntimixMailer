@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { getGlobalSettings, updateGlobalSettings } from '../lib/api'
 import { useUI } from '../App'
 import toast from 'react-hot-toast'
-import { Globe, Loader2, Shield, UserPlus, Layout } from 'lucide-react'
+import { Globe, Loader2, Shield, UserPlus, Layout, Monitor } from 'lucide-react'
 
 export default function GlobalSettings() {
   const { uiMode } = useUI()
   const [settings, setSettings] = useState({
     landing_page_enabled: 'true',
     registration_enabled: 'true',
+    modern_ui_enabled: 'false',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -26,6 +27,7 @@ export default function GlobalSettings() {
         ...prev,
         landing_page_enabled: data.landing_page_enabled || 'true',
         registration_enabled: data.registration_enabled || 'true',
+        modern_ui_enabled: data.modern_ui_enabled || 'false',
       }))
     } catch (err) {
       toast.error(err.message)
@@ -72,6 +74,13 @@ export default function GlobalSettings() {
       title: 'Regisztráció',
       desc: 'Ha kikapcsolod, új felhasználók nem tudnak regisztrálni. Csak az admin tud új fiókokat létrehozni.',
       warning: 'A regisztrációs oldal és a regisztrációs API végpont is le lesz tiltva.',
+    },
+    {
+      key: 'modern_ui_enabled',
+      icon: Monitor,
+      title: 'Modern Felület',
+      desc: 'Ha bekapcsolod, minden felhasználónak modern felülettel indul az alkalmazás.',
+      warning: 'A felhasználók továbbra is válthatnak a beállításokban a klasszikus és modern felület között.',
     },
   ]
 
