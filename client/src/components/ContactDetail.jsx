@@ -944,58 +944,6 @@ function ContactJourney({ contact }) {
           </ResponsiveContainer>
         </div>
       </div>
-      {/* Factor breakdown */}
-      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/5">
-        <div className="text-center">
-          <p className="text-lg font-bold text-white">{totalEmails}</p>
-          <p className="text-[10px] text-gray-500">Email váltás</p>
-        </div>
-        <div className="text-center">
-          <p className="text-lg font-bold text-white">{decidedQuotes > 0 ? Math.round((accepted / decidedQuotes) * 100) : '—'}%</p>
-          <p className="text-[10px] text-gray-500">Elfogadási arány</p>
-        </div>
-        <div className="text-center">
-          <p className="text-lg font-bold text-white">{sentCount > 0 ? Math.round((receivedCount / sentCount) * 100) : '—'}%</p>
-          <p className="text-[10px] text-gray-500">Válaszadási arány</p>
-        </div>
-      </div>
-    </div>
-
-    {/* Email Activity Chart */}
-    <div className="glass rounded-xl p-3 sm:p-5">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-lg bg-[#1AA19C]/10 flex items-center justify-center">
-          <BarChart3 className="w-4 h-4 text-[#2EC4BE]" />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-white">Email aktivitás</p>
-          <p className="text-[10px] text-gray-500">Küldött és fogadott levelek az elmúlt 30 napban</p>
-        </div>
-      </div>
-      <div className="h-[180px] sm:h-[200px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={emailChartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-            <defs>
-              <linearGradient id="cjSentGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#1AA19C" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#1AA19C" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="cjRecvGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-            <XAxis dataKey="day" tickFormatter={formatDay} tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-            <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{ fontSize: 10, color: '#9ca3af' }} />
-            <Area type="monotone" dataKey="sent" name="Küldött" stroke="#1AA19C" fill="url(#cjSentGrad)" strokeWidth={2} />
-            <Area type="monotone" dataKey="received" name="Fogadott" stroke="#3B82F6" fill="url(#cjRecvGrad)" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
 
     {/* Quote charts row */}
     {totalQuotes > 0 && (
@@ -1101,3 +1049,4 @@ function ContactJourney({ contact }) {
     </div>
   </div>
 )
+}
