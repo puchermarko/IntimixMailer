@@ -525,6 +525,25 @@ export default function EnhancedMailView() {
     }
   }
 
+  const handleDelete = async (emailId) => {
+    if (!confirm('Törlöd ezt a levelet?')) return
+    try {
+      if (activeFolder === 'inbox') {
+        await deleteInboxEmail(emailId)
+      } else if (activeFolder === 'sent') {
+        // TODO: Implement sent email delete API
+        toast.warning('Kimenő levelek törlése hamarosan elérhető lesz')
+        return
+      }
+      toast.success('Levél törölve')
+      setSelectedEmail(null)
+      setEmailDetail(null)
+      loadEmails()
+    } catch (err) {
+      toast.error(err.message || 'Hiba a levél törlésekor')
+    }
+  }
+
   return (
     <div className={`h-screen flex ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Compose Modal */}
@@ -776,7 +795,10 @@ export default function EnhancedMailView() {
                 <Archive className="w-4 h-4" />
                 Archiválás
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400">
+              <button 
+                onClick={() => handleDelete(emailDetail.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400"
+              >
                 <Trash2 className="w-4 h-4" />
                 Törlés
               </button>
