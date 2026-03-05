@@ -387,14 +387,25 @@ export default function EnhancedMailView() {
       console.log('Opening email:', email)
       console.log('Active folder:', activeFolder)
       console.log('Email ID:', email.id)
+      console.log('Email source:', email.source)
       
-      // Use the generic getEmailDetail for both inbox and sent emails
-      console.log('Calling getEmailDetail for:', email.id)
-      const detail = await getEmailDetail(email.id)
+      let detail = null
+      if (activeFolder === 'inbox') {
+        console.log('Calling getInboxEmail for:', email.id)
+        detail = await getInboxEmail(email.id)
+      } else if (activeFolder === 'sent') {
+        // Use the same logic as the original SentTab
+        if (email.source === 'imap') {
+          console.log('Calling getSentImapEmail for:', email.id)
+          detail = await getSentImapEmail(email.id)
+        } else {
+          console.log('Calling getEmailDetail for:', email.id)
+          detail = await getEmailDetail(email.id)
+        }
+      }
       
       console.log('Email detail loaded:', detail)
       console.log('Complete email structure:', JSON.stringify(detail, null, 2))
-      console.log('Email detail structure:', Object.keys(detail))
       console.log('All email fields:', {
         id: detail.id,
         subject: detail.subject,
@@ -408,7 +419,10 @@ export default function EnhancedMailView() {
         message: detail.message,
         plain_text: detail.plain_text,
         text: detail.text,
-        preview: detail.preview
+        preview: detail.preview,
+        html: detail.html,
+        recipient_email: detail.recipient_email,
+        sent_at: detail.sent_at
       })
       
       setEmailDetail(detail)
@@ -449,9 +463,11 @@ export default function EnhancedMailView() {
     setSending(true)
     try {
       const originalDate = new Date(emailDetail.date).toLocaleString('hu-HU')
-      const originalFrom = emailDetail.from_name
-        ? `${emailDetail.from_name} <${emailDetail.from_address}>`
-        : emailDetail.from_address
+      const originalFrom = activeFolder === 'sent' 
+        ? (emailDetail.to_address || emailDetail.recipient_email)
+        : (emailDetail.from_name
+          ? `${emailDetail.from_name} <${emailDetail.from_address}>`
+          : emailDetail.from_address)
       const fullHtml = `
         <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
           ${replyHtml.replace(/\n/g, '<br>')}
@@ -465,7 +481,10 @@ export default function EnhancedMailView() {
       const subject = emailDetail.subject?.startsWith('Re:')
         ? emailDetail.subject
         : `Re: ${emailDetail.subject}`
-      await replyToEmail({ to: emailDetail.from_address, subject, html: fullHtml, inReplyTo: emailDetail.message_id || undefined })
+      const replyTo = activeFolder === 'sent' 
+        ? (emailDetail.to_address || emailDetail.recipient_email)
+        : emailDetail.from_address
+      await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: emailDetail.message_id || undefined })
       toast.success('Válasz elküldve!')
       setShowReply(false)
       setReplyHtml('')
@@ -708,15 +727,20 @@ export default function EnhancedMailView() {
             </div>
             
             <div className="flex items-center gap-4 text-sm text-gray-400">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4" />
-                <span className="text-gray-200">
-                  {emailDetail.from_name || emailDetail.from_address}
-                </span>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-400 flex items-center gap-1.5">
+                  <Reply className="w-3.5 h-3.5" />
+                  Válasz neki: <span className="text-gray-200">
+                    {activeFolder === 'sent' 
+                      ? (emailDetail.to_address || emailDetail.recipient_email)
+                      : (emailDetail.from_name || emailDetail.from_address)
+                    }
+                  </span>
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                {new Date(emailDetail.date).toLocaleString('hu-HU')}
+                {new Date(activeFolder === 'sent' ? (emailDetail.sent_at || emailDetail.date) : emailDetail.date).toLocaleString('hu-HU')}
               </div>
             </div>
 
@@ -750,25 +774,40 @@ export default function EnhancedMailView() {
 
           {/* Email Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {emailDetail.html_body || emailDetail.body || emailDetail.content || emailDetail.message ? (
-              <div
-                className="prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: emailDetail.html_body || emailDetail.body || emailDetail.content || emailDetail.message 
-                }}
-              />
-            ) : (
-              <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
-                {emailDetail.text_body || emailDetail.plain_text || emailDetail.text || '(Nincs tartalom)'}
-              </pre>
-            )}
+            {(() => {
+              const isImap = activeFolder === 'sent' && emailDetail && emailDetail.to_address
+              const bodyHtml = isImap ? emailDetail.html_body : (emailDetail.html_body || emailDetail.html || emailDetail.body || emailDetail.content || emailDetail.message)
+              const bodyText = isImap ? emailDetail.text_body : (emailDetail.text_body || emailDetail.plain_text || emailDetail.text)
+              
+              return bodyHtml ? (
+                <div
+                  className="prose prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                />
+              ) : (
+                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono">
+                  {bodyText || '(Nincs tartalom)'}
+                </pre>
+              )
+            })()}
           </div>
 
           {/* Reply Section */}
           {showReply && (
             <div className="border-t border-white/10 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-white">Válasz</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-medium text-white">Válasz</h3>
+                  <p className="text-sm text-gray-400 flex items-center gap-1.5">
+                    <Reply className="w-3.5 h-3.5" />
+                    Válasz neki: <span className="text-gray-200">
+                      {activeFolder === 'sent' 
+                        ? (emailDetail.to_address || emailDetail.recipient_email)
+                        : (emailDetail.from_name || emailDetail.from_address)
+                      }
+                    </span>
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex bg-white/5 rounded-lg p-0.5">
                     <button
