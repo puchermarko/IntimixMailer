@@ -333,7 +333,16 @@ export default function EnhancedMailView({ onNavigate }) {
   const [sending, setSending] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [emailToDelete, setEmailToDelete] = useState(null)
-  const [trashEmails, setTrashEmails] = useState([])
+  const [trashEmails, setTrashEmails] = useState(() => {
+    // Load trash emails from localStorage on component mount
+    try {
+      const saved = localStorage.getItem('intimix_trash_emails')
+      return saved ? JSON.parse(saved) : []
+    } catch (error) {
+      console.error('Failed to load trash emails from localStorage:', error)
+      return []
+    }
+  })
   
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
@@ -409,6 +418,15 @@ export default function EnhancedMailView({ onNavigate }) {
   useEffect(() => {
     loadEmails()
   }, [activeFolder])
+
+  // Save trash emails to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('intimix_trash_emails', JSON.stringify(trashEmails))
+    } catch (error) {
+      console.error('Failed to save trash emails to localStorage:', error)
+    }
+  }, [trashEmails])
 
   const openEmail = async (email) => {
     setSelectedEmail(email)
