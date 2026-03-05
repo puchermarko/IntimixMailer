@@ -354,6 +354,7 @@ export default function EnhancedMailView() {
         console.log('Sent emails loaded:', data)
         console.log('First sent email structure:', data.emails?.[0] ? Object.keys(data.emails[0]) : 'No emails')
         console.log('Sample sent email:', data.emails?.[0])
+        console.log('All field names in first sent email:', data.emails?.[0] ? Object.keys(data.emails[0]).map(key => `${key}: ${data.emails[0][key]}`).join(', ') : 'No emails')
       } else if (activeFolder === 'drafts') {
         // TODO: Implement drafts API
         data.emails = []
