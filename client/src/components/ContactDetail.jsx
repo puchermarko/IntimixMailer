@@ -684,6 +684,9 @@ const PIE_COLORS = { draft: '#6B7280', sent: '#3B82F6', accepted: '#22C55E', rej
 const STATUS_LABELS = { draft: 'Piszkozat', sent: 'Elküldve', accepted: 'Elfogadva', rejected: 'Elutasítva' }
 
 function ContactJourney({ contact }) {
+  const { uiMode } = useUI()
+  const isModern = uiMode === 'modern'
+
   const sentCount = (contact.emails?.length || 0) + (contact.sentImap?.length || 0)
   const receivedCount = contact.received?.length || 0
   const totalEmails = sentCount + receivedCount
