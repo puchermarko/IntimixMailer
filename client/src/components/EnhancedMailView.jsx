@@ -309,9 +309,6 @@ function ComposeTab({ isModern, onClose, onSendSuccess }) {
 const MAIL_FOLDERS = [
   { id: 'inbox', label: 'Bejövő', icon: InboxIcon, count: 0 },
   { id: 'sent', label: 'Elküldött', icon: SendHorizontal, count: 0 },
-  { id: 'drafts', label: 'Piszkozatok', icon: PenLine, count: 0 },
-  { id: 'starred', label: 'Csillagozott', icon: Star, count: 0 },
-  { id: 'archive', label: 'Archívum', icon: Archive, count: 0 },
   { id: 'trash', label: 'Kuka', icon: Trash2, count: 0 }
 ]
 
