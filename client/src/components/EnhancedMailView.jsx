@@ -393,13 +393,22 @@ export default function EnhancedMailView() {
       const detail = await getEmailDetail(email.id)
       
       console.log('Email detail loaded:', detail)
+      console.log('Complete email structure:', JSON.stringify(detail, null, 2))
       console.log('Email detail structure:', Object.keys(detail))
-      console.log('Email body fields:', {
+      console.log('All email fields:', {
+        id: detail.id,
+        subject: detail.subject,
+        from_address: detail.from_address,
+        to_address: detail.to_address,
+        date: detail.date,
         html_body: detail.html_body,
         text_body: detail.text_body,
         body: detail.body,
         content: detail.content,
-        message: detail.message
+        message: detail.message,
+        plain_text: detail.plain_text,
+        text: detail.text,
+        preview: detail.preview
       })
       
       setEmailDetail(detail)
