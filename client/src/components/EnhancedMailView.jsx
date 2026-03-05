@@ -1,5 +1,5 @@
 // Enhanced Mail View - Apple Mail inspired UX
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Inbox as InboxIcon, SendHorizontal, PenLine, Users, RefreshCw, Search, X,
   Paperclip, ChevronLeft, ChevronRight, ArrowLeft, Download, User, Clock,
@@ -383,6 +383,32 @@ export default function EnhancedMailView({ onNavigate }) {
     }
   }
 
+  // Filter emails based on search query
+  const filteredEmails = useMemo(() => {
+    if (!searchQuery.trim()) return emails
+    
+    const query = searchQuery.toLowerCase()
+    return emails.filter(email => {
+      // Search in subject
+      if (email.subject && email.subject.toLowerCase().includes(query)) return true
+      
+      // Search in sender/recipient
+      if (activeFolder === 'sent') {
+        const recipient = email.recipient || email.to_address || email.recipient_email || ''
+        if (recipient.toLowerCase().includes(query)) return true
+      } else {
+        const sender = email.from_name || email.from_address || ''
+        if (sender.toLowerCase().includes(query)) return true
+      }
+      
+      // Search in content
+      const content = email.text_body || email.preview || email.body || email.content || ''
+      if (content.toLowerCase().includes(query)) return true
+      
+      return false
+    })
+  }, [emails, searchQuery, activeFolder])
+
   useEffect(() => {
     loadEmails()
   }, [activeFolder])
@@ -749,14 +775,19 @@ export default function EnhancedMailView({ onNavigate }) {
               <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" />
               <p className="text-sm text-gray-500">Betöltés...</p>
             </div>
-          ) : emails.length === 0 ? (
+          ) : filteredEmails.length === 0 && searchQuery.trim() ? (
+            <div className="p-8 text-center">
+              <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400">Nincs találat a keresésre: "{searchQuery}"</p>
+            </div>
+          ) : filteredEmails.length === 0 ? (
             <div className="p-8 text-center">
               <InboxIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400">Nincs levél a mappában</p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">
-              {emails.map(email => (
+              {filteredEmails.map(email => (
                 <div
                   key={email.id}
                   onClick={() => openEmail(email)}
