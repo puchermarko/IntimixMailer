@@ -7,7 +7,7 @@ import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
   Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
-  TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink
+  TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink, Reply
 } from 'lucide-react'
 import SimpleRichEditor from './SimpleRichEditor'
 import {
