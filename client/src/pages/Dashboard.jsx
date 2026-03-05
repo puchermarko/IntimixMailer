@@ -69,16 +69,21 @@ export default function Dashboard() {
         </div>
       )}
       {showTour && <QuickTour onComplete={() => setShowTour(false)} setActiveView={setActiveView} setSidebarOpen={setSidebarOpen} />}
-      <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      {/* Only show sidebar if not in enhanced mail view */}
+      {activeView !== 'mail' || !useEnhancedMail ? (
+        <Sidebar activeView={activeView} setActiveView={setActiveView} isOpen={sidebarOpen} setIsOpen={setSidebarOpen} collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />
+      ) : null}
       <main className={`pt-16 lg:pt-0 min-h-screen transition-all duration-300 
-        ${sidebarCollapsed 
-          ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
-          : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
-        } 
-        ${impersonating ? 'mt-10' : ''}
-        ${isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8'}
+        ${activeView === 'mail' && useEnhancedMail 
+          ? 'ml-0 p-0' 
+          : `${sidebarCollapsed 
+            ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
+            : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
+          } ${impersonating ? 'mt-10' : ''}
+          ${isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8'}`
+        }
       `}>
-        <div className={`mx-auto fade-in ${isModern ? 'max-w-[1600px]' : 'max-w-5xl'}`} key={activeView}>
+        <div className={`mx-auto fade-in ${activeView === 'mail' && useEnhancedMail ? 'w-full h-full' : (isModern ? 'max-w-[1600px]' : 'max-w-5xl')}`} key={activeView}>
           {views[activeView]}
         </div>
       </main>
