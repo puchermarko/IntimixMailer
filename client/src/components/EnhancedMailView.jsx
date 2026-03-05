@@ -19,6 +19,293 @@ import { useBranding, useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import SimpleRichEditor from './SimpleRichEditor'
 
+// Full ComposeTab component from backup
+function ComposeTab({ isModern, onClose, onSendSuccess }) {
+  const { login_domain } = useBranding()
+  const [to, setTo] = useState('')
+  const [recipientName, setRecipientName] = useState('')
+  const [orderId, setOrderId] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
+  const [trackingUrl, setTrackingUrl] = useState('')
+  const [deliveryTime, setDeliveryTime] = useState('')
+  const [deliveryPhone, setDeliveryPhone] = useState('')
+  const [subject, setSubject] = useState('')
+  const [html, setHtml] = useState('')
+  const [cc, setCc] = useState('')
+  const [bcc, setBcc] = useState('')
+  const [attachments, setAttachments] = useState([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showEcommerce, setShowEcommerce] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [recipientMode, setRecipientMode] = useState('manual')
+  const [contacts, setContacts] = useState([])
+  const [contactSearch, setContactSearch] = useState('')
+  const [selectedContact, setSelectedContact] = useState(null)
+  const [customTemplates, setCustomTemplates] = useState([])
+  const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
+  const fileInputRef = useRef(null)
+
+  const showBuiltin = login_domain === 'intimix.hu'
+  const allTemplates = [...(showBuiltin ? builtinTemplates : []), ...customTemplates]
+
+  useEffect(() => {
+    getContacts().then(setContacts).catch(() => {})
+    getCustomTemplates().then(setCustomTemplates).catch(() => {})
+  }, [])
+
+  const filteredContacts = contacts.filter(c =>
+    c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+    c.email.toLowerCase().includes(contactSearch.toLowerCase())
+  )
+
+  const selectContact = (contact) => { setSelectedContact(contact); setTo(contact.email); setRecipientName(contact.name); setContactSearch('') }
+  const clearContact = () => { setSelectedContact(null); setTo(''); setRecipientName('') }
+
+  const applyTemplate = (template) => {
+    setSelectedTemplate(template.id)
+    setSubject(template.subject)
+    setHtml(template.html)
+    setShowTemplateSelector(false)
+    toast.success(`"${template.name}" sablon alkalmazva`)
+  }
+
+  const replaceVariables = (raw) => {
+    return raw
+      .replace(/\{\{name\}\}/gi, recipientName || '{{name}}')
+      .replace(/\{\{email\}\}/gi, to || '{{email}}')
+      .replace(/\{\{order_id\}\}/gi, orderId || '{{order_id}}')
+      .replace(/\{\{tracking_number\}\}/gi, trackingNumber || '{{tracking_number}}')
+      .replace(/\{\{tracking_url\}\}/gi, trackingUrl || '{{tracking_url}}')
+      .replace(/\{\{delivery_time\}\}/gi, deliveryTime || '{{delivery_time}}')
+      .replace(/\{\{delivery_phone\}\}/gi, deliveryPhone || '{{delivery_phone}}')
+  }
+
+  const getPreviewHtml = () => replaceVariables(html)
+    .replace(/cid:intimix-logo-header/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/nyl/588/ikm/IntimiX2.svg')
+    .replace(/cid:intimix-logo-png/gi, 'https://64072b6cfa.imgdist.com/pub/bfra/vl0ytcv0/mwf/5mo/xol/IntimiX.png')
+
+  const handleSend = async () => {
+    if (!to || !subject || !html) return toast.error('Töltsd ki az összes kötelező mezőt')
+    setSending(true)
+    try {
+      await sendEmail({
+        to, subject: replaceVariables(subject), html: replaceVariables(html),
+        cc: cc || undefined, bcc: bcc || undefined,
+        attachments: attachments.length > 0 ? attachments : undefined
+      })
+      toast.success('Email elküldve!')
+      setTo(''); setRecipientName(''); setOrderId(''); setTrackingNumber(''); setTrackingUrl('')
+      setDeliveryTime(''); setDeliveryPhone(''); setSubject(''); setHtml(''); setCc(''); setBcc('')
+      setAttachments([]); setSelectedTemplate(null); setSelectedContact(null); setRecipientMode('manual')
+      onClose()
+      if (onSendSuccess) onSendSuccess()
+    } catch (err) { toast.error(err.message) }
+    finally { setSending(false) }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Sablon választó */}
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+        <button onClick={() => setShowTemplateSelector(!showTemplateSelector)}
+          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
+          <div className="flex items-center gap-3">
+            <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
+            <span className="text-sm font-medium">
+              {selectedTemplate ? allTemplates.find(t => t.id === selectedTemplate)?.name : 'Válassz sablont'}
+            </span>
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showTemplateSelector ? 'rotate-180' : ''}`} />
+        </button>
+        {showTemplateSelector && (
+          <div className="mt-3 grid grid-cols-2 gap-2 fade-in max-h-[300px] overflow-y-auto">
+            {allTemplates.map(t => (
+              <button key={t.id} onClick={() => applyTemplate(t)}
+                className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${selectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
+                <p className="text-sm font-medium text-gray-200">{t.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
+                <span className={`inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE]' : 'bg-[#1AA19C]/10 text-[#2EC4BE]'}`}>{t.category}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Címzett */}
+      <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'} space-y-3`}>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setRecipientMode('contact'); clearContact() }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              recipientMode === 'contact' 
+                ? (isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+            }`}><BookUser className="w-3.5 h-3.5" />Kapcsolat</button>
+          <button onClick={() => { setRecipientMode('manual'); setSelectedContact(null) }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              recipientMode === 'manual' 
+                ? (isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
+                : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+            }`}><UserPen className="w-3.5 h-3.5" />Kézi</button>
+        </div>
+
+        {recipientMode === 'contact' && (
+          <div className="fade-in">
+            {selectedContact ? (
+              <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg ${isModern ? 'bg-white/5' : 'glass-light'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white shadow-lg' : 'bg-[#1AA19C]/15 text-[#2EC4BE]'}`}>{selectedContact.name?.[0]?.toUpperCase()}</div>
+                  <div><p className="text-sm font-medium text-gray-200">{selectedContact.name}</p><p className="text-xs text-gray-500">{selectedContact.email}</p></div>
+                </div>
+                <button onClick={clearContact} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input type="text" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)}
+                    placeholder="Kapcsolat keresése..." className={`input-field w-full pl-10 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} autoFocus />
+                </div>
+                <div className="mt-2 max-h-[160px] overflow-y-auto space-y-1">
+                  {filteredContacts.map(c => (
+                    <button key={c.id} onClick={() => selectContact(c)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-white/5 transition-all">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isModern ? 'bg-gradient-to-br from-[#1AA19C] to-[#2EC4BE] text-white' : 'bg-[#1AA19C]/10 text-[#2EC4BE]'}`}>{c.name?.[0]?.toUpperCase()}</div>
+                      <div className="min-w-0"><p className="text-sm text-gray-200 truncate">{c.name}</p><p className="text-xs text-gray-500 truncate">{c.email}</p></div>
+                    </button>
+                  ))}
+                  {filteredContacts.length === 0 && <p className="text-xs text-gray-500 text-center py-2">Nincs találat</p>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {recipientMode === 'manual' && (
+          <div className="grid grid-cols-2 gap-3 fade-in">
+            <div><label className="block text-xs text-gray-400 mb-1">Email *</label>
+              <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="vevo@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+            <div><label className="block text-xs text-gray-400 mb-1">Név</label>
+              <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Kiss Anna" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+          </div>
+        )}
+
+        <button onClick={() => setShowEcommerce(!showEcommerce)}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
+          <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+          <span className="text-gray-300">E-commerce mezők</span>
+          <span className="text-[10px] text-gray-500 ml-1">(rendelés, nyomkövetés, szállítás)</span>
+          <span className="ml-auto">{showEcommerce ? <ChevronUp className="w-3.5 h-3.5 text-gray-500" /> : <ChevronDown className="w-3.5 h-3.5 text-gray-500" />}</span>
+        </button>
+        {showEcommerce && (
+          <div className="space-y-3 fade-in pl-1 border-l-2 border-amber-500/20 ml-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs text-gray-400 mb-1">Rendelés azon.</label>
+                <input type="text" value={orderId} onChange={(e) => setOrderId(e.target.value)} placeholder="12345" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+              <div><label className="block text-xs text-gray-400 mb-1">Nyomkövetési szám</label>
+                <input type="text" value={trackingNumber} onChange={(e) => setTrackingNumber(e.target.value)} placeholder="HU1234567890" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+            </div>
+            <div><label className="block text-xs text-gray-400 mb-1">Nyomkövetési link</label>
+              <input type="url" value={trackingUrl} onChange={(e) => setTrackingUrl(e.target.value)} placeholder="https://..." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs text-gray-400 mb-1">Szállítási idő</label>
+                <input type="text" value={deliveryTime} onChange={(e) => setDeliveryTime(e.target.value)} placeholder="11:00-14:00" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+              <div><label className="block text-xs text-gray-400 mb-1">Futár telefon</label>
+                <input type="tel" value={deliveryPhone} onChange={(e) => setDeliveryPhone(e.target.value)} placeholder="+3630..." className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+            </div>
+          </div>
+        )}
+
+        <button onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors">
+          {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />} CC / BCC
+        </button>
+        {showAdvanced && (
+          <div className="grid grid-cols-2 gap-3 fade-in">
+            <div><label className="block text-xs text-gray-400 mb-1">CC</label>
+              <input type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="cc@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+            <div><label className="block text-xs text-gray-400 mb-1">BCC</label>
+              <input type="text" value={bcc} onChange={(e) => setBcc(e.target.value)} placeholder="bcc@example.com" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} /></div>
+          </div>
+        )}
+      </div>
+
+      {/* Tárgy */}
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+        <label className="block text-xs text-gray-400 mb-1">Tárgy *</label>
+        <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email tárgya" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
+      </div>
+
+      {/* HTML szerkesztő */}
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-gray-400">Törzs (HTML) *</label>
+            {!showPreview && (
+              <div className="flex bg-white/5 rounded-lg p-0.5">
+                <button onClick={() => setEditorMode('visual')}
+                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                  Vizuális
+                </button>
+                <button onClick={() => setEditorMode('code')}
+                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500 hover:text-gray-300'}`}>
+                  Kód
+                </button>
+              </div>
+            )}
+          </div>
+          <button onClick={() => setShowPreview(!showPreview)}
+            className="flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C] transition-colors">
+            {showPreview ? <Code className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showPreview ? 'Szerkesztés' : 'Előnézet'}
+          </button>
+        </div>
+        {showPreview ? (
+          <iframe
+            srcDoc={getPreviewHtml()}
+            className="w-full rounded-lg min-h-[250px] max-h-[400px] border-0 bg-white"
+            sandbox="allow-same-origin"
+            title="Email preview"
+          />
+        ) : (
+          editorMode === 'visual' ? (
+            <SimpleRichEditor
+              initialHtml={html}
+              onChange={setHtml}
+              className="min-h-[250px]"
+            />
+          ) : (
+            <textarea
+              value={html}
+              onChange={(e) => setHtml(e.target.value)}
+              placeholder="HTML tartalom..."
+              className={`input-field w-full min-h-[250px] resize-y text-sm font-mono ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`}
+            />
+          )
+        )}
+      </div>
+
+      {/* Küldés gomb */}
+      <div className="flex justify-end">
+        <button onClick={onClose} className="px-4 py-2 text-gray-400 hover:text-white transition-colors mr-3">
+          Mégse
+        </button>
+        <button onClick={handleSend} disabled={sending}
+          className={`flex items-center gap-2 px-6 py-2 rounded-xl font-medium transition-all disabled:opacity-50 ${
+            isModern 
+              ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
+              : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
+          }`}
+        >
+          {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Küldés...</> : <><Send className="w-4 h-4" /> Küldés</>}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const MAIL_FOLDERS = [
   { id: 'inbox', label: 'Bejövő', icon: InboxIcon, count: 0 },
   { id: 'sent', label: 'Elküldött', icon: SendHorizontal, count: 0 },
@@ -46,21 +333,7 @@ export default function EnhancedMailView() {
   const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
-  
-  // Compose state
-  const [composeData, setComposeData] = useState({
-    to: '',
-    subject: '',
-    html: '',
-    cc: '',
-    bcc: '',
-    attachments: []
-  })
   const [sending, setSending] = useState(false)
-  const [selectedTemplate, setSelectedTemplate] = useState(null)
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
-  const [templates, setTemplates] = useState([])
-  const [loadingTemplates, setLoadingTemplates] = useState(false)
   
   const { hasSubscription } = useAuth()
   const { uiMode } = useUI()
@@ -108,10 +381,16 @@ export default function EnhancedMailView() {
     setSelectedEmail(email)
     setLoading(true)
     try {
-      const detail = await getInboxEmail(email.id)
+      let detail = null
+      if (activeFolder === 'inbox') {
+        detail = await getInboxEmail(email.id)
+      } else if (activeFolder === 'sent') {
+        detail = await getSentImapEmail(email.id)
+      }
       setEmailDetail(detail)
     } catch (err) {
-      toast.error(err.message)
+      console.error('Failed to load email detail:', err)
+      toast.error(err.message || 'Hiba az email betöltésekor')
     } finally {
       setLoading(false)
     }
@@ -139,81 +418,6 @@ export default function EnhancedMailView() {
     setReplyTemplate(template.id)
     setReplyHtml(template.html)
     setShowReplyTemplateSelector(false)
-  }
-
-  // Compose functions
-  const loadTemplates = async () => {
-    setLoadingTemplates(true)
-    try {
-      const customTemplates = await getCustomTemplates()
-      setTemplates(customTemplates)
-    } catch (err) {
-      console.error('Failed to load templates:', err)
-      setTemplates([])
-    } finally {
-      setLoadingTemplates(false)
-    }
-  }
-
-  const applyTemplate = (template) => {
-    setSelectedTemplate(template.id)
-    setComposeData(prev => ({
-      ...prev,
-      subject: template.subject || '',
-      html: template.html || ''
-    }))
-    setShowTemplateSelector(false)
-  }
-
-  const handleCompose = () => {
-    setShowCompose(true)
-    setComposeData({
-      to: '',
-      subject: '',
-      html: '',
-      cc: '',
-      bcc: '',
-      attachments: []
-    })
-    setSelectedTemplate(null)
-    loadTemplates()
-  }
-
-  const handleSendEmail = async () => {
-    if (!composeData.to.trim()) return toast.error('Add meg a címzettet')
-    if (!composeData.subject.trim()) return toast.error('Add meg a tárgyat')
-    if (!composeData.html.trim()) return toast.error('Írj valamit az emailbe')
-
-    setSending(true)
-    try {
-      await sendEmail({
-        to: composeData.to,
-        subject: composeData.subject,
-        html: composeData.html,
-        cc: composeData.cc || undefined,
-        bcc: composeData.bcc || undefined,
-        attachments: composeData.attachments.length > 0 ? composeData.attachments : undefined
-      })
-      toast.success('Email elküldve!')
-      setShowCompose(false)
-      setComposeData({
-        to: '',
-        subject: '',
-        html: '',
-        cc: '',
-        bcc: '',
-        attachments: []
-      })
-      setSelectedTemplate(null)
-      // Refresh sent emails if we're in sent folder
-      if (activeFolder === 'sent') {
-        loadEmails()
-      }
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setSending(false)
-    }
   }
 
   const handleSendReply = async () => {
@@ -268,12 +472,19 @@ export default function EnhancedMailView() {
     return d.toLocaleDateString('hu-HU', { month: 'short', day: 'numeric' })
   }
 
+  const handleComposeSuccess = () => {
+    // Refresh sent emails if we're in sent folder
+    if (activeFolder === 'sent') {
+      loadEmails()
+    }
+  }
+
   return (
     <div className={`h-screen flex ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Compose Modal */}
       {showCompose && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl ${isModern ? 'modern-card' : 'glass'} flex flex-col`}>
+          <div className={`w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl ${isModern ? 'modern-card' : 'glass'} flex flex-col`}>
             {/* Compose Header */}
             <div className="flex items-center justify-between p-6 border-b border-white/10">
               <h2 className="text-xl font-semibold text-white">Új levél</h2>
@@ -286,116 +497,12 @@ export default function EnhancedMailView() {
             </div>
 
             {/* Compose Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Template Selector */}
-              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                <button onClick={() => setShowTemplateSelector(!showTemplateSelector)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
-                  <div className="flex items-center gap-3">
-                    <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
-                    <span className="text-sm font-medium">
-                      {selectedTemplate ? templates.find(t => t.id === selectedTemplate)?.name : 'Válassz sablont'}
-                    </span>
-                  </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showTemplateSelector ? 'rotate-180' : ''}`} />
-                </button>
-                {showTemplateSelector && (
-                  <div className="mt-3 grid grid-cols-2 gap-2 fade-in max-h-[300px] overflow-y-auto">
-                    {loadingTemplates ? (
-                      <div className="col-span-2 p-3 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto mb-1 text-gray-400" /><p className="text-xs text-gray-500">Betöltés...</p></div>
-                    ) : templates.length === 0 ? (
-                      <p className="col-span-2 text-xs text-gray-500 text-center py-2">Nincs elérhető sablon</p>
-                    ) : (
-                      templates.map(t => (
-                        <button key={t.id} onClick={() => applyTemplate(t)}
-                          className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${selectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
-                          <p className="text-sm font-medium text-gray-200">{t.name}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Recipient */}
-              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                <label className="block text-xs text-gray-400 mb-2">Címzett *</label>
-                <input
-                  type="email"
-                  value={composeData.to}
-                  onChange={(e) => setComposeData(prev => ({ ...prev, to: e.target.value }))}
-                  placeholder="email@example.com"
-                  className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
-                />
-              </div>
-
-              {/* CC and BCC */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                  <label className="block text-xs text-gray-400 mb-2">CC</label>
-                  <input
-                    type="email"
-                    value={composeData.cc}
-                    onChange={(e) => setComposeData(prev => ({ ...prev, cc: e.target.value }))}
-                    placeholder="cc@example.com"
-                    className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
-                  />
-                </div>
-                <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                  <label className="block text-xs text-gray-400 mb-2">BCC</label>
-                  <input
-                    type="email"
-                    value={composeData.bcc}
-                    onChange={(e) => setComposeData(prev => ({ ...prev, bcc: e.target.value }))}
-                    placeholder="bcc@example.com"
-                    className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
-                  />
-                </div>
-              </div>
-
-              {/* Subject */}
-              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                <label className="block text-xs text-gray-400 mb-2">Tárgy *</label>
-                <input
-                  type="text"
-                  value={composeData.subject}
-                  onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
-                  placeholder="Email tárgya"
-                  className={`w-full px-3 py-2 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'}`}
-                />
-              </div>
-
-              {/* Message */}
-              <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
-                <label className="block text-xs text-gray-400 mb-2">Üzenet *</label>
-                <SimpleRichEditor
-                  initialHtml={composeData.html}
-                  onChange={(html) => setComposeData(prev => ({ ...prev, html }))}
-                  className="min-h-[200px]"
-                />
-              </div>
-            </div>
-
-            {/* Compose Footer */}
-            <div className="flex items-center justify-between p-6 border-t border-white/10">
-              <button
-                onClick={() => setShowCompose(false)}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-              >
-                Mégse
-              </button>
-              <button
-                onClick={handleSendEmail}
-                disabled={sending}
-                className={`flex items-center gap-2 px-6 py-2 rounded-xl font-medium transition-all disabled:opacity-50 ${
-                  isModern 
-                    ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
-                    : 'bg-[#1AA19C] hover:bg-[#2EC4BE] text-white'
-                }`}
-              >
-                {sending ? <><Loader2 className="w-4 h-4 animate-spin" /> Küldés...</> : <><Send className="w-4 h-4" /> Küldés</>}
-              </button>
+            <div className="flex-1 overflow-y-auto p-6">
+              <ComposeTab 
+                isModern={isModern} 
+                onClose={() => setShowCompose(false)}
+                onSendSuccess={handleComposeSuccess}
+              />
             </div>
           </div>
         </div>
@@ -420,7 +527,7 @@ export default function EnhancedMailView() {
         {/* Compose Button */}
         <div className="p-4">
           <button
-            onClick={handleCompose}
+            onClick={() => setShowCompose(true)}
             className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
               isModern 
                 ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
