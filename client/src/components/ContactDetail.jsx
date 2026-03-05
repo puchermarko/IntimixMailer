@@ -1194,8 +1194,12 @@ function ContactJourney({ contact }) {
     
     {/* Reply Modal */}
     {showReply && replyToEmail && (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowReply(false)}>
-        <div className="glass glow rounded-2xl p-6 w-full max-w-2xl fade-in" onClick={(e) => e.stopPropagation()}>
+      <>
+        <div className="fixed top-4 right-4 bg-red-500 text-white p-4 z-[10000] rounded-lg">
+          REPLY MODAL IS OPEN!
+        </div>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={() => setShowReply(false)} style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+          <div className="glass glow rounded-2xl p-6 w-full max-w-2xl fade-in border-2 border-[#2EC4BE]" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'rgba(30,30,30,0.95)' }}>
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-lg font-semibold text-white">Válasz erre az emailre</h3>
             <button onClick={() => setShowReply(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
@@ -1243,6 +1247,7 @@ function ContactJourney({ contact }) {
           </div>
         </div>
       </div>
+      </>
     )}
   </div>
 )
