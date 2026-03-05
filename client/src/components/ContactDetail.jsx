@@ -1195,8 +1195,18 @@ function ContactJourney({ contact }) {
     {/* Reply Modal */}
     {showReply && replyToEmail && (
       <>
-        <div className="fixed top-4 right-4 bg-red-500 text-white p-4 z-[10000] rounded-lg">
-          REPLY MODAL IS OPEN!
+        <div className="absolute top-0 left-0 w-full h-full bg-red-600 z-[10000] flex items-center justify-center">
+          <div className="bg-white text-black p-8 rounded-lg max-w-md">
+            <h2 className="text-2xl font-bold mb-4">REPLY MODAL TEST</h2>
+            <p className="mb-2">Subject: {replyToEmail.subject}</p>
+            <p className="mb-4">Type: {replyToEmail.type}</p>
+            <button 
+              onClick={() => setShowReply(false)}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+            >
+              Close Modal
+            </button>
+          </div>
         </div>
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={() => setShowReply(false)} style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
           <div className="glass glow rounded-2xl p-6 w-full max-w-2xl fade-in border-2 border-[#2EC4BE]" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'rgba(30,30,30,0.95)' }}>
