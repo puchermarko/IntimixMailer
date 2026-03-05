@@ -115,6 +115,10 @@ function InboxTab({ isModern }) {
   const [sending, setSending] = useState(false)
   const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const [showCreateContact, setShowCreateContact] = useState(false)
+  const [replyTemplate, setReplyTemplate] = useState(null)
+  const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
+  const [replyTemplates, setReplyTemplates] = useState([])
+  const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   const [newContactName, setNewContactName] = useState('')
   const [creatingContact, setCreatingContact] = useState(false)
   const limit = 50
@@ -205,10 +209,31 @@ function InboxTab({ isModern }) {
     }
   }
 
-  const handleReply = () => {
+  const handleReply = async () => {
     setShowReply(true)
     setReplyHtml('')
+    setReplyTemplate(null)
+    setShowReplyTemplateSelector(false)
+    
+    // Load templates for reply
+    setLoadingReplyTemplates(true)
+    try {
+      const templates = await getCustomTemplates()
+      setReplyTemplates(templates)
+    } catch (err) {
+      console.error('Failed to load templates:', err)
+      setReplyTemplates([])
+    } finally {
+      setLoadingReplyTemplates(false)
+    }
+    
     setTimeout(() => replyRef.current?.focus(), 100)
+  }
+
+  const applyReplyTemplate = (template) => {
+    setReplyTemplate(template.id)
+    setReplyHtml(template.html)
+    setShowReplyTemplateSelector(false)
   }
 
   const handleSendReply = async () => {
@@ -405,6 +430,37 @@ function InboxTab({ isModern }) {
                   </div>
                 </div>
                 <button onClick={() => setShowReply(false)} className="text-gray-500 hover:text-gray-300"><X className="w-4 h-4" /></button>
+              </div>
+
+              {/* Template Selector */}
+              <div className={isModern ? 'modern-card p-3' : 'glass rounded-xl p-3'}>
+                <button onClick={() => setShowReplyTemplateSelector(!showReplyTemplateSelector)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-3.5 h-3.5 text-[#1AA19C]" />
+                    <span className="text-sm">
+                      {replyTemplate ? replyTemplates.find(t => t.id === replyTemplate)?.name : 'Válassz sablont (opcionális)'}
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showReplyTemplateSelector ? 'rotate-180' : ''}`} />
+                </button>
+                {showReplyTemplateSelector && (
+                  <div className="mt-2 space-y-1 fade-in max-h-[200px] overflow-y-auto">
+                    {loadingReplyTemplates ? (
+                      <div className="p-3 text-center"><Loader2 className="w-4 h-4 animate-spin mx-auto mb-1 text-gray-400" /><p className="text-xs text-gray-500">Betöltés...</p></div>
+                    ) : replyTemplates.length === 0 ? (
+                      <p className="text-xs text-gray-500 text-center py-2">Nincs elérhető sablon</p>
+                    ) : (
+                      replyTemplates.map(t => (
+                        <button key={t.id} onClick={() => applyReplyTemplate(t)}
+                          className={`w-full p-2 rounded-lg text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${replyTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
+                          <p className="text-sm font-medium text-gray-200">{t.name}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               
               {editorMode === 'visual' ? (
