@@ -1,6 +1,6 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect, useMemo } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken } from '../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getContactEmails, getContactReceivedEmails } from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth, useUI } from '../App'
 import {
@@ -44,6 +44,9 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
   const { uiMode } = useUI()
   const [contact, setContact] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [contactEmails, setContactEmails] = useState([])
+  const [contactReceivedEmails, setContactReceivedEmails] = useState([])
+  const [loadingContactEmails, setLoadingContactEmails] = useState(false)
   const [activeTab, setActiveTab] = useState('emails')
   const [expandedEmail, setExpandedEmail] = useState(null)
   const [emailDetail, setEmailDetail] = useState(null)
@@ -70,6 +73,10 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
       setLoading(true)
       try {
         const data = await getContact(contactId)
+        console.log('Contact data loaded:', data)
+        console.log('Contact emails:', data.emails)
+        console.log('Contact sentImap:', data.sentImap)
+        console.log('Contact received:', data.received)
         setContact(data)
       } catch (err) {
         toast.error(err.message)
@@ -79,6 +86,43 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
     }
     load()
   }, [contactId])
+
+  useEffect(() => {
+    const loadContactEmails = async () => {
+      if (!contact) return
+      
+      setLoadingContactEmails(true)
+      try {
+        console.log('Fetching emails for contact:', contactId)
+        
+        // Fetch sent emails
+        try {
+          const sentData = await getContactEmails(contactId)
+          console.log('Contact sent emails:', sentData)
+          setContactEmails(sentData.emails || [])
+        } catch (err) {
+          console.warn('Failed to fetch contact sent emails:', err)
+          setContactEmails([])
+        }
+        
+        // Fetch received emails
+        try {
+          const receivedData = await getContactReceivedEmails(contactId)
+          console.log('Contact received emails:', receivedData)
+          setContactReceivedEmails(receivedData.emails || [])
+        } catch (err) {
+          console.warn('Failed to fetch contact received emails:', err)
+          setContactReceivedEmails([])
+        }
+      } catch (err) {
+        toast.error(err.message)
+      } finally {
+        setLoadingContactEmails(false)
+      }
+    }
+    
+    loadContactEmails()
+  }, [contact, contactId])
 
   const handleExpandEmail = async (emailId) => {
     // If enhanced mail view is enabled, navigate to it instead of expanding inline
@@ -262,16 +306,15 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
       {/* Fülek */}
       <div className={`flex gap-1 mb-6 overflow-x-auto scrollbar-hide ${isModern ? 'p-1 bg-white/5 rounded-2xl w-fit mx-auto sm:mx-0' : '-mx-1 px-1'}`}>
         {[
-          { id: 'emails', icon: SendHorizontal, label: 'Küldött', count: (contact.emails?.length || 0) + (contact.sentImap?.length || 0) },
-          { id: 'received', icon: Inbox, label: 'Fogadott', count: contact.received?.length || 0 },
+          { id: 'emails', icon: SendHorizontal, label: 'Küldött', count: (contactEmails?.length || 0) + (contact.sentImap?.length || 0) },
+          { id: 'received', icon: Inbox, label: 'Fogadott', count: contactReceivedEmails?.length || 0 },
           { id: 'files', icon: Paperclip, label: 'Fájlok', count: contact.attachments?.length || 0 },
           { id: 'quotes', icon: Receipt, label: 'Árajánlatok', count: contact.quotes?.length || 0 },
-          { id: 'journey', icon: TrendingUp, label: 'Útja', count: null },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               activeTab === tab.id
                 ? (isModern ? 'bg-[#2EC4BE] text-black shadow-lg shadow-[#2EC4BE]/20' : 'bg-[#1AA19C]/15 text-[#2EC4BE] border border-[#1AA19C]/20')
                 : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
@@ -288,7 +331,7 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
 
       {/* Küldött levelek fül (helyi + IMAP összefésülve) */}
       {activeTab === 'emails' && (() => {
-        const localEmails = (contact.emails || []).map(e => ({ ...e, _source: 'local', _date: e.sent_at }))
+        const localEmails = (contactEmails || []).map(e => ({ ...e, _source: 'local', _date: e.sent_at }))
         const imapEmails = (contact.sentImap || []).map(e => ({ ...e, _source: 'imap', _date: e.date }))
         const allSent = [...localEmails, ...imapEmails].sort((a, b) => new Date(b._date) - new Date(a._date))
 
@@ -406,13 +449,13 @@ export default function ContactDetail({ contactId, onBack, onEdit, onNavigate, e
       {/* Fogadott levelek fül */}
       {activeTab === 'received' && (
         <div className="space-y-2">
-          {(!contact.received || contact.received.length === 0) ? (
+          {(!contactReceivedEmails || contactReceivedEmails.length === 0) ? (
             <div className="glass rounded-xl p-10 text-center">
               <Inbox className="w-10 h-10 text-gray-600 mx-auto mb-3" />
               <p className="text-gray-400 text-sm">Még nem érkezett email ettől a kapcsolattól</p>
             </div>
           ) : (
-            contact.received.map(email => (
+            contactReceivedEmails.map(email => (
               <div key={email.id} className="glass rounded-xl overflow-hidden">
                 <button
                   onClick={() => handleExpandReceived(email.id)}

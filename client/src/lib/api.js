@@ -245,6 +245,20 @@ export async function deleteContact(id) {
   return data
 }
 
+export async function getContactEmails(id) {
+  const res = await fetch(`${API_BASE}/contacts/${id}/emails`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch contact emails')
+  return data
+}
+
+export async function getContactReceivedEmails(id) {
+  const res = await fetch(`${API_BASE}/contacts/${id}/received-emails`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch contact received emails')
+  return data
+}
+
 export async function getEmailDetail(id) {
   const res = await fetch(`${API_BASE}/emails/${id}`, { headers: getHeaders() })
   const data = await res.json()
