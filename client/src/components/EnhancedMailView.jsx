@@ -403,11 +403,28 @@ export default function EnhancedMailView({ onNavigate }) {
         data.emails = []
       }
       
-      setEmails(data.emails || [])
+      // Filter out emails that are in client-side trash to prevent re-sync showing deleted emails
+      let finalEmails = data.emails || []
+      if (activeFolder === 'inbox' || activeFolder === 'sent') {
+        const trashIds = new Set(trashEmails.map(e => e.id))
+        const trashMessageIds = new Set(trashEmails.map(e => e.message_id).filter(Boolean))
+        const beforeCount = finalEmails.length
+        finalEmails = finalEmails.filter(e => {
+          if (trashIds.has(e.id)) return false
+          if (e.message_id && trashMessageIds.has(e.message_id)) return false
+          return true
+        })
+        if (finalEmails.length < beforeCount) {
+          console.log(`Filtered ${beforeCount - finalEmails.length} trashed emails from ${activeFolder}`)
+        }
+      }
+
+      setEmails(finalEmails)
+      const filteredTotal = (data.total || 0) - ((data.emails || []).length - finalEmails.length)
       setPagination({
         currentPage: page,
-        totalPages: data.totalPages || Math.ceil((data.total || 0) / pagination.limit),
-        total: data.total || 0,
+        totalPages: Math.ceil(Math.max(filteredTotal, 0) / pagination.limit) || data.totalPages || 0,
+        total: Math.max(filteredTotal, 0),
         limit: pagination.limit
       })
       console.log('Final emails array:', data.emails || [])
@@ -1289,9 +1306,10 @@ export default function EnhancedMailView({ onNavigate }) {
             })()}
           </div>
 
-          {/* Reply / Forward Section */}
+          {/* Reply / Forward Section — full-screen on mobile */}
           {showReply && (
-            <div className="border-t border-white/10 p-4 sm:p-6">
+            <div className="fixed inset-0 z-40 sm:static sm:z-auto flex flex-col bg-[#0f1115] sm:bg-transparent border-t sm:border-t border-white/10">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg font-medium text-white">
@@ -1421,21 +1439,23 @@ export default function EnhancedMailView({ onNavigate }) {
                 <button
                   onClick={handleSendReply}
                   disabled={sending || (isForwarding && !forwardTo.trim())}
-                  className="flex items-center gap-2 px-6 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-6 py-2.5 min-h-[44px] bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors disabled:opacity-50"
                 >
                   {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   {isForwarding ? 'Továbbítás' : 'Válasz küldése'}
                 </button>
               </div>
             </div>
+            </div>
           )}
 
           {!showReply && (
-            <div className="sm:hidden sticky bottom-0 border-t border-white/10 bg-[#0f1115]/95 backdrop-blur-md p-3 grid grid-cols-4 gap-2">
-              <button onClick={handleReply} className="min-h-[48px] rounded-xl bg-[#1AA19C] text-white flex items-center justify-center"><Reply className="w-4 h-4" /></button>
-              <button onClick={handleReplyAll} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><ReplyAll className="w-4 h-4" /></button>
-              <button onClick={handleForward} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><Forward className="w-4 h-4" /></button>
-              <button onClick={() => setSelectedEmail(null)} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></button>
+            <div className="sm:hidden sticky bottom-0 border-t border-white/10 bg-[#0f1115]/95 backdrop-blur-md p-2 grid grid-cols-5 gap-1.5">
+              <button onClick={handleReply} className="min-h-[52px] rounded-xl bg-[#1AA19C] text-white flex flex-col items-center justify-center gap-0.5"><Reply className="w-4 h-4" /><span className="text-[9px] font-medium">Válasz</span></button>
+              <button onClick={handleReplyAll} className="min-h-[52px] rounded-xl bg-white/10 text-white flex flex-col items-center justify-center gap-0.5"><ReplyAll className="w-4 h-4" /><span className="text-[9px] font-medium">Mind</span></button>
+              <button onClick={handleForward} className="min-h-[52px] rounded-xl bg-white/10 text-white flex flex-col items-center justify-center gap-0.5"><Forward className="w-4 h-4" /><span className="text-[9px] font-medium">Továbbít</span></button>
+              <button onClick={() => handleDelete(emailDetail.id)} className="min-h-[52px] rounded-xl bg-white/10 text-red-400 flex flex-col items-center justify-center gap-0.5"><Trash2 className="w-4 h-4" /><span className="text-[9px] font-medium">Törlés</span></button>
+              <button onClick={() => { setSelectedEmail(null); setEmailDetail(null); setShowReply(false) }} className="min-h-[52px] rounded-xl bg-white/10 text-white flex flex-col items-center justify-center gap-0.5"><ArrowLeft className="w-4 h-4" /><span className="text-[9px] font-medium">Vissza</span></button>
             </div>
           )}
         </div>

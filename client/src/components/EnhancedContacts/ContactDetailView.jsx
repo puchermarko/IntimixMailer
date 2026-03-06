@@ -94,13 +94,14 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const [newFolderName, setNewFolderName] = useState('')
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState('home')
-  const [fileViewMode, setFileViewMode] = useState('grid') // 'grid' | 'list'
+  const [fileViewMode, setFileViewMode] = useState('grid') // 'grid' | 'list' | 'gallery'
   const [fileSearch, setFileSearch] = useState('')
   const [fileSort, setFileSort] = useState('name')
   const [renamingFolderId, setRenamingFolderId] = useState(null)
   const [renamingFolderName, setRenamingFolderName] = useState('')
   const [renamingFileId, setRenamingFileId] = useState(null)
   const [renamingFileName, setRenamingFileName] = useState('')
+  const [contextMenu, setContextMenu] = useState(null) // { x, y, item, type: 'file'|'folder' }
   const fileInputRef = useRef(null)
 
   const [dlToken, setDlToken] = useState('')
@@ -947,11 +948,14 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                     <option value="type">Típus szerint</option>
                   </select>
                   <div className="flex bg-white/5 rounded-lg p-0.5">
-                    <button onClick={() => setFileViewMode('grid')} className={`p-1.5 rounded transition-all ${fileViewMode === 'grid' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`}>
+                    <button onClick={() => setFileViewMode('grid')} className={`p-1.5 rounded transition-all ${fileViewMode === 'grid' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`} title="Rács nézet">
                       <Grid className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setFileViewMode('list')} className={`p-1.5 rounded transition-all ${fileViewMode === 'list' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`}>
+                    <button onClick={() => setFileViewMode('list')} className={`p-1.5 rounded transition-all ${fileViewMode === 'list' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`} title="Lista nézet">
                       <List className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setFileViewMode('gallery')} className={`p-1.5 rounded transition-all ${fileViewMode === 'gallery' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`} title="Galéria nézet">
+                      <Image className="w-4 h-4" />
                     </button>
                   </div>
                   <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
@@ -976,6 +980,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                     key={folder.id}
                     className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-3 sm:p-4 group cursor-pointer hover:border-[#2EC4BE]/30 transition-all`}
                     onClick={() => setSelectedFolder(folder.id)}
+                    onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item: folder, type: 'folder' }) }}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -1029,7 +1034,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                 <p className="text-gray-400 text-sm">Ez a mappa üres</p>
                 <p className="text-xs text-gray-600 mt-1">Tölts fel fájlokat vagy hozz létre almappákat</p>
               </div>
-            ) : fileViewMode === 'grid' ? (
+            ) : fileViewMode === 'gallery' ? null : fileViewMode === 'grid' ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {allFiles.map(item => {
                   const isEmail = item._type === 'email'
@@ -1040,7 +1045,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                   const fileName = isEmail ? item.filename : item.name
 
                   return (
-                    <div key={`${item._type}-${item.id}`} className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-3 sm:p-4 group hover:border-[#1AA19C]/20 transition-all`}>
+                    <div key={`${item._type}-${item.id}`} className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-3 sm:p-4 group hover:border-[#1AA19C]/20 transition-all`} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, item, type: 'file', isEmail }) }}>
                       <div
                         className="w-full h-28 sm:h-32 rounded-lg bg-[#1e2128] flex items-center justify-center mb-3 overflow-hidden cursor-pointer"
                         onClick={() => canPreview && setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })}
@@ -1200,6 +1205,97 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                 })}
               </div>
             )}
+
+            {/* Gallery view — large preview cards for images/PDFs */}
+            {fileViewMode === 'gallery' && allFiles.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {allFiles.map(item => {
+                  const isEmail = item._type === 'email'
+                  const mimeType = isEmail ? item.mimetype : item.type
+                  const fileUrl = isEmail ? getAttUrl(item) : item.dataUrl
+                  const fileName = isEmail ? item.filename : item.name
+                  const isImage = mimeType?.startsWith('image/')
+                  const isPdf = mimeType?.includes('pdf')
+
+                  return (
+                    <div
+                      key={`${item._type}-${item.id}`}
+                      className={`${isModern ? 'modern-card' : 'glass rounded-xl'} overflow-hidden group hover:border-[#1AA19C]/20 transition-all cursor-pointer`}
+                      onClick={() => setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setContextMenu({ x: e.clientX, y: e.clientY, item, type: 'file', isEmail })
+                      }}
+                    >
+                      <div className="w-full h-48 sm:h-56 bg-[#1e2128] flex items-center justify-center overflow-hidden">
+                        {isImage && fileUrl ? (
+                          <img src={fileUrl} alt={fileName} className="w-full h-full object-cover" />
+                        ) : isPdf ? (
+                          <div className="text-center">
+                            <FileText className="w-12 h-12 text-red-400 mx-auto mb-2" />
+                            <p className="text-xs text-gray-500">PDF dokumentum</p>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <File className="w-12 h-12 text-gray-500 mx-auto mb-2" />
+                            <p className="text-xs text-gray-500">{mimeType || 'Fájl'}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-3 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-200 font-medium truncate">{fileName}</p>
+                          <p className="text-[11px] text-gray-500">{formatSize(item.size)} · {formatDate(isEmail ? item.uploaded_at : item.created_at)}</p>
+                        </div>
+                        {isEmail && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 shrink-0">Email</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Context Menu */}
+            {contextMenu && (
+              <>
+                <button className="fixed inset-0 z-50" onClick={() => setContextMenu(null)} />
+                <div
+                  className="fixed z-50 w-48 rounded-xl bg-[#1e2128] border border-white/10 shadow-2xl py-1.5 overflow-hidden"
+                  style={{ left: Math.min(contextMenu.x, window.innerWidth - 200), top: Math.min(contextMenu.y, window.innerHeight - 250) }}
+                >
+                  {contextMenu.type === 'file' && (
+                    <>
+                      <button onClick={() => { setPreviewAttachment(contextMenu.isEmail ? contextMenu.item : { ...contextMenu.item, mimetype: contextMenu.item.type, filename: contextMenu.item.name }); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><Eye className="w-3.5 h-3.5 text-gray-400" />Megnyitás</button>
+                      {!contextMenu.isEmail && (
+                        <>
+                          <button onClick={() => { setRenamingFileId(contextMenu.item.id); setRenamingFileName(contextMenu.item.name); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><Edit3 className="w-3.5 h-3.5 text-gray-400" />Átnevezés</button>
+                          <button onClick={() => { handleDuplicateFile(contextMenu.item); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><Plus className="w-3.5 h-3.5 text-gray-400" />Duplikálás</button>
+                          <div className="mx-3 my-1 border-t border-white/5" />
+                          <button onClick={() => { handleDeleteFile(contextMenu.item.id); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2.5"><Trash2 className="w-3.5 h-3.5" />Törlés</button>
+                        </>
+                      )}
+                      {contextMenu.isEmail && (
+                        <button onClick={() => { handleSaveEmailAttachment(contextMenu.item, getAttUrl(contextMenu.item)); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><FolderPlus className="w-3.5 h-3.5 text-gray-400" />Mentés fájlkezelőbe</button>
+                      )}
+                    </>
+                  )}
+                  {contextMenu.type === 'folder' && (
+                    <>
+                      <button onClick={() => { setSelectedFolder(contextMenu.item.id); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><FolderOpen className="w-3.5 h-3.5 text-gray-400" />Megnyitás</button>
+                      <button onClick={() => { setRenamingFolderId(contextMenu.item.id); setRenamingFolderName(contextMenu.item.name); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><Edit3 className="w-3.5 h-3.5 text-gray-400" />Átnevezés</button>
+                      <div className="mx-3 my-1 border-t border-white/5" />
+                      <button onClick={() => { handleDeleteFolder(contextMenu.item.id); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2.5"><Trash2 className="w-3.5 h-3.5" />Törlés</button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Finder-style Status Bar */}
+            <div className={`${isModern ? 'modern-card' : 'glass rounded-xl'} px-4 py-2.5 flex items-center justify-between text-[11px] text-gray-500`}>
+              <span>{subFolders.length} mappa, {allFiles.length} fájl</span>
+              <span>{formatSize(allFiles.reduce((sum, f) => sum + (f.size || 0), 0))} összesen</span>
+            </div>
 
             {/* Mobile FAB for quick upload */}
             <div className="sm:hidden fixed bottom-6 right-6 z-40 flex flex-col gap-3">

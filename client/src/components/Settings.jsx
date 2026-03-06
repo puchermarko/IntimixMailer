@@ -10,7 +10,7 @@ import {
   Lock, UserX, Layout, Monitor, Mail
 } from 'lucide-react'
 
-export default function Settings({ onStartTour, enhancedMail, setEnhancedMail }) {
+export default function Settings({ onStartTour }) {
   const [testing, setTesting] = useState(false)
   const [smtpStatus, setSmtpStatus] = useState(null)
   const [activeTab, setActiveTab] = useState('general')
@@ -279,7 +279,7 @@ export default function Settings({ onStartTour, enhancedMail, setEnhancedMail })
   const tabs = [
     { id: 'account', label: 'Fiók' },
     { id: 'general', label: 'Általános' },
-    { id: 'branding', label: 'Márka' },
+    { id: 'branding', label: 'Cég & Márka' },
     { id: 'config', label: 'Konfiguráció' },
     { id: 'subscription', label: 'Előfizetés' },
     { id: 'backup', label: 'Mentés' },
@@ -467,23 +467,6 @@ export default function Settings({ onStartTour, enhancedMail, setEnhancedMail })
                   }`}
                 />
               </button>
-            </div>
-          </div>
-
-          {/* Enhanced Mail Info */}
-          <div className={`${isModern ? 'modern-card p-6 border-[#2EC4BE]/20' : 'glass rounded-xl p-6 border border-[#2EC4BE]/20'} relative overflow-hidden group`}>
-            <div className="absolute inset-0 bg-gradient-to-br from-[#2EC4BE]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="flex items-start gap-3 relative">
-              <div className="w-10 h-10 rounded-xl bg-[#2EC4BE]/10 flex items-center justify-center shrink-0">
-                <Mail className="w-5 h-5 text-[#2EC4BE]" />
-              </div>
-              <div>
-                <h3 className="text-base font-semibold text-white">Továbbfejlesztett Levelezés</h3>
-                <p className="text-xs text-gray-400 mt-1">Az enhanced mail view mostantól az alapértelmezett és állandó levelező felület.</p>
-                <p className="text-xs text-gray-500 mt-3 leading-relaxed">
-                  A régi levelezőre váltás felhasználói szinten már nem érhető el. Ha szükséges, az admin a Globális Beállítások alatt tudja ideiglenesen visszakapcsolni a legacy nézetet minden felhasználónak.
-                </p>
-              </div>
             </div>
           </div>
 

@@ -50,7 +50,7 @@ export default function Dashboard() {
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,
-    settings: <Settings onStartTour={startTour} enhancedMail={effectiveEnhancedMail} setEnhancedMail={setUseEnhancedMail} />,
+    settings: <Settings onStartTour={startTour} />,
     users: <UserManagement />,
     'global-settings': <GlobalSettings />,
   }
