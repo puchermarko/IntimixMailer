@@ -9,7 +9,7 @@ import {
   Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
   TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink, Reply,
   Forward, Send, FolderPlus, Upload, FolderOpen, Trash2, MoreVertical, Activity,
-  Home, List, Grid, ChevronRight, Plus
+  Home, List, Grid, ChevronRight, Plus, Search
 } from 'lucide-react'
 import SimpleRichEditor from '../SimpleRichEditor'
 import {
