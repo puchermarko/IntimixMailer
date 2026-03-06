@@ -1,5 +1,5 @@
 // Enhanced Mail View - Apple Mail inspired UX
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   Inbox as InboxIcon, SendHorizontal, PenLine, Users, RefreshCw, Search, X,
   Paperclip, ChevronLeft, ChevronRight, ArrowLeft, Download, User, Clock,
@@ -362,6 +362,10 @@ export default function EnhancedMailView({ onNavigate }) {
   const { hasSubscription } = useAuth()
   
   const emailListRef = useRef(null)
+  const syncIntervalRef = useRef(null)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState(null)
+  const replyRef = useRef(null)
 
   // Load emails for current folder
   const loadEmails = async (page = 1) => {
@@ -419,6 +423,47 @@ export default function EnhancedMailView({ onNavigate }) {
       setLoading(false)
     }
   }
+
+  // Sync IMAP then reload email list (for inbox/sent)
+  const syncAndLoad = useCallback(async (page = 1, silent = false) => {
+    if (syncing) return
+    if (!silent) setSyncing(true)
+    else setSyncing(true) // always show indicator briefly
+    try {
+      if (activeFolder === 'inbox') {
+        await syncInbox()
+      } else if (activeFolder === 'sent') {
+        await syncSent()
+      }
+      setLastSyncTime(new Date())
+    } catch (err) {
+      // Sync failure is non-fatal — we still load cached emails
+      console.warn('Sync failed (will load cached):', err.message)
+    } finally {
+      setSyncing(false)
+    }
+    await loadEmails(page)
+  }, [activeFolder, searchQuery, pagination.limit, syncing])
+
+  // Auto-sync every 60 seconds while tab is active
+  useEffect(() => {
+    // Clear any existing interval when folder changes
+    if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
+
+    // Only auto-sync for inbox and sent
+    if (activeFolder === 'inbox' || activeFolder === 'sent') {
+      syncIntervalRef.current = setInterval(() => {
+        // Only sync if the tab is visible (save battery on mobile)
+        if (!document.hidden) {
+          syncAndLoad(pagination.currentPage, true)
+        }
+      }, 60000) // 60 seconds
+    }
+
+    return () => {
+      if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
+    }
+  }, [activeFolder, syncAndLoad, pagination.currentPage])
 
   // Filter emails based on search query
   const filteredEmails = useMemo(() => {
@@ -490,7 +535,12 @@ export default function EnhancedMailView({ onNavigate }) {
   useEffect(() => {
     // Reset pagination when changing folders
     setPagination(prev => ({ ...prev, currentPage: 1 }))
-    loadEmails(1)
+    // Sync IMAP on folder switch for inbox/sent; plain load for others
+    if (activeFolder === 'inbox' || activeFolder === 'sent') {
+      syncAndLoad(1)
+    } else {
+      loadEmails(1)
+    }
   }, [activeFolder])
 
   // Trigger loadEmails when search query changes (for inbox and sent)
@@ -735,9 +785,9 @@ export default function EnhancedMailView({ onNavigate }) {
   }
 
   const handleComposeSuccess = () => {
-    // Refresh sent emails if we're in sent folder
+    // Sync & refresh sent emails after composing
     if (activeFolder === 'sent') {
-      loadEmails()
+      syncAndLoad(1)
     }
   }
 
@@ -937,11 +987,17 @@ export default function EnhancedMailView({ onNavigate }) {
               <button
                 onClick={() => {
                   setPagination(prev => ({ ...prev, currentPage: 1 }))
-                  loadEmails(1)
+                  if (activeFolder === 'inbox' || activeFolder === 'sent') {
+                    syncAndLoad(1)
+                  } else {
+                    loadEmails(1)
+                  }
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                disabled={syncing}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
+                title={lastSyncTime ? `Utolsó szinkronizálás: ${lastSyncTime.toLocaleTimeString('hu-HU')}` : 'Szinkronizálás'}
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[#2EC4BE]' : ''}`} />
               </button>
             <button
               onClick={() => setViewMode(viewMode === 'list' ? 'conversation' : 'list')}
@@ -949,6 +1005,20 @@ export default function EnhancedMailView({ onNavigate }) {
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
+          </div>
+          {/* Sync status indicator */}
+          <div className="flex items-center gap-2 mt-2">
+            {syncing && (
+              <div className="flex items-center gap-1.5 text-[11px] text-[#2EC4BE]">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Szinkronizálás...</span>
+              </div>
+            )}
+            {!syncing && lastSyncTime && (
+              <span className="text-[11px] text-gray-600">
+                Szinkronizálva: {lastSyncTime.toLocaleTimeString('hu-HU', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto" ref={emailListRef}>
