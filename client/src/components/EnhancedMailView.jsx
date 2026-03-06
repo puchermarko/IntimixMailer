@@ -317,6 +317,7 @@ export default function EnhancedMailView({ onNavigate }) {
   const { isAdmin, email, logout } = useAuth()
   const { uiMode } = useUI()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showMobileFolders, setShowMobileFolders] = useState(false)
 
   const isModern = uiMode === 'modern'
 
@@ -853,21 +854,21 @@ export default function EnhancedMailView({ onNavigate }) {
     <div className={`h-screen flex flex-col ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'} text-[#e0e2e7]`}>
       {/* Compose Modal */}
       {showCompose && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className={`w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl ${isModern ? 'modern-card' : 'glass'} flex flex-col`}>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+          <div className={`w-full sm:max-w-6xl max-h-[100vh] sm:max-h-[90vh] overflow-hidden rounded-t-2xl sm:rounded-2xl ${isModern ? 'modern-card' : 'glass'} flex flex-col`}>
             {/* Compose Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
-              <h2 className="text-xl font-semibold text-white">Új levél</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/10">
+              <h2 className="text-lg sm:text-xl font-semibold text-white">Új levél</h2>
               <button
                 onClick={() => setShowCompose(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/10 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Compose Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-6">
               <ComposeTab 
                 isModern={isModern} 
                 onClose={() => setShowCompose(false)}
@@ -915,13 +916,13 @@ export default function EnhancedMailView({ onNavigate }) {
       {/* Main Layout */}
 
       {/* Email Content Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Email Sidebar */}
-        <div className={`${sidebarCollapsed ? 'w-16' : 'w-64'} border-r border-white/10 flex flex-col transition-all duration-300`}>
+        <div className={`${showMobileFolders ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-30 w-72 lg:w-auto ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'} border-r border-white/10 flex flex-col transition-all duration-300 ${isModern ? 'bg-[#0f1115]' : 'bg-[#1a1d23]'}`}>
           {/* Compose Button */}
-          <div className="p-4">
+          <div className="p-4 pt-20 lg:pt-4">
             <button
-              onClick={() => setShowCompose(true)}
+              onClick={() => { setShowCompose(true); setShowMobileFolders(false) }}
               className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                 isModern 
                   ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' 
@@ -942,7 +943,7 @@ export default function EnhancedMailView({ onNavigate }) {
                 return (
                   <button
                     key={folder.id}
-                    onClick={() => setActiveFolder(folder.id)}
+                    onClick={() => { setActiveFolder(folder.id); setShowMobileFolders(false) }}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
                       isActive
                         ? isModern 
@@ -967,11 +968,24 @@ export default function EnhancedMailView({ onNavigate }) {
           </div>
         </div>
 
+        {showMobileFolders && (
+          <button
+            onClick={() => setShowMobileFolders(false)}
+            className="lg:hidden absolute inset-0 bg-black/40 z-20"
+          />
+        )}
+
         {/* Email List */}
-        <div className={`border-r border-white/10 flex flex-col ${selectedEmail ? 'w-96' : 'flex-1'}`}>
+        <div className={`border-r border-white/10 flex flex-col ${selectedEmail ? 'hidden lg:flex lg:w-96' : 'flex flex-1 w-full'}`}>
           {/* List Header */}
-          <div className="p-4 border-b border-white/10">
+          <div className="p-3 sm:p-4 border-b border-white/10 sticky top-0 bg-inherit z-10">
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowMobileFolders(true)}
+                className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <Sidebar className="w-4 h-4" />
+              </button>
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
@@ -979,7 +993,7 @@ export default function EnhancedMailView({ onNavigate }) {
                   placeholder="Keresés..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 rounded-lg text-sm ${
+                  className={`w-full pl-10 pr-4 py-3 sm:py-2 rounded-lg text-base sm:text-sm ${
                     isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5'
                   }`}
                 />
@@ -994,18 +1008,18 @@ export default function EnhancedMailView({ onNavigate }) {
                   }
                 }}
                 disabled={syncing}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors relative"
+                className="p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/10 rounded-lg transition-colors relative"
                 title={lastSyncTime ? `Utolsó szinkronizálás: ${lastSyncTime.toLocaleTimeString('hu-HU')}` : 'Szinkronizálás'}
               >
                 <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[#2EC4BE]' : ''}`} />
               </button>
-            <button
-              onClick={() => setViewMode(viewMode === 'list' ? 'conversation' : 'list')}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
+              <button
+                onClick={() => setViewMode(viewMode === 'list' ? 'conversation' : 'list')}
+                className="hidden sm:flex p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
           {/* Sync status indicator */}
           <div className="flex items-center gap-2 mt-2">
             {syncing && (
@@ -1043,7 +1057,7 @@ export default function EnhancedMailView({ onNavigate }) {
                 <div
                   key={email.id}
                   onClick={() => openEmail(email)}
-                  className={`p-4 hover:bg-white/5 cursor-pointer transition-colors ${
+                  className={`p-4 hover:bg-white/5 cursor-pointer transition-colors min-h-[76px] ${
                     selectedEmail?.id === email.id ? (isModern ? 'bg-[#2EC4BE]/10' : 'bg-white/10') : ''
                   }`}
                 >
@@ -1058,14 +1072,14 @@ export default function EnhancedMailView({ onNavigate }) {
                       className="mt-1 rounded border-gray-600 bg-white/5 text-[#2EC4BE] focus:ring-[#2EC4BE]"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between mb-1 gap-3">
                         <span className="font-medium text-gray-200 truncate">
                           {activeFolder === 'sent' 
                             ? (email.recipient || email.to_address || email.recipient_email || 'Nincs címzett')
                             : (email.from_name || email.from_address)
                           }
                         </span>
-                        <span className="text-xs text-gray-500">{formatDate(email.date)}</span>
+                        <span className="text-xs text-gray-500 shrink-0">{formatDate(email.date)}</span>
                       </div>
                       <div className="text-sm font-medium text-gray-300 truncate mb-1">
                         {email.subject}
@@ -1143,24 +1157,36 @@ export default function EnhancedMailView({ onNavigate }) {
 
       {/* Email Detail */}
       {selectedEmail && emailDetail && (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col w-full">
           {/* Email Header */}
-          <div className="p-6 border-b border-white/10">
+          <div className="p-4 sm:p-6 border-b border-white/10 sticky top-0 bg-inherit z-10">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-xl font-semibold text-white">{emailDetail.subject}</h1>
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  onClick={() => {
+                    setSelectedEmail(null)
+                    setEmailDetail(null)
+                    setShowReply(false)
+                  }}
+                  className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] hover:bg-white/10 rounded-lg transition-colors shrink-0"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h1 className="text-lg sm:text-xl font-semibold text-white truncate">{emailDetail.subject}</h1>
+              </div>
               <button
                 onClick={() => {
                   setSelectedEmail(null)
                   setEmailDetail(null)
                   setShowReply(false)
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="hidden lg:flex p-2 hover:bg-white/10 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             
-            <div className="flex items-center gap-4 text-sm text-gray-400">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-400">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-400 flex items-center gap-1.5">
                   <Reply className="w-3.5 h-3.5" />
@@ -1189,24 +1215,24 @@ export default function EnhancedMailView({ onNavigate }) {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="hidden sm:flex flex-wrap items-center gap-2 mt-4">
               <button
                 onClick={handleReply}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors text-sm"
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors text-sm"
               >
                 <Reply className="w-4 h-4" />
                 <span className="hidden sm:inline">Válasz</span>
               </button>
               <button 
                 onClick={handleReplyAll}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
               >
                 <ReplyAll className="w-4 h-4" />
                 <span className="hidden sm:inline">Válasz mindenkinek</span>
               </button>
               <button 
                 onClick={handleForward}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm">
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm">
                 <Forward className="w-4 h-4" />
                 <span className="hidden sm:inline">Továbbítás</span>
               </button>
@@ -1216,14 +1242,14 @@ export default function EnhancedMailView({ onNavigate }) {
                   const email = activeFolder === 'sent' ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient) : (emailDetail.from_address || emailDetail.sender);
                   onNavigate('contacts', { name, email });
                 }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-blue-400 text-sm"
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-blue-400 text-sm"
               >
                 <UserPlus className="w-4 h-4" />
                 <span className="hidden md:inline">Hozzáadás a kapcsolatokhoz</span>
               </button>
               <button 
                 onClick={() => handleDelete(emailDetail.id)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400 text-sm"
+                className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400 text-sm"
               >
                 <Trash2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Törlés</span>
@@ -1232,7 +1258,7 @@ export default function EnhancedMailView({ onNavigate }) {
           </div>
 
           {/* Email Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24 sm:pb-6">
             {(() => {
               const isImap = activeFolder === 'sent' && emailDetail && emailDetail.to_address
               const isTrash = activeFolder === 'trash'
@@ -1403,6 +1429,23 @@ export default function EnhancedMailView({ onNavigate }) {
               </div>
             </div>
           )}
+
+          {!showReply && (
+            <div className="sm:hidden sticky bottom-0 border-t border-white/10 bg-[#0f1115]/95 backdrop-blur-md p-3 grid grid-cols-4 gap-2">
+              <button onClick={handleReply} className="min-h-[48px] rounded-xl bg-[#1AA19C] text-white flex items-center justify-center"><Reply className="w-4 h-4" /></button>
+              <button onClick={handleReplyAll} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><ReplyAll className="w-4 h-4" /></button>
+              <button onClick={handleForward} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><Forward className="w-4 h-4" /></button>
+              <button onClick={() => setSelectedEmail(null)} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><ArrowLeft className="w-4 h-4" /></button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!selectedEmail && (
+        <div className="sm:hidden sticky bottom-0 border-t border-white/10 bg-[#0f1115]/95 backdrop-blur-md p-3 grid grid-cols-3 gap-2">
+          <button onClick={() => setShowMobileFolders(true)} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><Sidebar className="w-4 h-4" /></button>
+          <button onClick={() => setShowCompose(true)} className="min-h-[48px] rounded-xl bg-[#2EC4BE] text-black flex items-center justify-center"><Edit3 className="w-4 h-4" /></button>
+          <button onClick={() => { setPagination(prev => ({ ...prev, currentPage: 1 })); if (activeFolder === 'inbox' || activeFolder === 'sent') { syncAndLoad(1) } else { loadEmails(1) } }} className="min-h-[48px] rounded-xl bg-white/10 text-white flex items-center justify-center"><RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-[#2EC4BE]' : ''}`} /></button>
         </div>
       )}
         </div>

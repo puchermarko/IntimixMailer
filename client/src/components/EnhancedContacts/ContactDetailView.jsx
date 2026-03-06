@@ -95,6 +95,12 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const [showNewFolder, setShowNewFolder] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState('home')
   const [fileViewMode, setFileViewMode] = useState('grid') // 'grid' | 'list'
+  const [fileSearch, setFileSearch] = useState('')
+  const [fileSort, setFileSort] = useState('name')
+  const [renamingFolderId, setRenamingFolderId] = useState(null)
+  const [renamingFolderName, setRenamingFolderName] = useState('')
+  const [renamingFileId, setRenamingFileId] = useState(null)
+  const [renamingFileName, setRenamingFileName] = useState('')
   const fileInputRef = useRef(null)
 
   const [dlToken, setDlToken] = useState('')
@@ -326,14 +332,68 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   }
 
   const handleDeleteFolder = (folderId) => {
+    if (folderId === HOME_FOLDER_ID) return toast.error('A Kezdőmappa nem törölhető')
     if (!confirm('Törlöd ezt a mappát és a benne lévő fájlokat?')) return
-    const updatedFolders = contactFolders.filter(f => f.id !== folderId)
-    const updatedFiles = contactFiles.filter(f => f.folderId !== folderId)
+    const descendantIds = new Set([folderId])
+    let changed = true
+    while (changed) {
+      changed = false
+      contactFolders.forEach(folder => {
+        if (!descendantIds.has(folder.id) && descendantIds.has(folder.parentId)) {
+          descendantIds.add(folder.id)
+          changed = true
+        }
+      })
+    }
+    const updatedFolders = contactFolders.filter(f => !descendantIds.has(f.id))
+    const updatedFiles = contactFiles.filter(f => !descendantIds.has(f.folderId))
     setContactFolders(updatedFolders)
     setContactFiles(updatedFiles)
     saveFilesToStorage(updatedFolders, updatedFiles)
-    if (selectedFolder === folderId) setSelectedFolder(null)
+    if (descendantIds.has(selectedFolder)) setSelectedFolder(HOME_FOLDER_ID)
     toast.success('Mappa törölve')
+  }
+
+  const handleRenameFolder = (folderId) => {
+    const name = renamingFolderName.trim()
+    if (!name) return toast.error('Adj nevet a mappának')
+    const updatedFolders = contactFolders.map(folder => folder.id === folderId ? { ...folder, name } : folder)
+    setContactFolders(updatedFolders)
+    saveFilesToStorage(updatedFolders, contactFiles)
+    setRenamingFolderId(null)
+    setRenamingFolderName('')
+    toast.success('Mappa átnevezve')
+  }
+
+  const handleRenameFile = (fileId) => {
+    const name = renamingFileName.trim()
+    if (!name) return toast.error('Adj nevet a fájlnak')
+    const updatedFiles = contactFiles.map(file => file.id === fileId ? { ...file, name } : file)
+    setContactFiles(updatedFiles)
+    saveFilesToStorage(contactFolders, updatedFiles)
+    setRenamingFileId(null)
+    setRenamingFileName('')
+    toast.success('Fájl átnevezve')
+  }
+
+  const handleDuplicateFile = (file) => {
+    const duplicate = {
+      ...file,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: `${file.name} másolat`,
+      created_at: new Date().toISOString()
+    }
+    const updatedFiles = [...contactFiles, duplicate]
+    setContactFiles(updatedFiles)
+    saveFilesToStorage(contactFolders, updatedFiles)
+    toast.success('Fájl duplikálva')
+  }
+
+  const handleMoveFileToCurrentFolder = (fileId) => {
+    const updatedFiles = contactFiles.map(file => file.id === fileId ? { ...file, folderId: selectedFolder || HOME_FOLDER_ID } : file)
+    setContactFiles(updatedFiles)
+    saveFilesToStorage(contactFolders, updatedFiles)
+    toast.success('Fájl áthelyezve')
   }
 
   const handleFileUpload = async (e) => {
@@ -774,12 +834,37 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
         const breadcrumbs = getBreadcrumbs()
 
         // Get subfolders of current folder
-        const subFolders = contactFolders.filter(f => f.parentId === selectedFolder && f.id !== 'home')
+        const searchNeedle = fileSearch.trim().toLowerCase()
+        const subFolders = contactFolders
+          .filter(f => f.parentId === selectedFolder && f.id !== 'home')
+          .filter(f => !searchNeedle || f.name.toLowerCase().includes(searchNeedle))
 
         // Get files in current folder + email attachments when at home
         const currentFiles = contactFiles.filter(f => f.folderId === selectedFolder)
         const emailAttachments = selectedFolder === 'home' ? (contact.attachments || []).map(a => ({ ...a, _type: 'email' })) : []
         const allFiles = [...emailAttachments, ...currentFiles.map(f => ({ ...f, _type: 'user' }))]
+          .filter(item => {
+            if (!searchNeedle) return true
+            const name = (item._type === 'email' ? item.filename : item.name) || ''
+            const type = (item._type === 'email' ? item.mimetype : item.type) || ''
+            return name.toLowerCase().includes(searchNeedle) || type.toLowerCase().includes(searchNeedle)
+          })
+          .sort((a, b) => {
+            if (fileSort === 'date') {
+              return new Date(b.uploaded_at || b.created_at || 0) - new Date(a.uploaded_at || a.created_at || 0)
+            }
+            if (fileSort === 'size') {
+              return (b.size || 0) - (a.size || 0)
+            }
+            if (fileSort === 'type') {
+              const aType = (a._type === 'email' ? a.mimetype : a.type) || ''
+              const bType = (b._type === 'email' ? b.mimetype : b.type) || ''
+              return aType.localeCompare(bType, 'hu')
+            }
+            const aName = (a._type === 'email' ? a.filename : a.name) || ''
+            const bName = (b._type === 'email' ? b.filename : b.name) || ''
+            return aName.localeCompare(bName, 'hu')
+          })
 
         return (
           <div className="space-y-3 relative">
@@ -810,8 +895,8 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
               </div>
 
               {/* Toolbar row */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap">
                   {showNewFolder ? (
                     <div className="flex items-center gap-1.5">
                       <input
@@ -840,7 +925,27 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-between sm:justify-start">
+                  <div className="relative min-w-[180px] flex-1 sm:flex-none">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                      type="text"
+                      value={fileSearch}
+                      onChange={(e) => setFileSearch(e.target.value)}
+                      placeholder="Keresés fájlokra, mappákra..."
+                      className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm bg-white/5 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-[#2EC4BE]"
+                    />
+                  </div>
+                  <select
+                    value={fileSort}
+                    onChange={(e) => setFileSort(e.target.value)}
+                    className="px-3 py-2.5 rounded-lg text-sm bg-white/5 border border-white/10 text-gray-200 outline-none focus:border-[#2EC4BE]"
+                  >
+                    <option value="name">Név szerint</option>
+                    <option value="date">Dátum szerint</option>
+                    <option value="size">Méret szerint</option>
+                    <option value="type">Típus szerint</option>
+                  </select>
                   <div className="flex bg-white/5 rounded-lg p-0.5">
                     <button onClick={() => setFileViewMode('grid')} className={`p-1.5 rounded transition-all ${fileViewMode === 'grid' ? 'bg-[#2EC4BE]/15 text-[#2EC4BE]' : 'text-gray-500'}`}>
                       <Grid className="w-4 h-4" />
@@ -877,9 +982,34 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                         <FolderOpen className="w-5 h-5 text-amber-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-200 truncate">{folder.name}</p>
+                        {renamingFolderId === folder.id ? (
+                          <input
+                            value={renamingFolderName}
+                            onChange={(e) => setRenamingFolderName(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameFolder(folder.id)
+                              if (e.key === 'Escape') { setRenamingFolderId(null); setRenamingFolderName('') }
+                            }}
+                            onBlur={() => handleRenameFolder(folder.id)}
+                            className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-sm text-white outline-none focus:border-[#2EC4BE]"
+                            autoFocus
+                          />
+                        ) : (
+                          <p className="text-sm font-medium text-gray-200 truncate">{folder.name}</p>
+                        )}
                         <p className="text-[11px] text-gray-500">{contactFiles.filter(f => f.folderId === folder.id).length} fájl</p>
                       </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setRenamingFolderId(folder.id)
+                          setRenamingFolderName(folder.name)
+                        }}
+                        className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-600 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteFolder(folder.id) }}
                         className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
@@ -931,7 +1061,21 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                       </div>
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-200 font-medium truncate">{fileName}</p>
+                          {renamingFileId === item.id && !isEmail ? (
+                            <input
+                              value={renamingFileName}
+                              onChange={(e) => setRenamingFileName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameFile(item.id)
+                                if (e.key === 'Escape') { setRenamingFileId(null); setRenamingFileName('') }
+                              }}
+                              onBlur={() => handleRenameFile(item.id)}
+                              className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-sm text-white outline-none focus:border-[#2EC4BE]"
+                              autoFocus
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-200 font-medium truncate">{fileName}</p>
+                          )}
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <p className="text-xs text-gray-500">{formatSize(item.size)}</p>
                             {isEmail && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">Email</span>}
@@ -956,9 +1100,20 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                             </a>
                           )}
                           {!isEmail && (
-                            <button onClick={() => handleDeleteFile(item.id)} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <>
+                              <button onClick={() => { setRenamingFileId(item.id); setRenamingFileName(item.name) }} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 transition-all">
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDuplicateFile(item)} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
+                                <Plus className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleMoveFileToCurrentFolder(item.id)} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all">
+                                <FolderOpen className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteFile(item.id)} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -985,7 +1140,21 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                         <Icon className="w-5 h-5 text-gray-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 font-medium truncate">{fileName}</p>
+                        {renamingFileId === item.id && !isEmail ? (
+                          <input
+                            value={renamingFileName}
+                            onChange={(e) => setRenamingFileName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameFile(item.id)
+                              if (e.key === 'Escape') { setRenamingFileId(null); setRenamingFileName('') }
+                            }}
+                            onBlur={() => handleRenameFile(item.id)}
+                            className="w-full px-2 py-1 rounded bg-white/5 border border-white/10 text-sm text-white outline-none focus:border-[#2EC4BE]"
+                            autoFocus
+                          />
+                        ) : (
+                          <p className="text-sm text-gray-200 font-medium truncate">{fileName}</p>
+                        )}
                         <div className="flex items-center gap-2 text-[11px] text-gray-500">
                           <span>{formatSize(item.size)}</span>
                           <span>•</span>
@@ -1010,9 +1179,20 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                           </a>
                         )}
                         {!isEmail && (
-                          <button onClick={() => handleDeleteFile(item.id)} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button onClick={() => { setRenamingFileId(item.id); setRenamingFileName(item.name) }} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 transition-all">
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDuplicateFile(item)} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
+                              <Plus className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleMoveFileToCurrentFolder(item.id)} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-500/10 transition-all">
+                              <FolderOpen className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDeleteFile(item.id)} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

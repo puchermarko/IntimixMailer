@@ -18,7 +18,7 @@ import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
   const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
-  const { uiMode } = useUI()
+  const { uiMode, forceLegacyMailView } = useUI()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
   const [useEnhancedMail, setUseEnhancedMail] = useState(() => {
     const stored = localStorage.getItem('intimix_enhanced_mail')
@@ -36,13 +36,21 @@ export default function Dashboard() {
     localStorage.setItem('intimix_enhanced_mail', useEnhancedMail.toString())
   }, [useEnhancedMail])
 
+  useEffect(() => {
+    if (!forceLegacyMailView && useEnhancedMail !== true) {
+      setUseEnhancedMail(true)
+    }
+  }, [forceLegacyMailView, useEnhancedMail])
+
+  const effectiveEnhancedMail = !forceLegacyMailView
+
   const views = {
-    mail: useEnhancedMail ? <EnhancedMailView onNavigate={setActiveView} /> : <MailView />,
-    contacts: useEnhancedMail ? <EnhancedContactManager onNavigate={setActiveView} enhancedMail={useEnhancedMail} /> : <Contacts onNavigate={setActiveView} enhancedMail={useEnhancedMail} />,
+    mail: effectiveEnhancedMail ? <EnhancedMailView onNavigate={setActiveView} /> : <MailView />,
+    contacts: effectiveEnhancedMail ? <EnhancedContactManager onNavigate={setActiveView} enhancedMail={effectiveEnhancedMail} /> : <Contacts onNavigate={setActiveView} enhancedMail={effectiveEnhancedMail} />,
     quotes: <Quotes />,
     templates: <TemplateGallery />,
     analytics: <Analytics />,
-    settings: <Settings onStartTour={startTour} enhancedMail={useEnhancedMail} setEnhancedMail={setUseEnhancedMail} />,
+    settings: <Settings onStartTour={startTour} enhancedMail={effectiveEnhancedMail} setEnhancedMail={setUseEnhancedMail} />,
     users: <UserManagement />,
     'global-settings': <GlobalSettings />,
   }
@@ -80,9 +88,9 @@ export default function Dashboard() {
           ? (isModern ? 'lg:ml-[92px]' : 'lg:ml-[68px]') 
           : (isModern ? 'lg:ml-[280px]' : 'lg:ml-64')
         } ${impersonating ? 'mt-10' : ''}
-        ${activeView === 'mail' && useEnhancedMail ? 'p-0' : (isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8')}
+        ${activeView === 'mail' && effectiveEnhancedMail ? 'p-0' : (isModern ? 'p-6 lg:p-6' : 'p-4 sm:p-6 lg:p-8')}
       `}>
-        <div className={`mx-auto fade-in ${activeView === 'mail' && useEnhancedMail ? 'w-full h-full' : (isModern ? 'max-w-[1600px]' : 'max-w-5xl')}`} key={activeView}>
+        <div className={`mx-auto fade-in ${activeView === 'mail' && effectiveEnhancedMail ? 'w-full h-full' : (isModern ? 'max-w-[1600px]' : 'max-w-5xl')}`} key={activeView}>
           {views[activeView]}
         </div>
       </main>

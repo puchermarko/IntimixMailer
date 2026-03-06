@@ -48,6 +48,7 @@ function App() {
     return 'modern'
   })
   const [globalModernUI, setGlobalModernUI] = useState(false)
+  const [forceLegacyMailView, setForceLegacyMailView] = useState(false)
 
   const toggleUiMode = (mode) => {
     const newMode = mode || (uiMode === 'legacy' ? 'modern' : 'legacy')
@@ -73,6 +74,7 @@ function App() {
       const settings = await getGlobalSettings()
       const globalEnabled = settings.modern_ui_enabled === 'true'
       setGlobalModernUI(globalEnabled)
+      setForceLegacyMailView(settings.force_legacy_mail_view === 'true')
       
       // If user hasn't set a preference, default to modern (not legacy)
       const savedMode = localStorage.getItem('intimix_ui_mode')
@@ -98,6 +100,7 @@ function App() {
         const settings = await getGlobalSettings()
         const globalEnabled = settings.modern_ui_enabled === 'true'
         setGlobalModernUI(globalEnabled)
+        setForceLegacyMailView(settings.force_legacy_mail_view === 'true')
         
         // If user hasn't set a preference, default to modern
         const savedMode = localStorage.getItem('intimix_ui_mode')
@@ -203,7 +206,7 @@ function App() {
   useEffect(() => { if (isAuthenticated) refreshBranding() }, [token])
 
   return (
-    <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI, refreshGlobalSettings }}>
+    <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI, forceLegacyMailView, refreshGlobalSettings }}>
       <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
         <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
           <Routes>

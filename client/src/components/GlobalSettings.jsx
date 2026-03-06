@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getGlobalSettings, updateGlobalSettings } from '../lib/api'
 import { useUI } from '../App'
 import toast from 'react-hot-toast'
-import { Globe, Loader2, Shield, UserPlus, Layout, Monitor } from 'lucide-react'
+import { Globe, Loader2, Shield, UserPlus, Layout, Monitor, Mail } from 'lucide-react'
 
 export default function GlobalSettings() {
   const { uiMode, refreshGlobalSettings } = useUI()
@@ -10,6 +10,7 @@ export default function GlobalSettings() {
     landing_page_enabled: 'true',
     registration_enabled: 'true',
     modern_ui_enabled: 'false',
+    force_legacy_mail_view: 'false',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -28,6 +29,7 @@ export default function GlobalSettings() {
         landing_page_enabled: data.landing_page_enabled || 'true',
         registration_enabled: data.registration_enabled || 'true',
         modern_ui_enabled: data.modern_ui_enabled || 'false',
+        force_legacy_mail_view: data.force_legacy_mail_view || 'false',
       }))
     } catch (err) {
       toast.error(err.message)
@@ -86,6 +88,13 @@ export default function GlobalSettings() {
       desc: 'Ha bekapcsolod, minden felhasználónak modern felülettel indul az alkalmazás.',
       warning: 'A felhasználók továbbra is válthatnak a beállításokban a klasszikus és modern felület között.',
     },
+    {
+      key: 'force_legacy_mail_view',
+      icon: Mail,
+      title: 'Force Legacy Mail View',
+      desc: 'Vészhelyzeti globális fallback. Ha bekapcsolod, minden felhasználó a régi levelezőt fogja látni.',
+      warning: 'Felülírja az új enhanced levelezőt az egész alkalmazásban, amíg vissza nem kapcsolod.',
+    },
   ]
 
   return (
@@ -139,7 +148,7 @@ export default function GlobalSettings() {
         <div className="flex items-start gap-3">
           <Shield className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
           <p className="text-xs text-gray-500 leading-relaxed">
-            Ezek a beállítások azonnal érvénybe lépnek. A landing oldal kikapcsolása esetén a látogatók közvetlenül a bejelentkezési oldalra kerülnek. A regisztráció kikapcsolása esetén csak az admin felületen lehet új felhasználókat létrehozni.
+            Ezek a beállítások azonnal érvénybe lépnek. A landing oldal kikapcsolása esetén a látogatók közvetlenül a bejelentkezési oldalra kerülnek. A regisztráció kikapcsolása esetén csak az admin felületen lehet új felhasználókat létrehozni. A Force Legacy Mail View kizárólag vészhelyzeti visszaállításra szolgál.
           </p>
         </div>
       </div>
