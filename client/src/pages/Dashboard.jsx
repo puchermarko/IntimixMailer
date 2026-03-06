@@ -20,7 +20,11 @@ export default function Dashboard() {
   const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
   const { uiMode } = useUI()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
-  const [useEnhancedMail, setUseEnhancedMail] = useState(() => localStorage.getItem('intimix_enhanced_mail') === 'true')
+  const [useEnhancedMail, setUseEnhancedMail] = useState(() => {
+    const stored = localStorage.getItem('intimix_enhanced_mail')
+    // Default to enhanced (true) unless user explicitly chose legacy (stored === 'false')
+    return stored === 'false' ? false : true
+  })
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [showTour, setShowTour] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)

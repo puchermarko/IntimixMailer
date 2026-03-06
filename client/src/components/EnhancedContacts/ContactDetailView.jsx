@@ -1,5 +1,5 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails, replyToEmail } from '../../lib/api'
 import toast from 'react-hot-toast'
 import { useAuth, useUI } from '../../App'
@@ -7,11 +7,13 @@ import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
   Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
-  TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink, Reply
+  TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink, Reply,
+  Forward, Send, FolderPlus, Upload, FolderOpen, Trash2, MoreVertical, Activity
 } from 'lucide-react'
 import SimpleRichEditor from '../SimpleRichEditor'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  AreaChart, Area, Legend, PieChart, Pie
 } from 'recharts'
 
 function formatDate(dateStr) {
@@ -60,8 +62,27 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const [editorMode, setEditorMode] = useState('visual') // 'visual' | 'code'
   const [showReply, setShowReply] = useState(false)
   const [replyHtml, setReplyHtml] = useState('')
-  const [replyToEmail, setReplyToEmail] = useState(null)
+  const [replyToEmailData, setReplyToEmailData] = useState(null)
   const [sendingReply, setSendingReply] = useState(false)
+  const [isForwarding, setIsForwarding] = useState(false)
+  const [forwardTo, setForwardTo] = useState('')
+  // File Manager state
+  const [contactFolders, setContactFolders] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`intimix_contact_folders_${contactId}`)
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [contactFiles, setContactFiles] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`intimix_contact_files_${contactId}`)
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [newFolderName, setNewFolderName] = useState('')
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState(null)
+  const fileInputRef = useRef(null)
 
   const [dlToken, setDlToken] = useState('')
 
@@ -203,56 +224,146 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   }
 
   const handleReply = (email, emailType) => {
-    console.log('handleReply called with:', { email, emailType })
-    setReplyToEmail({ ...email, type: emailType })
+    setReplyToEmailData({ ...email, type: emailType })
     setShowReply(true)
+    setIsForwarding(false)
+    setForwardTo('')
     setReplyHtml('')
   }
 
+  const handleForwardEmail = (email, emailType) => {
+    setReplyToEmailData({ ...email, type: emailType })
+    setIsForwarding(true)
+    setShowReply(true)
+    setForwardTo('')
+    const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
+    const originalFrom = email.from_name 
+      ? `${email.from_name} <${email.from_address}>`
+      : (email.from_address || email.to_address || email.recipient_email || '')
+    const originalTo = email.to_address || email.recipient_email || ''
+    const fwdBody = `<br><br>
+<div style="border-top:1px solid #ccc;padding-top:12px;margin-top:16px;color:#666;font-size:13px;">
+  <p style="margin:0 0 4px;"><strong>---------- Továbbított üzenet ----------</strong></p>
+  <p style="margin:0 0 2px;">Feladó: ${originalFrom}</p>
+  <p style="margin:0 0 2px;">Dátum: ${originalDate}</p>
+  <p style="margin:0 0 2px;">Tárgy: ${email.subject || ''}</p>
+  <p style="margin:0 0 8px;">Címzett: ${originalTo}</p>
+  ${email.html_body || email.text_body?.replace(/\n/g, '<br>') || ''}
+</div>`
+    setReplyHtml(fwdBody)
+  }
+
   const handleSendReply = async () => {
-    console.log('handleSendReply called with:', { replyToEmail, replyHtml })
+    if (isForwarding && !forwardTo.trim()) return toast.error('Add meg a címzett email címét')
     if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
     setSendingReply(true)
     try {
-      const email = replyToEmail
-      const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
-      const originalFrom = email.type === 'sent' 
-        ? (email.to_address || email.recipient_email)
-        : (email.from_name 
-          ? `${email.from_name} <${email.from_address}>` 
-          : email.from_address)
+      const email = replyToEmailData
+      let fullHtml, subject, sendTo
+
+      if (isForwarding) {
+        fullHtml = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${replyHtml.replace(/\n/g, '<br>')}</div>`
+        subject = email.subject?.startsWith('Fwd:') ? email.subject : `Fwd: ${email.subject || ''}`
+        sendTo = forwardTo.trim()
+      } else {
+        const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
+        const originalFrom = email.type === 'sent' 
+          ? (email.to_address || email.recipient_email)
+          : (email.from_name ? `${email.from_name} <${email.from_address}>` : email.from_address)
+        fullHtml = `
+          <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${replyHtml.replace(/\n/g, '<br>')}</div>
+          <br>
+          <div style="border-left:2px solid #ccc;padding-left:12px;margin-top:16px;color:#666;font-size:13px;">
+            <p style="margin:0 0 8px;"><strong>On ${originalDate}, ${originalFrom} wrote:</strong></p>
+            ${email.html_body || email.text_body?.replace(/\n/g, '<br>') || ''}
+          </div>`
+        subject = email.subject?.startsWith('Re:') ? email.subject : `Re: ${email.subject}`
+        sendTo = email.type === 'sent' ? (email.to_address || email.recipient_email) : email.from_address
+      }
       
-      console.log('Email data:', { email, originalDate, originalFrom })
-      
-      const fullHtml = `
-        <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
-          ${replyHtml.replace(/\n/g, '<br>')}
-        </div>
-        <br>
-        <div style="border-left:2px solid #ccc;padding-left:12px;margin-top:16px;color:#666;font-size:13px;">
-          <p style="margin:0 0 8px;"><strong>On ${originalDate}, ${originalFrom} wrote:</strong></p>
-          ${email.html_body || email.text_body?.replace(/\n/g, '<br>') || ''}
-        </div>
-      `
-      
-      const subject = email.subject?.startsWith('Re:')
-        ? email.subject
-        : `Re: ${email.subject}`
-      
-      const replyTo = email.type === 'sent' 
-        ? (email.to_address || email.recipient_email)
-        : email.from_address
-      
-      await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: email.message_id || undefined })
-      toast.success('Válasz elküldve!')
+      await replyToEmail({ to: sendTo, subject, html: fullHtml, inReplyTo: isForwarding ? undefined : (email.message_id || undefined) })
+      toast.success(isForwarding ? 'Email továbbítva!' : 'Válasz elküldve!')
       setShowReply(false)
       setReplyHtml('')
-      setReplyToEmail(null)
+      setReplyToEmailData(null)
+      setIsForwarding(false)
+      setForwardTo('')
     } catch (err) {
       toast.error(err.message)
     } finally {
       setSendingReply(false)
     }
+  }
+
+  // File Manager functions
+  const saveFilesToStorage = (folders, files) => {
+    localStorage.setItem(`intimix_contact_folders_${contactId}`, JSON.stringify(folders))
+    localStorage.setItem(`intimix_contact_files_${contactId}`, JSON.stringify(files))
+  }
+
+  const handleCreateFolder = () => {
+    if (!newFolderName.trim()) return toast.error('Adj nevet a mappának')
+    const folder = { id: Date.now().toString(), name: newFolderName.trim(), created_at: new Date().toISOString() }
+    const updated = [...contactFolders, folder]
+    setContactFolders(updated)
+    saveFilesToStorage(updated, contactFiles)
+    setNewFolderName('')
+    setShowNewFolder(false)
+    toast.success('Mappa létrehozva')
+  }
+
+  const handleDeleteFolder = (folderId) => {
+    if (!confirm('Törlöd ezt a mappát és a benne lévő fájlokat?')) return
+    const updatedFolders = contactFolders.filter(f => f.id !== folderId)
+    const updatedFiles = contactFiles.filter(f => f.folderId !== folderId)
+    setContactFolders(updatedFolders)
+    setContactFiles(updatedFiles)
+    saveFilesToStorage(updatedFolders, updatedFiles)
+    if (selectedFolder === folderId) setSelectedFolder(null)
+    toast.success('Mappa törölve')
+  }
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const newFiles = files.map(file => ({
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      folderId: selectedFolder || 'root',
+      created_at: new Date().toISOString(),
+      dataUrl: URL.createObjectURL(file)
+    }))
+    const updated = [...contactFiles, ...newFiles]
+    setContactFiles(updated)
+    saveFilesToStorage(contactFolders, updated)
+    toast.success(`${files.length} fájl feltöltve`)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleDeleteFile = (fileId) => {
+    const updated = contactFiles.filter(f => f.id !== fileId)
+    setContactFiles(updated)
+    saveFilesToStorage(contactFolders, updated)
+    toast.success('Fájl törölve')
+  }
+
+  const handleSaveEmailAttachment = (att, attUrl) => {
+    const file = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      name: att.filename,
+      size: att.size,
+      type: att.mimetype,
+      folderId: selectedFolder || 'root',
+      created_at: new Date().toISOString(),
+      dataUrl: attUrl,
+      source: 'email'
+    }
+    const updated = [...contactFiles, file]
+    setContactFiles(updated)
+    saveFilesToStorage(contactFolders, updated)
+    toast.success(`"${att.filename}" mentve a fájlkezelőbe`)
   }
 
   const getSentImapAuthUrl = (id) => {
@@ -356,8 +467,9 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
         {[
           { id: 'emails', icon: SendHorizontal, label: 'Küldött', count: (contactEmails?.length || 0) + (contact.sentImap?.length || 0) },
           { id: 'received', icon: Inbox, label: 'Fogadott', count: contactReceivedEmails?.length || 0 },
-          { id: 'files', icon: Paperclip, label: 'Fájlok', count: contact.attachments?.length || 0 },
+          { id: 'files', icon: Paperclip, label: 'Fájlok', count: (contact.attachments?.length || 0) + contactFiles.length },
           { id: 'quotes', icon: Receipt, label: 'Árajánlatok', count: contact.quotes?.length || 0 },
+          { id: 'journey', icon: Activity, label: 'Ügyfélút', count: null },
         ].map(tab => (
           <button
             key={tab.id}
@@ -425,13 +537,20 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleReply(email, isLocal ? 'sent' : 'received') }}
-                          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
                           title="Válasz"
                         >
                           <Reply className="w-4 h-4 text-gray-400" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleForwardEmail(email, isLocal ? 'sent' : 'received') }}
+                          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                          title="Továbbítás"
+                        >
+                          <Forward className="w-4 h-4 text-gray-400" />
                         </button>
                         {isExpanded
                           ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
@@ -539,13 +658,20 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleReply(email, 'received') }}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
                       title="Válasz"
                     >
                       <Reply className="w-4 h-4 text-gray-400" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleForwardEmail(email, 'received') }}
+                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                      title="Továbbítás"
+                    >
+                      <Forward className="w-4 h-4 text-gray-400" />
                     </button>
                     {expandedReceived === email.id
                       ? <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
@@ -618,82 +744,190 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
       )}
 
       {/* Fájlkezelő fül */}
-      {activeTab === 'files' && (
-        <div>
-          {(!contact.attachments || contact.attachments.length === 0) ? (
-            <div className="glass rounded-xl p-10 text-center">
-              <Paperclip className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 text-sm">Még nincs fájl ehhez a kapcsolathoz</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {contact.attachments.map(att => {
-                const Icon = getFileIcon(att.mimetype)
-                const canPreview = isPreviewable(att.mimetype)
-                return (
-                  <div key={att.id} className="glass rounded-xl p-4 group hover:border-[#1AA19C]/20 transition-all">
-                    {/* Preview area */}
-                    <div
-                      className="w-full h-32 rounded-lg bg-[#1e2128] flex items-center justify-center mb-3 overflow-hidden cursor-pointer"
-                      onClick={() => canPreview && setPreviewAttachment(att)}
-                    >
-                      {att.mimetype?.startsWith('image/') ? (
-                        <img
-                          src={getAttUrl(att)}
-                          alt={att.filename}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : att.mimetype?.includes('pdf') ? (
-                        <div className="text-center">
-                          <FileText className="w-10 h-10 text-red-400 mx-auto mb-1" />
-                          <p className="text-[10px] text-gray-500">PDF dokumentum</p>
-                        </div>
-                      ) : (
-                        <div className="text-center">
-                          <File className="w-10 h-10 text-gray-500 mx-auto mb-1" />
-                          <p className="text-[10px] text-gray-500">{att.mimetype}</p>
-                        </div>
-                      )}
-                    </div>
+      {activeTab === 'files' && (() => {
+        const emailAttachments = (contact.attachments || []).map(a => ({ ...a, _type: 'email' }))
+        const userFiles = (selectedFolder
+          ? contactFiles.filter(f => f.folderId === selectedFolder)
+          : contactFiles.filter(f => f.folderId === 'root')
+        ).map(f => ({ ...f, _type: 'user' }))
+        const allFiles = [...emailAttachments, ...userFiles]
 
-                    {/* File info */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-200 font-medium truncate">{att.filename}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{formatSize(att.size)}</p>
-                        {att.email_subject && (
-                          <p className="text-[10px] text-gray-600 mt-1 truncate" title={att.email_subject}>
-                            {att.source === 'inbox' ? 'Fogadott:' : 'Küldött:'} {att.email_subject}
-                          </p>
+        return (
+          <div className="space-y-4">
+            {/* File Manager toolbar */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setSelectedFolder(null)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    !selectedFolder ? 'bg-[#2EC4BE]/15 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'text-gray-400 hover:bg-white/5'
+                  }`}
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Összes
+                </button>
+                {contactFolders.map(folder => (
+                  <div key={folder.id} className="flex items-center gap-0.5 group">
+                    <button
+                      onClick={() => setSelectedFolder(folder.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        selectedFolder === folder.id ? 'bg-[#2EC4BE]/15 text-[#2EC4BE] border border-[#2EC4BE]/20' : 'text-gray-400 hover:bg-white/5'
+                      }`}
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      {folder.name}
+                      <span className="text-[10px] opacity-60">
+                        ({contactFiles.filter(f => f.folderId === folder.id).length})
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => handleDeleteFolder(folder.id)}
+                      className="p-1 rounded text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {showNewFolder ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                      placeholder="Mappa neve..."
+                      className="px-2.5 py-1 rounded-lg text-xs bg-white/5 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-[#2EC4BE] w-32"
+                      autoFocus
+                    />
+                    <button onClick={handleCreateFolder} className="p-1 text-[#2EC4BE] hover:bg-[#2EC4BE]/10 rounded">
+                      <ChevronDown className="w-3.5 h-3.5 rotate-[-90deg]" />
+                    </button>
+                    <button onClick={() => { setShowNewFolder(false); setNewFolderName('') }} className="p-1 text-gray-500 hover:text-gray-300">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewFolder(true)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-gray-500 hover:text-[#2EC4BE] hover:bg-white/5 transition-all"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                    Új mappa
+                  </button>
+                )}
+              </div>
+              <div>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} multiple className="hidden" />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
+                    isModern ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-md' : 'bg-[#1AA19C] text-white hover:bg-[#2EC4BE]'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Fájl feltöltése
+                </button>
+              </div>
+            </div>
+
+            {/* Files grid */}
+            {allFiles.length === 0 ? (
+              <div className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-10 text-center`}>
+                <Paperclip className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-400 text-sm">
+                  {selectedFolder ? 'Ebben a mappában még nincs fájl' : 'Még nincs fájl ehhez a kapcsolathoz'}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">Tölts fel fájlokat vagy mentsd el az email csatolmányokat</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {allFiles.map(item => {
+                  const isEmail = item._type === 'email'
+                  const Icon = isEmail ? getFileIcon(item.mimetype) : getFileIcon(item.type)
+                  const canPreview = isEmail ? isPreviewable(item.mimetype) : isPreviewable(item.type)
+                  const fileUrl = isEmail ? getAttUrl(item) : item.dataUrl
+
+                  return (
+                    <div key={`${item._type}-${item.id}`} className={`${isModern ? 'modern-card' : 'glass rounded-xl'} p-4 group hover:border-[#1AA19C]/20 transition-all`}>
+                      <div
+                        className="w-full h-28 rounded-lg bg-[#1e2128] flex items-center justify-center mb-3 overflow-hidden cursor-pointer"
+                        onClick={() => canPreview && setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })}
+                      >
+                        {(isEmail ? item.mimetype : item.type)?.startsWith('image/') && fileUrl ? (
+                          <img src={fileUrl} alt={isEmail ? item.filename : item.name} className="w-full h-full object-contain" />
+                        ) : (isEmail ? item.mimetype : item.type)?.includes('pdf') ? (
+                          <div className="text-center">
+                            <FileText className="w-8 h-8 text-red-400 mx-auto mb-1" />
+                            <p className="text-[10px] text-gray-500">PDF</p>
+                          </div>
+                        ) : (
+                          <div className="text-center">
+                            <Icon className="w-8 h-8 text-gray-500 mx-auto mb-1" />
+                            <p className="text-[10px] text-gray-500">{isEmail ? item.mimetype : item.type}</p>
+                          </div>
                         )}
-                        <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(att.uploaded_at)}</p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {canPreview && (
-                          <button
-                            onClick={() => setPreviewAttachment(att)}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <a
-                          href={getAttUrl(att)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-200 font-medium truncate">{isEmail ? item.filename : item.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-gray-500">{formatSize(item.size)}</p>
+                            {isEmail && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">Email</span>
+                            )}
+                            {!isEmail && item.source === 'email' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400">Mentett</span>
+                            )}
+                          </div>
+                          {isEmail && item.email_subject && (
+                            <p className="text-[10px] text-gray-600 mt-1 truncate" title={item.email_subject}>
+                              {item.source === 'inbox' ? 'Fogadott:' : 'Küldött:'} {item.email_subject}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(isEmail ? item.uploaded_at : item.created_at)}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isEmail && (
+                            <button
+                              onClick={() => handleSaveEmailAttachment(item, getAttUrl(item))}
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-500/10 transition-all"
+                              title="Mentés fájlkezelőbe"
+                            >
+                              <FolderPlus className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canPreview && (
+                            <button
+                              onClick={() => setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })}
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {fileUrl && (
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer"
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all">
+                              <Download className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {!isEmail && (
+                            <button
+                              onClick={() => handleDeleteFile(item.id)}
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Árajánlatok fül */}
       {activeTab === 'quotes' && (() => {
@@ -760,6 +994,92 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
 
       {/* Kapcsolat útja fül */}
       {activeTab === 'journey' && <ContactJourney contact={contact} />}
+
+      {/* Csatolmány előnézet modal */}
+      {/* Reply / Forward Modal */}
+      {showReply && replyToEmailData && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={() => { setShowReply(false); setIsForwarding(false); setForwardTo('') }}>
+          <div className={`${isModern ? 'modern-card' : 'glass'} rounded-2xl p-5 sm:p-6 w-full max-w-2xl fade-in border border-[#2EC4BE]/20`} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                {isForwarding ? <Forward className="w-5 h-5 text-[#2EC4BE]" /> : <Reply className="w-5 h-5 text-[#2EC4BE]" />}
+                <h3 className="text-lg font-semibold text-white">{isForwarding ? 'Továbbítás' : 'Válasz'}</h3>
+              </div>
+              <button onClick={() => { setShowReply(false); setIsForwarding(false); setForwardTo('') }} className="p-2 text-gray-500 hover:text-gray-300 hover:bg-white/10 rounded-lg transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className={`mb-4 p-3 rounded-lg ${isModern ? 'bg-white/5' : 'bg-white/5'}`}>
+              <p className="text-xs text-gray-500 mb-1">{isForwarding ? 'Eredeti üzenet:' : 'Válasz erre:'}</p>
+              <p className="text-sm text-white font-medium truncate">{replyToEmailData.subject}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {replyToEmailData.type === 'sent'
+                  ? `Címzett: ${replyToEmailData.to_address || replyToEmailData.recipient_email || replyToEmailData.recipient}`
+                  : `Feladó: ${replyToEmailData.from_name || replyToEmailData.from_address}`
+                }
+              </p>
+            </div>
+
+            {isForwarding && (
+              <div className="mb-4">
+                <label className="block text-xs text-gray-400 mb-1.5">Címzett</label>
+                <input
+                  type="email"
+                  value={forwardTo}
+                  onChange={(e) => setForwardTo(e.target.value)}
+                  placeholder="pelda@email.com"
+                  className={`w-full px-4 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:border-[#2EC4BE] focus:bg-white/10' : 'bg-white/5 border border-white/10 focus:border-[#2EC4BE]'} text-white placeholder-gray-500 outline-none transition-colors`}
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-gray-400">{isForwarding ? 'Üzenet:' : 'Válasz szövege:'}</label>
+                <div className="flex bg-white/5 rounded-lg p-0.5">
+                  <button onClick={() => setEditorMode('visual')} className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${editorMode === 'visual' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500'}`}>
+                    Vizuális
+                  </button>
+                  <button onClick={() => setEditorMode('code')} className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${editorMode === 'code' ? 'bg-[#1AA19C]/20 text-[#2EC4BE]' : 'text-gray-500'}`}>
+                    Kód
+                  </button>
+                </div>
+              </div>
+              {editorMode === 'visual' ? (
+                <SimpleRichEditor initialHtml={replyHtml} onChange={setReplyHtml} className="min-h-[180px]" />
+              ) : (
+                <textarea
+                  value={replyHtml}
+                  onChange={(e) => setReplyHtml(e.target.value)}
+                  placeholder={isForwarding ? 'Adj hozzá üzenetet...' : 'Írd ide a válaszodat...'}
+                  className={`w-full min-h-[180px] p-4 rounded-lg resize-y text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:bg-white/10' : 'bg-white/5 border border-white/10'} text-white placeholder-gray-500 outline-none focus:border-[#2EC4BE] transition-colors`}
+                />
+              )}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setShowReply(false); setIsForwarding(false); setForwardTo('') }}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light'}`}
+              >
+                Mégse
+              </button>
+              <button
+                onClick={handleSendReply}
+                disabled={sendingReply || !replyHtml.trim() || (isForwarding && !forwardTo.trim())}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50 transition-all ${
+                  isModern ? 'bg-[#2EC4BE] text-black hover:bg-[#2EC4BE]/90 shadow-lg shadow-[#2EC4BE]/20' : 'btn-primary text-white'
+                }`}
+              >
+                {sendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {isForwarding ? 'Továbbítás' : 'Válasz küldése'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Csatolmány előnézet modal */}
       {previewAttachment && (
@@ -1191,73 +1511,6 @@ function ContactJourney({ contact }) {
       )}
     </div>
     
-    {/* Reply Modal - Outside main container */}
-    {showReply && replyToEmail && (
-      <>
-        <div className="fixed top-0 left-0 w-full h-full bg-red-600 z-[10000] flex items-center justify-center">
-          <div className="bg-white text-black p-8 rounded-lg max-w-md">
-            <h2 className="text-2xl font-bold mb-4">REPLY MODAL TEST</h2>
-            <p className="mb-2">Subject: {replyToEmail.subject}</p>
-            <p className="mb-4">Type: {replyToEmail.type}</p>
-            <button 
-              onClick={() => setShowReply(false)}
-              className="bg-blue-500 text-white px-4 py-2 rounded"
-            >
-              Close Modal
-            </button>
-          </div>
-        </div>
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={() => setShowReply(false)} style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
-          <div className="glass glow rounded-2xl p-6 w-full max-w-2xl fade-in border-2 border-[#2EC4BE]" onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'rgba(30,30,30,0.95)' }}>
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-white">Válasz erre az emailre</h3>
-            <button onClick={() => setShowReply(false)} className="text-gray-500 hover:text-gray-300 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="mb-4">
-            <p className="text-sm text-gray-400 mb-2">Válasz erre:</p>
-            <p className="text-white font-medium">{replyToEmail.subject}</p>
-            <p className="text-xs text-gray-500">
-              {replyToEmail.type === 'sent' 
-                ? `To: ${replyToEmail.to_address || replyToEmail.recipient_email}`
-                : `From: ${replyToEmail.from_name || replyToEmail.from_address}`
-              }
-            </p>
-          </div>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-400 mb-2">Válasz szövege:</label>
-            <textarea
-              value={replyHtml}
-              onChange={(e) => setReplyHtml(e.target.value)}
-              placeholder="Írd ide a válaszodat..."
-              className="w-full px-4 py-3 rounded-lg text-sm bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#2EC4BE] resize-none"
-              rows={8}
-            />
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowReply(false)}
-              className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 glass-light transition-all"
-            >
-              Mégse
-            </button>
-            <button
-              onClick={handleSendReply}
-              disabled={sendingReply || !replyHtml.trim()}
-              className="flex-1 btn-primary py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {sendingReply ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              {sendingReply ? 'Küldés...' : 'Válasz küldése'}
-            </button>
-          </div>
-        </div>
-      </div>
-      </>
-    )}
   </div>
 )
 }

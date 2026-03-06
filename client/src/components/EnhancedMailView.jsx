@@ -316,33 +316,9 @@ const MAIL_FOLDERS = [
 export default function EnhancedMailView({ onNavigate }) {
   const { isAdmin, email, logout } = useAuth()
   const { uiMode } = useUI()
-  const [activeView, setActiveView] = useState('mail')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('intimix_sidebar_collapsed') === 'true')
-  const [useEnhancedMail, setUseEnhancedMail] = useState(() => localStorage.getItem('intimix_enhanced_mail') === 'true')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const isModern = uiMode === 'modern'
-
-  // Navigation items from Sidebar
-  const baseNavItems = [
-    { id: 'mail', label: 'Levelezés', icon: Mail },
-    { id: 'templates', label: 'Sablonok', icon: LayoutGrid },
-    { id: 'contacts', label: 'Kapcsolatok', icon: BookUser },
-    { id: 'quotes', label: 'Árajánlatok', icon: FileTextIcon },
-    { id: 'analytics', label: 'Analitika', icon: BarChart3 },
-    { id: 'settings', label: 'Beállítások', icon: Settings },
-  ]
-
-  const adminNavItems = [
-    { id: 'users', label: 'Felhasználók', icon: UsersIcon },
-    { id: 'global-settings', label: 'Globális Beállítások', icon: Globe },
-  ]
-
-  const allNavItems = [...baseNavItems, ...(isAdmin ? adminNavItems : [])]
-
-  const handleNav = (id) => {
-    setActiveView(id)
-    onNavigate(id)
-  }
 
   const [activeFolder, setActiveFolder] = useState('inbox')
   const [selectedEmail, setSelectedEmail] = useState(null)
@@ -362,6 +338,8 @@ export default function EnhancedMailView({ onNavigate }) {
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
   const [sending, setSending] = useState(false)
   const [isReplyAll, setIsReplyAll] = useState(false)
+  const [isForwarding, setIsForwarding] = useState(false)
+  const [forwardTo, setForwardTo] = useState('')
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 0,
@@ -642,59 +620,94 @@ export default function EnhancedMailView({ onNavigate }) {
     setShowReplyTemplateSelector(false)
   }
 
+  const handleForward = () => {
+    setIsForwarding(true)
+    setIsReplyAll(false)
+    setShowReply(true)
+    setForwardTo('')
+    const originalDate = new Date(emailDetail.date || emailDetail.sent_at).toLocaleString('hu-HU')
+    const originalFrom = emailDetail.from_name 
+      ? `${emailDetail.from_name} <${emailDetail.from_address}>`
+      : (emailDetail.from_address || emailDetail.to_address || emailDetail.recipient_email || '')
+    const originalTo = emailDetail.to_address || emailDetail.recipient_email || ''
+    const fwdBody = `
+<br><br>
+<div style="border-top:1px solid #ccc;padding-top:12px;margin-top:16px;color:#666;font-size:13px;">
+  <p style="margin:0 0 4px;"><strong>---------- Továbbított üzenet ----------</strong></p>
+  <p style="margin:0 0 2px;">Feladó: ${originalFrom}</p>
+  <p style="margin:0 0 2px;">Dátum: ${originalDate}</p>
+  <p style="margin:0 0 2px;">Tárgy: ${emailDetail.subject || ''}</p>
+  <p style="margin:0 0 8px;">Címzett: ${originalTo}</p>
+  ${emailDetail.html_body || emailDetail.text_body?.replace(/\n/g, '<br>') || ''}
+</div>`
+    setReplyHtml(fwdBody)
+    setReplyTemplate(null)
+    setShowReplyTemplateSelector(false)
+  }
+
   const handleSendReply = async () => {
+    if (isForwarding && !forwardTo.trim()) return toast.error('Add meg a címzett email címét')
     if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
     setSending(true)
     try {
-      const originalDate = new Date(emailDetail.date).toLocaleString('hu-HU')
-      const originalFrom = activeFolder === 'sent' 
-        ? (emailDetail.to_address || emailDetail.recipient_email)
-        : activeFolder === 'trash'
-          ? (emailDetail.original_folder === 'sent'
-            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+      let fullHtml, subject, sendTo
+
+      if (isForwarding) {
+        // Forward mode
+        fullHtml = `
+          <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
+            ${replyHtml.replace(/\n/g, '<br>')}
+          </div>
+        `
+        subject = emailDetail.subject?.startsWith('Fwd:')
+          ? emailDetail.subject
+          : `Fwd: ${emailDetail.subject || ''}`
+        sendTo = forwardTo.trim()
+      } else {
+        // Reply / Reply All mode
+        const originalDate = new Date(emailDetail.date).toLocaleString('hu-HU')
+        const originalFrom = activeFolder === 'sent' 
+          ? (emailDetail.to_address || emailDetail.recipient_email)
+          : activeFolder === 'trash'
+            ? (emailDetail.original_folder === 'sent'
+              ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+              : (emailDetail.from_name
+                ? `${emailDetail.from_name} <${emailDetail.from_address}>`
+                : emailDetail.from_address))
             : (emailDetail.from_name
               ? `${emailDetail.from_name} <${emailDetail.from_address}>`
-              : emailDetail.from_address))
-          : (emailDetail.from_name
-            ? `${emailDetail.from_name} <${emailDetail.from_address}>`
-            : emailDetail.from_address)
-      const fullHtml = `
-        <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
-          ${replyHtml.replace(/\n/g, '<br>')}
-        </div>
-        <br>
-        <div style="border-left:2px solid #ccc;padding-left:12px;margin-top:16px;color:#666;font-size:13px;">
-          <p style="margin:0 0 8px;"><strong>On ${originalDate}, ${originalFrom} wrote:</strong></p>
-          ${emailDetail.html_body || emailDetail.text_body?.replace(/\n/g, '<br>') || ''}
-        </div>
-      `
-      const subject = emailDetail.subject?.startsWith('Re:')
-        ? emailDetail.subject
-        : emailDetail.subject?.startsWith('Fwd:')
+              : emailDetail.from_address)
+        fullHtml = `
+          <div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">
+            ${replyHtml.replace(/\n/g, '<br>')}
+          </div>
+          <br>
+          <div style="border-left:2px solid #ccc;padding-left:12px;margin-top:16px;color:#666;font-size:13px;">
+            <p style="margin:0 0 8px;"><strong>On ${originalDate}, ${originalFrom} wrote:</strong></p>
+            ${emailDetail.html_body || emailDetail.text_body?.replace(/\n/g, '<br>') || ''}
+          </div>
+        `
+        subject = emailDetail.subject?.startsWith('Re:') || emailDetail.subject?.startsWith('Fwd:')
           ? emailDetail.subject
-          : isReplyAll
-            ? `Re: ${emailDetail.subject}`
-            : `Re: ${emailDetail.subject}`
+          : `Re: ${emailDetail.subject}`
+        
+        sendTo = activeFolder === 'sent' 
+          ? (emailDetail.to_address || emailDetail.recipient_email)
+          : activeFolder === 'trash'
+            ? (emailDetail.original_folder === 'sent'
+              ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+              : emailDetail.from_address)
+            : emailDetail.from_address
+      }
       
-      // For reply all, include original sender and other recipients
-      let replyTo = activeFolder === 'sent' 
-        ? (emailDetail.to_address || emailDetail.recipient_email)
-        : activeFolder === 'trash'
-          ? (emailDetail.original_folder === 'sent'
-            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
-            : emailDetail.from_address)
-          : emailDetail.from_address
-      
-      // For reply all, we would need to parse CC/BCC from email headers
-      // For now, we'll just reply to the original sender
-      // In a full implementation, you'd parse the email headers to get all recipients
-      
-      await replyToEmail({ to: replyTo, subject, html: fullHtml, inReplyTo: emailDetail.message_id || undefined })
-      toast.success(isReplyAll ? 'Válasz mindenkinek elküldve!' : 'Válasz elküldve!')
+      await replyToEmail({ to: sendTo, subject, html: fullHtml, inReplyTo: isForwarding ? undefined : (emailDetail.message_id || undefined) })
+      toast.success(isForwarding ? 'Email továbbítva!' : (isReplyAll ? 'Válasz mindenkinek elküldve!' : 'Válasz elküldve!'))
       setShowReply(false)
       setReplyHtml('')
       setReplyTemplate(null)
       setIsReplyAll(false)
+      setIsForwarding(false)
+      setForwardTo('')
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -850,40 +863,6 @@ export default function EnhancedMailView({ onNavigate }) {
       )}
 
       {/* Main Layout */}
-      {/* Top Navigation Bar */}
-      <div className="w-full border-b border-white/10 bg-[#1a1d23]">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-2">
-            {allNavItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleNav(item.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                    item.id === 'mail' 
-                      ? 'bg-[#2EC4BE] text-white' 
-                      : 'bg-white/10 hover:bg-white/20 text-gray-300'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{item.label}</span>
-                </button>
-              )
-            })}
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-white">Levelezés</h1>
-            <button
-              onClick={logout}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-300"
-              title="Kijelentkezés"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Email Content Area */}
       <div className="flex-1 flex overflow-hidden">
@@ -1140,24 +1119,26 @@ export default function EnhancedMailView({ onNavigate }) {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mt-4">
               <button
                 onClick={handleReply}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors text-sm"
               >
                 <Reply className="w-4 h-4" />
-                Válasz
+                <span className="hidden sm:inline">Válasz</span>
               </button>
               <button 
                 onClick={handleReplyAll}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
               >
                 <ReplyAll className="w-4 h-4" />
-                Válasz mindenkinek
+                <span className="hidden sm:inline">Válasz mindenkinek</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors">
+              <button 
+                onClick={handleForward}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm">
                 <Forward className="w-4 h-4" />
-                Továbbítás
+                <span className="hidden sm:inline">Továbbítás</span>
               </button>
               <button
                 onClick={() => {
@@ -1165,17 +1146,17 @@ export default function EnhancedMailView({ onNavigate }) {
                   const email = activeFolder === 'sent' ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient) : (emailDetail.from_address || emailDetail.sender);
                   onNavigate('contacts', { name, email });
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-blue-400"
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-blue-400 text-sm"
               >
                 <UserPlus className="w-4 h-4" />
-                Hozzáadás a kapcsolatokhoz
+                <span className="hidden md:inline">Hozzáadás a kapcsolatokhoz</span>
               </button>
               <button 
                 onClick={() => handleDelete(emailDetail.id)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400"
+                className="flex items-center gap-1.5 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-red-400 text-sm"
               >
                 <Trash2 className="w-4 h-4" />
-                Törlés
+                <span className="hidden sm:inline">Törlés</span>
               </button>
             </div>
           </div>
@@ -1212,25 +1193,29 @@ export default function EnhancedMailView({ onNavigate }) {
             })()}
           </div>
 
-          {/* Reply Section */}
+          {/* Reply / Forward Section */}
           {showReply && (
-            <div className="border-t border-white/10 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-medium text-white">{isReplyAll ? 'Válasz mindenkinek' : 'Válasz'}</h3>
-                  <p className="text-sm text-gray-400 flex items-center gap-1.5">
-                    <Reply className="w-3.5 h-3.5" />
-                    {isReplyAll ? 'Válasz mindenkinek:' : 'Válasz neki:'} <span className="text-gray-200">
-                      {activeFolder === 'sent' 
-                        ? (emailDetail.to_address || emailDetail.recipient_email)
-                        : activeFolder === 'trash'
-                          ? (emailDetail.original_folder === 'sent'
-                            ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
-                            : (emailDetail.from_name || emailDetail.from_address))
-                          : (emailDetail.from_name || emailDetail.from_address)
-                      }
-                    </span>
-                  </p>
+            <div className="border-t border-white/10 p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-lg font-medium text-white">
+                    {isForwarding ? 'Továbbítás' : isReplyAll ? 'Válasz mindenkinek' : 'Válasz'}
+                  </h3>
+                  {!isForwarding && (
+                    <p className="text-sm text-gray-400 flex items-center gap-1.5">
+                      <Reply className="w-3.5 h-3.5" />
+                      {isReplyAll ? 'Válasz mindenkinek:' : 'Válasz neki:'} <span className="text-gray-200">
+                        {activeFolder === 'sent' 
+                          ? (emailDetail.to_address || emailDetail.recipient_email)
+                          : activeFolder === 'trash'
+                            ? (emailDetail.original_folder === 'sent'
+                              ? (emailDetail.to_address || emailDetail.recipient_email || emailDetail.recipient)
+                              : (emailDetail.from_name || emailDetail.from_address))
+                            : (emailDetail.from_name || emailDetail.from_address)
+                        }
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex bg-white/5 rounded-lg p-0.5">
@@ -1252,13 +1237,28 @@ export default function EnhancedMailView({ onNavigate }) {
                     </button>
                   </div>
                   <button
-                    onClick={() => setShowReply(false)}
+                    onClick={() => { setShowReply(false); setIsForwarding(false); setForwardTo('') }}
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
+
+              {/* Forward To field */}
+              {isForwarding && (
+                <div className="mb-4">
+                  <label className="block text-xs text-gray-400 mb-1.5">Címzett</label>
+                  <input
+                    type="email"
+                    value={forwardTo}
+                    onChange={(e) => setForwardTo(e.target.value)}
+                    placeholder="pelda@email.com"
+                    className={`w-full px-4 py-2.5 rounded-lg text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:border-[#2EC4BE] focus:bg-white/10' : 'bg-white/5 border border-white/10 focus:border-[#2EC4BE]'} text-white placeholder-gray-500 outline-none transition-colors`}
+                    autoFocus
+                  />
+                </div>
+              )}
 
               {/* Template Selector */}
               <div className={`mb-4 p-4 rounded-lg ${isModern ? 'bg-white/5' : 'bg-white/5'}`}>
@@ -1324,10 +1324,11 @@ export default function EnhancedMailView({ onNavigate }) {
               <div className="flex justify-end">
                 <button
                   onClick={handleSendReply}
-                  className="flex items-center gap-2 px-6 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors"
+                  disabled={sending || (isForwarding && !forwardTo.trim())}
+                  className="flex items-center gap-2 px-6 py-2 bg-[#1AA19C] hover:bg-[#2EC4BE] text-white rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Send className="w-4 h-4" />
-                  Válasz küldése
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {isForwarding ? 'Továbbítás' : 'Válasz küldése'}
                 </button>
               </div>
             </div>
