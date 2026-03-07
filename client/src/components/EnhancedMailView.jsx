@@ -1581,6 +1581,7 @@ export default function EnhancedMailView({ onNavigate }) {
                   />
                 ) : (
                   <textarea
+                    ref={replyRef}
                     value={replyHtml}
                     onChange={(e) => setReplyHtml(e.target.value)}
                     placeholder="Írd ide a választ..."
