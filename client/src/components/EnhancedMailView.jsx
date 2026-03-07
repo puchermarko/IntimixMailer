@@ -1401,8 +1401,8 @@ export default function EnhancedMailView({ onNavigate }) {
 
           {/* Reply / Forward Section — full-screen on mobile */}
           {showReply && (
-            <div className="fixed inset-0 z-40 sm:static sm:z-auto flex flex-col bg-[#0f1115] sm:bg-transparent border-t sm:border-t border-white/10 max-h-[100vh] sm:max-h-none">
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-h-[calc(100vh-80px)] sm:max-h-none">
+            <div className="fixed inset-0 z-40 sm:static sm:z-auto flex flex-col bg-[#0f1115] sm:bg-transparent border-t sm:border-t border-white/10 h-[100vh] sm:h-auto">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg font-medium text-white">
@@ -1593,6 +1593,10 @@ export default function EnhancedMailView({ onNavigate }) {
                 )}
               </div>
 
+              </div>
+            
+            {/* Sticky Send Button Footer */}
+            <div className="sticky bottom-0 bg-[#0f1115] border-t border-white/10 p-4 sm:p-4 sm:bg-transparent sm:border-t-0">
               <div className="flex justify-end">
                 <button
                   onClick={handleSendReply}
