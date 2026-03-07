@@ -68,6 +68,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const [sendingReply, setSendingReply] = useState(false)
   const [isForwarding, setIsForwarding] = useState(false)
   const [forwardTo, setForwardTo] = useState('')
+  const [replyRecipient, setReplyRecipient] = useState('')
   const [replyAttachments, setReplyAttachments] = useState([])
   const [replySelectedTemplate, setReplySelectedTemplate] = useState(null)
   const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
@@ -256,6 +257,12 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     setIsForwarding(false)
     setForwardTo('')
     setReplyHtml('')
+    
+    // Auto-fill recipient based on email type
+    const recipient = emailType === 'sent' 
+      ? (email.to_address || email.recipient_email || '')
+      : (email.from_address || '')
+    setReplyRecipient(recipient)
   }
 
   const handleForwardEmail = (email, emailType) => {
@@ -263,6 +270,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     setIsForwarding(true)
     setShowReply(true)
     setForwardTo('')
+    setReplyRecipient('')
     const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
     const originalFrom = email.from_name 
       ? `${email.from_name} <${email.from_address}>`
@@ -281,17 +289,17 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   }
 
   const handleSendReply = async () => {
-    if (isForwarding && !forwardTo.trim()) return toast.error('Add meg a címzett email címét')
+    const recipient = isForwarding ? forwardTo.trim() : replyRecipient.trim()
+    if (!recipient) return toast.error(isForwarding ? 'Add meg a címzett email címét' : 'Add meg a címzett email címet')
     if (!replyHtml.trim()) return toast.error('Írj valamit a válaszba')
     setSendingReply(true)
     try {
       const email = replyToEmailData
-      let fullHtml, subject, sendTo
+      let fullHtml, subject
 
       if (isForwarding) {
         fullHtml = `<div style="font-family:Arial,sans-serif;font-size:14px;color:#333;">${replyHtml.replace(/\n/g, '<br>')}</div>`
         subject = email.subject?.startsWith('Fwd:') ? email.subject : `Fwd: ${email.subject || ''}`
-        sendTo = forwardTo.trim()
       } else {
         const originalDate = new Date(email.date || email.sent_at).toLocaleString('hu-HU')
         const originalFrom = email.type === 'sent' 
@@ -305,11 +313,10 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
             ${email.html_body || email.text_body?.replace(/\n/g, '<br>') || ''}
           </div>`
         subject = email.subject?.startsWith('Re:') ? email.subject : `Re: ${email.subject}`
-        sendTo = email.type === 'sent' ? (email.to_address || email.recipient_email) : email.from_address
       }
       
       await replyToEmail({ 
-        to: sendTo, 
+        to: recipient, 
         subject, 
         html: fullHtml, 
         inReplyTo: isForwarding ? undefined : (email.message_id || undefined),
@@ -321,6 +328,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
       setReplyToEmailData(null)
       setIsForwarding(false)
       setForwardTo('')
+      setReplyRecipient('')
       setReplyAttachments([])
       setReplySelectedTemplate(null)
       setShowReplyTemplateSelector(false)
@@ -1439,19 +1447,29 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                 </p>
               </div>
 
-              {isForwarding && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1.5">Címzett</label>
-                  <input
-                    type="email"
-                    value={forwardTo}
-                    onChange={(e) => setForwardTo(e.target.value)}
-                    placeholder="pelda@email.com"
-                    className={`w-full px-4 py-3 rounded-lg text-base sm:text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:border-[#2EC4BE] focus:bg-white/10' : 'bg-white/5 border border-white/10 focus:border-[#2EC4BE]'} text-white placeholder-gray-500 outline-none transition-colors`}
-                    autoFocus
-                  />
-                </div>
-              )}
+              {/* Recipient Field - for both reply and forward */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1.5">
+                  {isForwarding ? 'Címzett' : 'Címzett (automatikusan kitöltve)'}
+                </label>
+                <input
+                  type="email"
+                  value={isForwarding ? forwardTo : replyRecipient}
+                  onChange={(e) => {
+                    if (isForwarding) {
+                      setForwardTo(e.target.value)
+                    } else {
+                      setReplyRecipient(e.target.value)
+                    }
+                  }}
+                  placeholder={isForwarding ? "pelda@email.com" : "cimzett@email.com"}
+                  className={`w-full px-4 py-3 rounded-lg text-base sm:text-sm ${isModern ? 'bg-white/5 border border-white/10 focus:border-[#2EC4BE] focus:bg-white/10' : 'bg-white/5 border border-white/10 focus:border-[#2EC4BE]'} text-white placeholder-gray-500 outline-none transition-colors`}
+                  autoFocus={isForwarding}
+                />
+                {!isForwarding && replyRecipient && (
+                  <p className="text-xs text-gray-500 mt-1">Eredeti címzett: {replyRecipient}</p>
+                )}
+              </div>
 
               {/* Template Selection */}
               <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}`}>
