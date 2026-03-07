@@ -252,6 +252,14 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   }
 
   const handleReply = (email, emailType) => {
+    console.log('handleReply called with:', { email, emailType })
+    console.log('Email fields:', {
+      from_address: email.from_address,
+      from_name: email.from_name,
+      to_address: email.to_address,
+      recipient_email: email.recipient_email
+    })
+    
     setReplyToEmailData({ ...email, type: emailType })
     setShowReply(true)
     setIsForwarding(false)
@@ -262,6 +270,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     const recipient = emailType === 'sent' 
       ? (email.to_address || email.recipient_email || '')
       : (email.from_address || '')
+    console.log('Setting recipient to:', recipient)
     setReplyRecipient(recipient)
   }
 
