@@ -183,6 +183,11 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     }
   }, [showReply, replyToEmailData])
 
+  // Debug replyRecipient state changes
+  useEffect(() => {
+    console.log('replyRecipient state changed:', replyRecipient)
+  }, [replyRecipient])
+
   const handleExpandEmail = async (emailId) => {
     // Always use inline expansion for contact details, regardless of enhanced mail setting
     // Enhanced mail view should only be accessed from main navigation
@@ -271,7 +276,14 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
       ? (email.to_address || email.recipient_email || '')
       : (email.from_address || '')
     console.log('Setting recipient to:', recipient)
+    console.log('Email type:', emailType)
+    console.log('Full email object:', JSON.stringify(email, null, 2))
     setReplyRecipient(recipient)
+    
+    // Debug: Check if state was set (this will run after state update)
+    setTimeout(() => {
+      console.log('replyRecipient state after timeout:', replyRecipient)
+    }, 100)
   }
 
   const handleForwardEmail = (email, emailType) => {
@@ -1465,6 +1477,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                   type="email"
                   value={isForwarding ? forwardTo : replyRecipient}
                   onChange={(e) => {
+                    console.log('Input changed:', { isForwarding, value: e.target.value, replyRecipient, forwardTo })
                     if (isForwarding) {
                       setForwardTo(e.target.value)
                     } else {
