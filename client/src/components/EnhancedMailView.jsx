@@ -244,7 +244,10 @@ function ComposeTab({ isModern, onClose, onSendSuccess }) {
         <div className="flex items-center justify-between mb-3">
           <label className="text-xs text-gray-400">Csatolmányok</label>
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+            console.log('File upload button clicked, fileInputRef.current:', fileInputRef.current)
+            fileInputRef.current?.click()
+          }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               isModern 
                 ? 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10' 
@@ -261,7 +264,14 @@ function ComposeTab({ isModern, onClose, onSendSuccess }) {
           type="file"
           multiple
           onChange={(e) => {
-            setAttachments(prev => [...prev, ...Array.from(e.target.files)])
+            console.log('File input changed, files selected:', e.target.files.length)
+            const files = Array.from(e.target.files)
+            console.log('Files:', files.map(f => ({ name: f.name, size: f.size, type: f.type })))
+            setAttachments(prev => {
+              const newAttachments = [...prev, ...files]
+              console.log('Total attachments now:', newAttachments.length)
+              return newAttachments
+            })
             e.target.value = '' // Reset input
           }}
           className="hidden"
