@@ -418,6 +418,7 @@ export default function EnhancedMailView({ onNavigate }) {
   const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
+  const [sending, setSending] = useState(false)
   const [forwardTo, setForwardTo] = useState('')
   const [isReplyAll, setIsReplyAll] = useState(false)
   const [replyAttachments, setReplyAttachments] = useState([])
