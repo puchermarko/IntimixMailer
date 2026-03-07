@@ -331,6 +331,16 @@ export async function getSentImapEmail(id) {
   return data
 }
 
+export async function deleteSentImapEmail(id) {
+  const res = await fetch(`${API_BASE}/sent-imap/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete sent email')
+  return data
+}
+
 export function getSentImapAttachmentUrl(id) {
   return `${API_BASE}/sent-imap-attachments/${id}/download`
 }

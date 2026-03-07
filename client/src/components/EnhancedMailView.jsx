@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
-  getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, syncSent,
+  getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, deleteSentImapEmail, getSentImapAttachmentUrl, syncSent,
   replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig,
   getDownloadToken
 } from '../lib/api'
@@ -914,46 +914,42 @@ export default function EnhancedMailView({ onNavigate }) {
   const confirmDelete = async () => {
     try {
       if (activeFolder === 'inbox') {
-        // Find the email to delete from current emails
-        const emailToDeleteData = emails.find(email => email.id === emailToDelete)
-        if (emailToDeleteData) {
-          // Fetch full email content before moving to trash
-          let fullEmailData = emailToDeleteData
-          try {
-            const emailDetail = await getInboxEmail(emailToDelete)
-            fullEmailData = { ...emailToDeleteData, ...emailDetail }
-            console.log('Fetched full email content for trash:', fullEmailData)
-          } catch (err) {
-            console.warn('Could not fetch full email content, using basic data:', err)
-          }
-          
-          // Add to trash with timestamp and full content
-          const trashEmail = {
-            ...fullEmailData,
-            deleted_at: new Date().toISOString(),
-            original_folder: 'inbox'
-          }
-          setTrashEmails(prev => [...prev, trashEmail])
-          
-          // Remove from inbox (simulate deletion)
-          setEmails(prev => prev.filter(email => email.id !== emailToDelete))
-          toast.success('Levél a kukába helyezve')
-        }
+        // Delete from IMAP server
+        await deleteInboxEmail(emailToDelete)
+        
+        // Remove from local state
+        setEmails(prev => prev.filter(email => email.id !== emailToDelete))
+        toast.success('Levél törölve a szerverről')
+        
+        // Refresh the inbox after deletion
+        setTimeout(() => {
+          syncAndLoad(1)
+        }, 500)
+        
       } else if (activeFolder === 'sent') {
-        // TODO: Implement sent email delete API
-        toast.warning('Kimenő levelek törlése hamarosan elérhető lesz')
-        setShowDeleteConfirm(false)
-        setEmailToDelete(null)
-        return
+        // Delete from IMAP server (sent emails)
+        await deleteSentImapEmail(emailToDelete)
+        
+        // Remove from local state
+        setEmails(prev => prev.filter(email => email.id !== emailToDelete))
+        toast.success('Kimenő levél törölve a szerverről')
+        
+        // Refresh sent emails after deletion
+        setTimeout(() => {
+          syncAndLoad(1)
+        }, 500)
+        
       } else if (activeFolder === 'trash') {
-        // Permanently delete from trash
+        // Permanently delete from local trash
         setTrashEmails(prev => prev.filter(email => email.id !== emailToDelete))
         toast.success('Levél véglegesen törölve')
+        
         // Auto-refresh trash folder after permanent deletion
         setTimeout(() => {
           loadEmails()
         }, 500)
       }
+      
       setSelectedEmail(null)
       setEmailDetail(null)
     } catch (err) {
