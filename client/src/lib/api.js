@@ -291,12 +291,25 @@ export async function getInboxEmail(id) {
 }
 
 export async function deleteInboxEmail(id) {
+  console.log('deleteInboxEmail called with id:', id)
+  console.log('Making DELETE request to:', `${API_BASE}/inbox/${id}`)
+  
   const res = await fetch(`${API_BASE}/inbox/${id}`, {
     method: 'DELETE',
     headers: getHeaders()
   })
+  
+  console.log('Delete response status:', res.status, res.statusText)
+  console.log('Delete response headers:', Object.fromEntries(res.headers.entries()))
+  
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || 'Failed to delete email')
+  console.log('Delete response data:', data)
+  
+  if (!res.ok) {
+    console.error('Delete failed with status:', res.status)
+    throw new Error(data.error || 'Failed to delete email')
+  }
+  
   return data
 }
 

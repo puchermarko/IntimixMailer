@@ -915,18 +915,28 @@ export default function EnhancedMailView({ onNavigate }) {
     try {
       if (activeFolder === 'inbox') {
         // Delete from IMAP server
-        console.log('Deleting inbox email from IMAP server:', emailToDelete)
-        await deleteInboxEmail(emailToDelete)
-        console.log('Successfully deleted from IMAP server')
+        console.log('Attempting to delete inbox email from IMAP server:', emailToDelete)
+        console.log('API endpoint:', `/inbox/${emailToDelete}`)
+        
+        try {
+          const response = await deleteInboxEmail(emailToDelete)
+          console.log('Delete API response:', response)
+          console.log('Successfully deleted from IMAP server')
+        } catch (error) {
+          console.error('Failed to delete from IMAP server:', error)
+          console.error('Error details:', error.message, error.stack)
+          throw error
+        }
         
         // Remove from local state
         setEmails(prev => prev.filter(email => email.id !== emailToDelete))
         toast.success('Levél törölve a szerverről')
         
-        // Refresh the inbox after deletion
+        // Wait a bit longer before refresh to ensure server processing
         setTimeout(() => {
+          console.log('Refreshing inbox after deletion...')
           syncAndLoad(1)
-        }, 500)
+        }, 2000)
         
       } else if (activeFolder === 'sent') {
         // Find the email to check its source
