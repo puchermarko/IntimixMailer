@@ -915,7 +915,9 @@ export default function EnhancedMailView({ onNavigate }) {
     try {
       if (activeFolder === 'inbox') {
         // Delete from IMAP server
+        console.log('Deleting inbox email from IMAP server:', emailToDelete)
         await deleteInboxEmail(emailToDelete)
+        console.log('Successfully deleted from IMAP server')
         
         // Remove from local state
         setEmails(prev => prev.filter(email => email.id !== emailToDelete))
