@@ -418,10 +418,11 @@ export default function EnhancedMailView({ onNavigate }) {
   const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
   const [replyTemplates, setReplyTemplates] = useState([])
   const [loadingReplyTemplates, setLoadingReplyTemplates] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [isReplyAll, setIsReplyAll] = useState(false)
-  const [isForwarding, setIsForwarding] = useState(false)
   const [forwardTo, setForwardTo] = useState('')
+  const [isReplyAll, setIsReplyAll] = useState(false)
+  const [replyAttachments, setReplyAttachments] = useState([])
+  const replyFileInputRef = useRef(null)
+  const [isForwarding, setIsForwarding] = useState(false)
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 0,
@@ -727,6 +728,7 @@ export default function EnhancedMailView({ onNavigate }) {
     setReplyHtml('')
     setReplyTemplate(null)
     setShowReplyTemplateSelector(false)
+    setReplyAttachments([])
     
     setLoadingReplyTemplates(true)
     try {
@@ -748,6 +750,7 @@ export default function EnhancedMailView({ onNavigate }) {
     setReplyHtml('')
     setReplyTemplate(null)
     setShowReplyTemplateSelector(false)
+    setReplyAttachments([])
     
     setLoadingReplyTemplates(true)
     try {
@@ -774,6 +777,7 @@ export default function EnhancedMailView({ onNavigate }) {
     setIsReplyAll(false)
     setShowReply(true)
     setForwardTo('')
+    setReplyAttachments([])
     const originalDate = new Date(emailDetail.date || emailDetail.sent_at).toLocaleString('hu-HU')
     const originalFrom = emailDetail.from_name 
       ? `${emailDetail.from_name} <${emailDetail.from_address}>`
@@ -849,12 +853,19 @@ export default function EnhancedMailView({ onNavigate }) {
             : emailDetail.from_address
       }
       
-      await replyToEmail({ to: sendTo, subject, html: fullHtml, inReplyTo: isForwarding ? undefined : (emailDetail.message_id || undefined) })
+      await replyToEmail({ 
+        to: sendTo, 
+        subject, 
+        html: fullHtml, 
+        inReplyTo: isForwarding ? undefined : (emailDetail.message_id || undefined),
+        attachments: replyAttachments.length > 0 ? replyAttachments : undefined
+      })
       toast.success(isForwarding ? 'Email továbbítva!' : (isReplyAll ? 'Válasz mindenkinek elküldve!' : 'Válasz elküldve!'))
       setShowReply(false)
       setReplyHtml('')
       setReplyTemplate(null)
       setIsReplyAll(false)
+      setReplyAttachments([])
       setIsForwarding(false)
       setForwardTo('')
     } catch (err) {
@@ -1389,8 +1400,8 @@ export default function EnhancedMailView({ onNavigate }) {
 
           {/* Reply / Forward Section — full-screen on mobile */}
           {showReply && (
-            <div className="fixed inset-0 z-40 sm:static sm:z-auto flex flex-col bg-[#0f1115] sm:bg-transparent border-t sm:border-t border-white/10">
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="fixed inset-0 z-40 sm:static sm:z-auto flex flex-col bg-[#0f1115] sm:bg-transparent border-t sm:border-t border-white/10 max-h-[100vh] sm:max-h-none">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-h-[calc(100vh-80px)] sm:max-h-none">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
                 <div className="flex items-center gap-3 flex-wrap">
                   <h3 className="text-lg font-medium text-white">
@@ -1492,6 +1503,70 @@ export default function EnhancedMailView({ onNavigate }) {
                         </button>
                       ))
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* File Attachments */}
+              <div className={`mb-4 p-4 rounded-lg ${isModern ? 'bg-white/5' : 'bg-white/5'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs text-gray-400">Csatolmányok</label>
+                  <button
+                    onClick={() => replyFileInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    Fájl hozzáadása
+                  </button>
+                </div>
+                
+                <input
+                  ref={replyFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    setReplyAttachments(prev => [...prev, ...Array.from(e.target.files)])
+                    e.target.value = '' // Reset input
+                  }}
+                  className="hidden"
+                />
+                
+                {replyAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    {replyAttachments.map((attachment, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/10"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-200 truncate">{attachment.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {attachment.type} • {(attachment.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setReplyAttachments(prev => prev.filter((_, i) => i !== index))
+                          }}
+                          className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="text-xs text-gray-500 pt-1 border-t border-white/5">
+                      {replyAttachments.length} fájl • {(replyAttachments.reduce((sum, a) => sum + a.size, 0) / 1024).toFixed(1)} KB összesen
+                    </div>
+                  </div>
+                )}
+                
+                {replyAttachments.length === 0 && (
+                  <div className="text-center py-4 border-2 border-dashed border-white/10 rounded-lg">
+                    <Paperclip className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500">Nincsenek csatolmányok</p>
                   </div>
                 )}
               </div>
