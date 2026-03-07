@@ -459,13 +459,10 @@ export default function EnhancedMailView({ onNavigate }) {
       let data = { emails: [], total: 0, page: 1, totalPages: 0 }
       if (activeFolder === 'inbox') {
         data = await getInbox({ page, limit: pagination.limit, search: searchQuery })
-        console.log('Inbox emails loaded:', data)
+        console.log('Inbox loaded:', data.emails?.length || 0, 'emails')
       } else if (activeFolder === 'sent') {
         data = await getSentEmails({ page, limit: pagination.limit, search: searchQuery })
-        console.log('Sent emails loaded:', data)
-        console.log('First sent email structure:', data.emails?.[0] ? Object.keys(data.emails[0]) : 'No emails')
-        console.log('Sample sent email:', data.emails?.[0])
-        console.log('All field names in first sent email:', data.emails?.[0] ? Object.keys(data.emails[0]).map(key => `${key}: ${data.emails[0][key]}`).join(', ') : 'No emails')
+        console.log('Sent loaded:', data.emails?.length || 0, 'emails')
       } else if (activeFolder === 'trash') {
         // Load deleted emails from client-side trash storage
         data.emails = trashEmails
@@ -547,7 +544,7 @@ export default function EnhancedMailView({ onNavigate }) {
     await loadEmails(page)
   }, [activeFolder, searchQuery, pagination.limit, syncing])
 
-  // Auto-sync every 60 seconds while tab is active
+  // Auto-sync every 5 minutes while tab is active (reduced from 60 seconds)
   useEffect(() => {
     // Clear any existing interval when folder changes
     if (syncIntervalRef.current) clearInterval(syncIntervalRef.current)
@@ -559,7 +556,7 @@ export default function EnhancedMailView({ onNavigate }) {
         if (!document.hidden) {
           syncAndLoad(pagination.currentPage, true)
         }
-      }, 60000) // 60 seconds
+      }, 300000) // 5 minutes (300 seconds) - reduced frequency
     }
 
     return () => {
@@ -634,6 +631,30 @@ export default function EnhancedMailView({ onNavigate }) {
     handlePageChange(pagination.totalPages)
   }
 
+  const handleFolderChange = (folder) => {
+    setActiveFolder(folder)
+    // Clear memory-intensive data when switching folders
+    setSelectedEmail(null)
+    setEmailDetail(null)
+    setShowReply(false)
+    setReplyToEmailData(null)
+    setReplyHtml('')
+    setReplyAttachments([])
+    setPagination(prev => ({ ...prev, currentPage: 1 }))
+    
+    // Force garbage collection hint (if available)
+    if (window.gc) {
+      window.gc()
+    }
+    
+    // Sync IMAP on folder switch for inbox/sent; plain load for others
+    if (folder === 'inbox' || folder === 'sent') {
+      syncAndLoad(1)
+    } else {
+      loadEmails(1)
+    }
+  }
+
   useEffect(() => {
     // Reset pagination when changing folders
     setPagination(prev => ({ ...prev, currentPage: 1 }))
@@ -692,28 +713,7 @@ export default function EnhancedMailView({ onNavigate }) {
         detail = email
       }
       
-      console.log('Email detail loaded:', detail)
-      console.log('Complete email structure:', JSON.stringify(detail, null, 2))
-      console.log('All email fields:', {
-        id: detail.id,
-        subject: detail.subject,
-        from_address: detail.from_address,
-        to_address: detail.to_address,
-        date: detail.date,
-        html_body: detail.html_body,
-        text_body: detail.text_body,
-        body: detail.body,
-        content: detail.content,
-        message: detail.message,
-        plain_text: detail.plain_text,
-        text: detail.text,
-        preview: detail.preview,
-        html: detail.html,
-        recipient_email: detail.recipient_email,
-        sent_at: detail.sent_at,
-        deleted_at: detail.deleted_at,
-        original_folder: detail.original_folder
-      })
+      console.log('Email detail loaded:', detail.id, detail.subject)
       
       setEmailDetail(detail)
     } catch (err) {
