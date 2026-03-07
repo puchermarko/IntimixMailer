@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
-  getSentEmails, deleteSentEmail, getEmailDetail, getAttachmentUrl, getSentImapEmail, deleteSentImapEmail, getSentImapAttachmentUrl, syncSent,
+  getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, deleteSentImapEmail, getSentImapAttachmentUrl, syncSent,
   replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig,
   getDownloadToken
 } from '../lib/api'
@@ -937,9 +937,9 @@ export default function EnhancedMailView({ onNavigate }) {
           await deleteSentImapEmail(emailToDelete)
           toast.success('Kimenő levél törölve a szerverről')
         } else {
-          // Delete from local database
-          await deleteSentEmail(emailToDelete)
-          toast.success('Kimenő levél törölve')
+          // Local sent emails - just remove from local state (backend doesn't support deletion)
+          console.log('Removing local sent email from UI only:', emailToDelete)
+          toast.success('Kimenő levél eltávolítva')
         }
         
         // Remove from local state
