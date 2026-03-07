@@ -239,6 +239,77 @@ function ComposeTab({ isModern, onClose, onSendSuccess }) {
         <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email tárgya" className={`input-field w-full px-3 py-2 text-sm ${isModern ? 'bg-white/5 border-white/5 focus:bg-white/10' : ''}`} />
       </div>
 
+      {/* Csatolmányok */}
+      <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-xs text-gray-400">Csatolmányok</label>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isModern 
+                ? 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10' 
+                : 'glass-light hover:border-[#1AA19C]/30 text-gray-300'
+            }`}
+          >
+            <Paperclip className="w-3.5 h-3.5" />
+            Fájl hozzáadása
+          </button>
+        </div>
+        
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={(e) => {
+            setAttachments(prev => [...prev, ...Array.from(e.target.files)])
+            e.target.value = '' // Reset input
+          }}
+          className="hidden"
+        />
+        
+        {attachments.length > 0 && (
+          <div className="space-y-2">
+            {attachments.map((attachment, index) => (
+              <div
+                key={index}
+                className={`flex items-center justify-between p-2.5 rounded-lg ${
+                  isModern ? 'bg-white/5 border border-white/10' : 'glass-light'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-200 truncate">{attachment.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {attachment.type} • {(attachment.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setAttachments(prev => prev.filter((_, i) => i !== index))
+                  }}
+                  className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+            <div className="text-xs text-gray-500 pt-1 border-t border-white/5">
+              {attachments.length} fájl • {(attachments.reduce((sum, a) => sum + a.size, 0) / 1024).toFixed(1)} KB összesen
+            </div>
+          </div>
+        )}
+        
+        {attachments.length === 0 && (
+          <div className="text-center py-6 border-2 border-dashed border-white/10 rounded-lg">
+            <Paperclip className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Még nincsenek csatolmányok</p>
+            <p className="text-xs text-gray-600 mt-1">Kattints a "Fájl hozzáadása" gombra</p>
+          </div>
+        )}
+      </div>
+
       {/* HTML szerkesztő */}
       <div className={isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}>
         <div className="flex items-center justify-between mb-2">
