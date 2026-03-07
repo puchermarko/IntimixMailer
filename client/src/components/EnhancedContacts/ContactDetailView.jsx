@@ -1,17 +1,18 @@
 // Kapcsolat részletes nézet - emailek, fogadott levelek, fájlok mind itt vannak
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails, replyToEmail } from '../../lib/api'
+import { getContact, getEmailDetail, getAttachmentUrl, getInboxEmail, getInboxAttachmentUrl, getSentImapEmail, getSentImapAttachmentUrl, getDownloadToken, getInbox, getSentEmails, replyToEmail, getCustomTemplates } from '../../lib/api'
 import toast from 'react-hot-toast'
-import { useAuth, useUI } from '../../App'
+import { useAuth, useUI, useBranding } from '../../App'
 import {
   ArrowLeft, Mail, Phone, StickyNote, Calendar, Paperclip,
   FileText, Image, File, Download, Eye, X, Loader2, Edit3,
   Clock, ChevronDown, ChevronUp, Inbox, SendHorizontal, Receipt,
   TrendingUp, Target, Zap, UserPlus, BarChart3, ExternalLink, Reply,
   Forward, Send, FolderPlus, Upload, FolderOpen, Trash2, MoreVertical, Activity,
-  Home, List, Grid, ChevronRight, Plus, Search
+  Home, List, Grid, ChevronRight, Plus, Search, LayoutGrid
 } from 'lucide-react'
 import SimpleRichEditor from '../SimpleRichEditor'
+import { emailTemplates as builtinTemplates } from '../../lib/templates'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
   AreaChart, Area, Legend, PieChart, Pie
@@ -67,6 +68,10 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const [sendingReply, setSendingReply] = useState(false)
   const [isForwarding, setIsForwarding] = useState(false)
   const [forwardTo, setForwardTo] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState([])
+  const [replySelectedTemplate, setReplySelectedTemplate] = useState(null)
+  const [showReplyTemplateSelector, setShowReplyTemplateSelector] = useState(false)
+  const replyFileInputRef = useRef(null)
   // File Manager state — Home Folder is always the root
   const HOME_FOLDER_ID = 'home'
   const [contactFolders, setContactFolders] = useState(() => {
@@ -105,11 +110,13 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
   const fileInputRef = useRef(null)
 
   const [dlToken, setDlToken] = useState('')
+  const [customTemplates, setCustomTemplates] = useState([])
 
   const isModern = uiMode === 'modern'
 
   useEffect(() => {
     getDownloadToken().then(t => setDlToken(t)).catch(() => {})
+    getCustomTemplates().then(setCustomTemplates).catch(() => {})
   }, [contactId])
 
   useEffect(() => {
@@ -301,18 +308,39 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
         sendTo = email.type === 'sent' ? (email.to_address || email.recipient_email) : email.from_address
       }
       
-      await replyToEmail({ to: sendTo, subject, html: fullHtml, inReplyTo: isForwarding ? undefined : (email.message_id || undefined) })
+      await replyToEmail({ 
+        to: sendTo, 
+        subject, 
+        html: fullHtml, 
+        inReplyTo: isForwarding ? undefined : (email.message_id || undefined),
+        attachments: replyAttachments.length > 0 ? replyAttachments : undefined
+      })
       toast.success(isForwarding ? 'Email továbbítva!' : 'Válasz elküldve!')
       setShowReply(false)
       setReplyHtml('')
       setReplyToEmailData(null)
       setIsForwarding(false)
       setForwardTo('')
+      setReplyAttachments([])
+      setReplySelectedTemplate(null)
+      setShowReplyTemplateSelector(false)
     } catch (err) {
       toast.error(err.message)
     } finally {
       setSendingReply(false)
     }
+  }
+
+  // Template functions for reply/forward
+  const { login_domain } = useBranding()
+  const showBuiltin = login_domain === 'intimix.hu'
+  const allReplyTemplates = [...(showBuiltin ? builtinTemplates : []), ...customTemplates]
+
+  const applyReplyTemplate = (template) => {
+    setReplySelectedTemplate(template.id)
+    setReplyHtml(template.html)
+    setShowReplyTemplateSelector(false)
+    toast.success(`"${template.name}" sablon alkalmazva`)
   }
 
   // File Manager functions
@@ -1424,6 +1452,102 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                   />
                 </div>
               )}
+
+              {/* Template Selection */}
+              <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}`}>
+                <button onClick={() => setShowReplyTemplateSelector(!showReplyTemplateSelector)}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all ${isModern ? 'bg-white/5 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/30'}`}>
+                  <div className="flex items-center gap-3">
+                    <LayoutGrid className="w-4 h-4 text-[#1AA19C]" />
+                    <span className="text-sm font-medium">
+                      {replySelectedTemplate ? allReplyTemplates.find(t => t.id === replySelectedTemplate)?.name : 'Válassz sablont'}
+                    </span>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showReplyTemplateSelector ? 'rotate-180' : ''}`} />
+                </button>
+                {showReplyTemplateSelector && (
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 fade-in max-h-[200px] overflow-y-auto">
+                    {allReplyTemplates.map(t => (
+                      <button key={t.id} onClick={() => applyReplyTemplate(t)}
+                        className={`p-3 rounded-xl text-left transition-all ${isModern ? 'hover:bg-white/5' : 'template-card'} ${replySelectedTemplate === t.id ? (isModern ? 'bg-[#2EC4BE]/10 border border-[#2EC4BE]/20' : 'selected') : ''}`}>
+                        <p className="text-sm font-medium text-gray-200">{t.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{t.description}</p>
+                        <span className={`inline-block mt-1.5 text-[10px] px-2 py-0.5 rounded-full ${isModern ? 'bg-[#2EC4BE]/10 text-[#2EC4BE]' : 'bg-[#1AA19C]/10 text-[#2EC4BE]'}`}>{t.category}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* File Attachments */}
+              <div className={`${isModern ? 'modern-card p-4' : 'glass rounded-xl p-4'}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs text-gray-400">Csatolmányok</label>
+                  <button
+                    onClick={() => replyFileInputRef.current?.click()}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      isModern 
+                        ? 'bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10' 
+                        : 'glass-light hover:border-[#1AA19C]/30 text-gray-300'
+                    }`}
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    Fájl hozzáadása
+                  </button>
+                </div>
+                
+                <input
+                  ref={replyFileInputRef}
+                  type="file"
+                  multiple
+                  onChange={(e) => {
+                    setReplyAttachments(prev => [...prev, ...Array.from(e.target.files)])
+                    e.target.value = '' // Reset input
+                  }}
+                  className="hidden"
+                />
+                
+                {replyAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    {replyAttachments.map((attachment, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-2.5 rounded-lg ${
+                          isModern ? 'bg-white/5 border border-white/10' : 'glass-light'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <Paperclip className="w-4 h-4 text-gray-400 shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-200 truncate">{attachment.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {attachment.type} • {(attachment.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setReplyAttachments(prev => prev.filter((_, i) => i !== index))
+                          }}
+                          className="p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="text-xs text-gray-500 pt-1 border-t border-white/5">
+                      {replyAttachments.length} fájl • {(replyAttachments.reduce((sum, a) => sum + a.size, 0) / 1024).toFixed(1)} KB összesen
+                    </div>
+                  </div>
+                )}
+                
+                {replyAttachments.length === 0 && (
+                  <div className="text-center py-4 border-2 border-dashed border-white/10 rounded-lg">
+                    <Paperclip className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500">Nincsenek csatolmányok</p>
+                  </div>
+                )}
+              </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
