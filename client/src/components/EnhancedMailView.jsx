@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import {
   syncInbox, getInbox, getInboxEmail, deleteInboxEmail, getInboxAttachmentUrl,
-  getSentEmails, getEmailDetail, getAttachmentUrl, getSentImapEmail, deleteSentImapEmail, getSentImapAttachmentUrl, syncSent,
+  getSentEmails, deleteSentEmail, getEmailDetail, getAttachmentUrl, getSentImapEmail, deleteSentImapEmail, getSentImapAttachmentUrl, syncSent,
   replyToEmail, sendEmail, sendBulkEmails, getContacts, createContact, getCustomTemplates, getEnvConfig,
   getDownloadToken
 } from '../lib/api'
@@ -927,16 +927,25 @@ export default function EnhancedMailView({ onNavigate }) {
         }, 500)
         
       } else if (activeFolder === 'sent') {
-        // Delete from IMAP server (sent emails)
-        await deleteSentImapEmail(emailToDelete)
+        // Find the email to check its source
+        const emailToDeleteData = emails.find(email => email.id === emailToDelete)
+        
+        if (emailToDeleteData?.source === 'imap') {
+          // Delete from IMAP server
+          await deleteSentImapEmail(emailToDelete)
+          toast.success('Kimenő levél törölve a szerverről')
+        } else {
+          // Delete from local database
+          await deleteSentEmail(emailToDelete)
+          toast.success('Kimenő levél törölve')
+        }
         
         // Remove from local state
         setEmails(prev => prev.filter(email => email.id !== emailToDelete))
-        toast.success('Kimenő levél törölve a szerverről')
         
         // Refresh sent emails after deletion
         setTimeout(() => {
-          syncAndLoad(1)
+          loadEmails()
         }, 500)
         
       } else if (activeFolder === 'trash') {

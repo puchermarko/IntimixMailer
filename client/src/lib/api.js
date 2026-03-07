@@ -314,6 +314,16 @@ export async function getSentEmails({ page = 1, limit = 50, search = '' } = {}) 
   return data
 }
 
+export async function deleteSentEmail(id) {
+  const res = await fetch(`${API_BASE}/sent/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to delete sent email')
+  return data
+}
+
 export async function syncSent() {
   const res = await fetch(`${API_BASE}/sent/sync`, {
     method: 'POST',
