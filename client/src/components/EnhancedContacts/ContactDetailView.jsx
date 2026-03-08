@@ -497,6 +497,27 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     toast.success(`"${att.filename}" mentve a fájlkezelőbe`)
   }
 
+  const handleCleanupEmailFiles = () => {
+    const emailFiles = contactFiles.filter(f => f.source === 'email')
+    const userFiles = contactFiles.filter(f => f.source !== 'email')
+    
+    if (emailFiles.length === 0) {
+      toast.info('Nincsenek email szinkronizációs fájlok')
+      return
+    }
+    
+    const totalSize = emailFiles.reduce((sum, f) => sum + (f.size || 0), 0)
+    const sizeText = totalSize > 1024 * 1024 
+      ? `${(totalSize / (1024 * 1024)).toFixed(1)} MB`
+      : `${(totalSize / 1024).toFixed(1)} KB`
+    
+    if (confirm(`Biztosan törölni szeretnéd az összes email szinkronizációs fájlt?\n\n${emailFiles.length} fájl • ${sizeText}\n\nEz csak az emailből mentett fájlokat törli, a kézi feltöltéseket megőrzi.`)) {
+      setContactFiles(userFiles)
+      saveFilesToStorage(contactFolders, userFiles)
+      toast.success(`${emailFiles.length} email fájl törölve • ${sizeText} felszabadítva`)
+    }
+  }
+
   const getSentImapAuthUrl = (id) => {
     return `${getSentImapAttachmentUrl(id)}?token=${dlToken}`
   }
@@ -1025,6 +1046,21 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                     <Upload className="w-4 h-4" />
                     <span className="hidden sm:inline">Feltöltés</span>
                   </button>
+                  {contactFiles.filter(f => f.source === 'email').length > 0 && (
+                    <button
+                      onClick={handleCleanupEmailFiles}
+                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${
+                        isModern ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30' : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30'
+                      }`}
+                      title="Email szinkronizációs fájlok törlése"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span className="hidden sm:inline">Email fájlok törlése</span>
+                      <span className="bg-orange-500/30 px-1.5 py-0.5 rounded text-xs">
+                        {contactFiles.filter(f => f.source === 'email').length}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
