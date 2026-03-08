@@ -275,8 +275,9 @@ export async function syncInbox() {
   return data
 }
 
-export async function getInbox({ page = 1, limit = 50, search = '' } = {}) {
+export async function getInbox({ page = 1, limit = 50, search = '', dateFrom = null } = {}) {
   const params = new URLSearchParams({ page, limit, search })
+  if (dateFrom) params.append('date_from', dateFrom)
   const res = await fetch(`${API_BASE}/inbox?${params}`, { headers: getHeaders() })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to fetch inbox')
@@ -319,8 +320,9 @@ export function getInboxAttachmentUrl(id) {
 
 // ─── ELKÜLDÖTT LEVELEK ───────────────────────────────────────
 
-export async function getSentEmails({ page = 1, limit = 50, search = '' } = {}) {
+export async function getSentEmails({ page = 1, limit = 50, search = '', dateFrom = null } = {}) {
   const params = new URLSearchParams({ page, limit, search })
+  if (dateFrom) params.append('date_from', dateFrom)
   const res = await fetch(`${API_BASE}/sent?${params}`, { headers: getHeaders() })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Failed to fetch sent emails')

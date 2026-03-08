@@ -452,17 +452,26 @@ export default function EnhancedMailView({ onNavigate }) {
   const [lastSyncTime, setLastSyncTime] = useState(null)
   const replyRef = useRef(null)
 
+  // Calculate date from 2 months ago
+  const getDateFromTwoMonthsAgo = () => {
+    const date = new Date()
+    date.setMonth(date.getMonth() - 2)
+    return date.toISOString().split('T')[0] // Format: YYYY-MM-DD
+  }
+
   // Load emails for current folder
   const loadEmails = async (page = 1) => {
     setLoading(true)
     try {
       let data = { emails: [], total: 0, page: 1, totalPages: 0 }
+      const dateFrom = getDateFromTwoMonthsAgo()
+      
       if (activeFolder === 'inbox') {
-        data = await getInbox({ page, limit: pagination.limit, search: searchQuery })
-        console.log('Inbox loaded:', data.emails?.length || 0, 'emails')
+        data = await getInbox({ page, limit: pagination.limit, search: searchQuery, dateFrom })
+        console.log('Inbox loaded (last 2 months):', data.emails?.length || 0, 'emails')
       } else if (activeFolder === 'sent') {
-        data = await getSentEmails({ page, limit: pagination.limit, search: searchQuery })
-        console.log('Sent loaded:', data.emails?.length || 0, 'emails')
+        data = await getSentEmails({ page, limit: pagination.limit, search: searchQuery, dateFrom })
+        console.log('Sent loaded (last 2 months):', data.emails?.length || 0, 'emails')
       } else if (activeFolder === 'trash') {
         // Load deleted emails from client-side trash storage
         data.emails = trashEmails
