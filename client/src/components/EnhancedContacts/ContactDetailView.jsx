@@ -481,45 +481,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
     toast.success('Fájl törölve')
   }
 
-  const handleSaveEmailAttachment = (att, attUrl) => {
-    const file = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name: att.filename,
-      size: att.size,
-      type: att.mimetype,
-      folderId: selectedFolder || 'home',
-      created_at: new Date().toISOString(),
-      dataUrl: attUrl,
-      source: 'email'
-    }
-    const updated = [...contactFiles, file]
-    setContactFiles(updated)
-    saveFilesToStorage(contactFolders, updated)
-    toast.success(`"${att.filename}" mentve a fájlkezelőbe`)
-  }
-
-  const handleCleanupEmailFiles = () => {
-    const emailFiles = contactFiles.filter(f => f.source === 'email')
-    // For backward compatibility, treat files without source as user files (not email files)
-    const userFiles = contactFiles.filter(f => f.source !== 'email' || !f.source)
-    
-    if (emailFiles.length === 0) {
-      toast.info('Nincsenek email szinkronizációs fájlok')
-      return
-    }
-    
-    const totalSize = emailFiles.reduce((sum, f) => sum + (f.size || 0), 0)
-    const sizeText = totalSize > 1024 * 1024 
-      ? `${(totalSize / (1024 * 1024)).toFixed(1)} MB`
-      : `${(totalSize / 1024).toFixed(1)} KB`
-    
-    if (confirm(`Biztosan törölni szeretnéd az összes email szinkronizációs fájlt?\n\n${emailFiles.length} fájl • ${sizeText}\n\nEz csak az emailből mentett fájlokat törli, a kézi feltöltéseket megőrzi.`)) {
-      setContactFiles(userFiles)
-      saveFilesToStorage(contactFolders, userFiles)
-      toast.success(`${emailFiles.length} email fájl törölve • ${sizeText} felszabadítva`)
-    }
-  }
-
+  
   const getSentImapAuthUrl = (id) => {
     return `${getSentImapAttachmentUrl(id)}?token=${dlToken}`
   }
@@ -1048,22 +1010,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                     <Upload className="w-4 h-4" />
                     <span className="hidden sm:inline">Feltöltés</span>
                   </button>
-                  {contactFiles.filter(f => f.source === 'email').length > 0 && (
-                    <button
-                      onClick={handleCleanupEmailFiles}
-                      className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all min-h-[40px] ${
-                        isModern ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30' : 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 border border-orange-500/30'
-                      }`}
-                      title="Email szinkronizációs fájlok törlése"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span className="hidden sm:inline">Email fájlok törlése</span>
-                      <span className="bg-orange-500/30 px-1.5 py-0.5 rounded text-xs">
-                        {contactFiles.filter(f => f.source === 'email').length}
-                      </span>
-                    </button>
-                  )}
-                </div>
+                                  </div>
               </div>
             </div>
 
@@ -1184,11 +1131,6 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                           <p className="text-[10px] text-gray-600 mt-0.5">{formatDate(isEmail ? item.uploaded_at : item.created_at)}</p>
                         </div>
                         <div className="flex items-center gap-0.5 shrink-0">
-                          {isEmail && (
-                            <button onClick={() => handleSaveEmailAttachment(item, getAttUrl(item))} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-500/10 transition-all" title="Mentés">
-                              <FolderPlus className="w-4 h-4" />
-                            </button>
-                          )}
                           {canPreview && (
                             <button onClick={() => setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all">
                               <Eye className="w-4 h-4" />
@@ -1263,11 +1205,6 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {isEmail && (
-                          <button onClick={() => handleSaveEmailAttachment(item, getAttUrl(item))} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-green-400 hover:bg-green-500/10 transition-all" title="Mentés">
-                            <FolderPlus className="w-4 h-4" />
-                          </button>
-                        )}
                         {canPreview && (
                           <button onClick={() => setPreviewAttachment(isEmail ? item : { ...item, mimetype: item.type, filename: item.name })} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10 transition-all">
                             <Eye className="w-4 h-4" />
@@ -1369,10 +1306,7 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
                           <button onClick={() => { handleDeleteFile(contextMenu.item.id); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2.5"><Trash2 className="w-3.5 h-3.5" />Törlés</button>
                         </>
                       )}
-                      {contextMenu.isEmail && (
-                        <button onClick={() => { handleSaveEmailAttachment(contextMenu.item, getAttUrl(contextMenu.item)); setContextMenu(null) }} className="w-full px-4 py-2.5 text-left text-sm text-gray-200 hover:bg-white/5 flex items-center gap-2.5"><FolderPlus className="w-3.5 h-3.5 text-gray-400" />Mentés fájlkezelőbe</button>
-                      )}
-                    </>
+                                          </>
                   )}
                   {contextMenu.type === 'folder' && (
                     <>
