@@ -464,7 +464,8 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
       type: file.type,
       folderId: selectedFolder || 'home',
       created_at: new Date().toISOString(),
-      dataUrl: URL.createObjectURL(file)
+      dataUrl: URL.createObjectURL(file),
+      source: 'user'
     }))
     const updated = [...contactFiles, ...newFiles]
     setContactFiles(updated)
@@ -499,7 +500,8 @@ export default function ContactDetailView({ contactId, onBack, onEdit, onNavigat
 
   const handleCleanupEmailFiles = () => {
     const emailFiles = contactFiles.filter(f => f.source === 'email')
-    const userFiles = contactFiles.filter(f => f.source !== 'email')
+    // For backward compatibility, treat files without source as user files (not email files)
+    const userFiles = contactFiles.filter(f => f.source !== 'email' || !f.source)
     
     if (emailFiles.length === 0) {
       toast.info('Nincsenek email szinkronizációs fájlok')
