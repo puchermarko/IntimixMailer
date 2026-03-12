@@ -1,6 +1,6 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount, getUserFeatures, toggleMfa } from '../lib/api'
 import { useBranding, useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
@@ -69,6 +69,8 @@ export default function Settings({ onStartTour }) {
   const [deletingAccount, setDeletingAccount] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [showDeletePw, setShowDeletePw] = useState(false)
+  const [mfaEnabled, setMfaEnabled] = useState(false)
+  const [mfaToggling, setMfaToggling] = useState(false)
 
   const isModern = uiMode === 'modern'
 
@@ -92,7 +94,28 @@ export default function Settings({ onStartTour }) {
     if (activeTab === 'config' || activeTab === 'general' || activeTab === 'branding') loadEnv()
     if (activeTab === 'branding') loadBrand()
     if (activeTab === 'subscription') loadSubscription()
+    if (activeTab === 'account') loadMfaStatus()
   }, [activeTab])
+
+  const loadMfaStatus = async () => {
+    try {
+      const features = await getUserFeatures()
+      setMfaEnabled(!!features.mfa_enabled)
+    } catch {}
+  }
+
+  const handleToggleMfa = async () => {
+    setMfaToggling(true)
+    try {
+      const result = await toggleMfa(!mfaEnabled)
+      setMfaEnabled(result.mfa_enabled)
+      toast.success(result.mfa_enabled ? 'Kétlépcsős hitelesítés bekapcsolva' : 'Kétlépcsős hitelesítés kikapcsolva')
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setMfaToggling(false)
+    }
+  }
 
   const loadSubscription = async () => {
     setSubLoading(true)
@@ -277,13 +300,13 @@ export default function Settings({ onStartTour }) {
   }
 
   const tabs = [
-    { id: 'account', label: 'Fiók' },
-    { id: 'general', label: 'Általános' },
-    { id: 'branding', label: 'Cég & Márka' },
-    { id: 'config', label: 'Konfiguráció' },
-    { id: 'subscription', label: 'Előfizetés' },
-    { id: 'backup', label: 'Mentés' },
-    { id: 'expert', label: 'Haladó' },
+    { id: 'account', label: 'Fiók', icon: Lock, desc: 'Jelszó, MFA' },
+    { id: 'config', label: 'Email', icon: Mail, desc: 'SMTP & IMAP' },
+    { id: 'general', label: 'Rendszer', icon: Monitor, desc: 'UI, biztonság' },
+    { id: 'branding', label: 'Cég & Márka', icon: Palette, desc: 'Logó, adatok' },
+    { id: 'subscription', label: 'Előfizetés', icon: CreditCard, desc: 'Csomag' },
+    { id: 'backup', label: 'Mentés', icon: Database, desc: 'Import/export' },
+    { id: 'expert', label: 'Fejlesztői', icon: Key, desc: 'API, doki' },
   ]
 
   const baseUrl = 'https://pultify.hu'
@@ -292,18 +315,22 @@ export default function Settings({ onStartTour }) {
     <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="mb-6 mt-2">
         <h2 className="text-xl sm:text-2xl font-bold text-white">Beállítások</h2>
-        <p className="text-xs sm:text-sm text-gray-400 mt-1">Konfiguráció, API kulcsok és dokumentáció</p>
+        <p className="text-xs sm:text-sm text-gray-400 mt-1">Fiók, email, márka és rendszerbeállítások</p>
       </div>
 
       {/* Fülek */}
       <div className={`flex items-center gap-1 overflow-x-auto scrollbar-hide mb-6 ${isModern ? 'p-1 bg-white/5 rounded-2xl w-fit' : 'border-b border-white/5'}`}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`transition-all whitespace-nowrap ${
+            className={`transition-all whitespace-nowrap flex items-center gap-2 ${
               isModern 
-                ? `px-4 py-2 rounded-xl text-sm font-medium ${activeTab === tab.id ? 'bg-[#2EC4BE] text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`
+                ? `px-4 py-2.5 rounded-xl text-sm font-medium ${activeTab === tab.id ? 'bg-[#2EC4BE] text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`
                 : `px-3 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 -mb-px ${activeTab === tab.id ? 'text-[#2EC4BE] border-[#1AA19C]' : 'text-gray-400 border-transparent hover:text-gray-200'}`
-            }`}>{tab.label}</button>
+            }`}>
+            <tab.icon className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">{tab.label}</span>
+            <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+          </button>
         ))}
       </div>
 
@@ -367,6 +394,45 @@ export default function Settings({ onStartTour }) {
               </button>
             </div>
           </div>
+
+          {/* Kétlépcsős hitelesítés (MFA) */}
+          {!isAdmin && (
+            <div className={isModern ? 'modern-card p-6' : 'glass rounded-xl p-6'}>
+              <div className="flex items-center gap-3 mb-5">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isModern ? 'bg-purple-500/10' : 'bg-purple-500/10'}`}><Shield className="w-5 h-5 text-purple-400" /></div>
+                <div><h3 className="text-base font-semibold text-white">Kétlépcsős hitelesítés (MFA)</h3><p className="text-xs text-gray-500">Extra biztonság a bejelentkezéshez</p></div>
+              </div>
+
+              <div className={`rounded-lg p-4 flex items-start gap-3 border mb-5 ${isModern ? 'bg-white/5 border-white/5' : 'glass-light border-white/5'}`}>
+                <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-300">Hogyan működik?</p>
+                  <p className="text-xs text-gray-500 mt-1">Bekapcsolás után minden bejelentkezéskor egy 6 jegyű kódot küldünk az email címedre. A kód 3 percig érvényes. Ezzel megakadályozható az illetéktelen hozzáférés, még ha a jelszavadat ismerik is.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-black/20 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <Shield className={`w-5 h-5 ${mfaEnabled ? 'text-purple-400' : 'text-gray-400'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-white">Email alapú MFA</p>
+                    <p className="text-xs text-gray-400">{mfaEnabled ? 'Bejelentkezéskor kódot kapsz emailben' : 'Jelenleg kikapcsolva'}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleMfa}
+                  disabled={mfaToggling}
+                  className={`relative w-12 h-6 rounded-full transition-colors duration-300 disabled:opacity-50 ${mfaEnabled ? 'bg-purple-500' : 'bg-gray-700'}`}
+                >
+                  {mfaToggling ? (
+                    <Loader2 className="w-4 h-4 animate-spin absolute top-1 left-4 text-white" />
+                  ) : (
+                    <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${mfaEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Fiók törlés */}
           {!isAdmin && (

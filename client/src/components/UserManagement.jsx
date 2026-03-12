@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth, useUI } from '../App'
-import { getUsers, createUser, updateUser, deleteUser, impersonateUser, updateUserSubscription } from '../lib/api'
+import { getUsers, createUser, updateUser, deleteUser, impersonateUser, updateUserSubscription, updateUserFeatures } from '../lib/api'
 import toast from 'react-hot-toast'
-import { Users, Plus, Pencil, Trash2, Eye, X, UserCheck, UserX, Loader2, Play, Square, CreditCard, Clock, Ban } from 'lucide-react'
+import { Users, Plus, Pencil, Trash2, Eye, X, UserCheck, UserX, Loader2, Play, Square, CreditCard, Clock, Ban, Mail, Shield } from 'lucide-react'
 
 const subStatusLabel = {
   none: { text: 'Nincs', color: 'bg-gray-500/20 text-gray-400' },
@@ -117,6 +117,18 @@ export default function UserManagement() {
     }
   }
 
+  const handleFeatureToggle = async (user, feature) => {
+    try {
+      const newValue = !user[feature]
+      await updateUserFeatures(user.id, { [feature]: newValue })
+      const labels = { enhanced_mail_enabled: newValue ? 'Enhanced Mail bekapcsolva' : 'Enhanced Mail kikapcsolva', mfa_enabled: newValue ? 'MFA bekapcsolva' : 'MFA kikapcsolva' }
+      toast.success(labels[feature] || 'Frissítve')
+      fetchUsers()
+    } catch (err) {
+      toast.error(err.message)
+    }
+  }
+
   return (
     <div className={isModern ? 'max-w-[1600px] mx-auto fade-in' : ''}>
       <div className="flex items-center justify-between mb-6 mt-2">
@@ -216,6 +228,8 @@ export default function UserManagement() {
                       {!user.active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Inaktív</span>}
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isModern && sub.text === 'Aktív' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : sub.color}`}>{sub.text}</span>
                       {days !== null && <span className="text-[10px] text-gray-500">{days} nap</span>}
+                      {!!user.enhanced_mail_enabled && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/20">Mail+</span>}
+                      {!!user.mfa_enabled && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/20">MFA</span>}
                     </div>
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
@@ -262,6 +276,20 @@ export default function UserManagement() {
                         <Ban className="w-4 h-4" />
                       </button>
                     )}
+                    <button
+                      onClick={() => handleFeatureToggle(user, 'enhanced_mail_enabled')}
+                      className={`p-2 rounded-lg transition-all ${user.enhanced_mail_enabled ? 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20' : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/10'}`}
+                      title={user.enhanced_mail_enabled ? 'Enhanced Mail kikapcsolása' : 'Enhanced Mail bekapcsolása'}
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleFeatureToggle(user, 'mfa_enabled')}
+                      className={`p-2 rounded-lg transition-all ${user.mfa_enabled ? 'text-purple-400 bg-purple-500/10 hover:bg-purple-500/20' : 'text-gray-400 hover:text-purple-400 hover:bg-purple-500/10'}`}
+                      title={user.mfa_enabled ? 'MFA kikapcsolása' : 'MFA bekapcsolása'}
+                    >
+                      <Shield className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleImpersonate(user)}
                       className={`p-2 rounded-lg transition-all ${isModern ? 'text-gray-400 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10' : 'text-gray-400 hover:text-[#1AA19C] hover:bg-[#1AA19C]/10'}`}

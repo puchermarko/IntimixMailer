@@ -17,14 +17,9 @@ import QuickTour from '../components/QuickTour'
 import { Eye, X } from 'lucide-react'
 
 export default function Dashboard() {
-  const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted } = useAuth()
+  const { isAdmin, impersonating, stopImpersonation, setupCompleted, setSetupCompleted, enhancedMailEnabled } = useAuth()
   const { uiMode, forceLegacyMailView } = useUI()
   const [activeView, setActiveView] = useState(isAdmin && !impersonating ? 'users' : 'mail')
-  const [useEnhancedMail, setUseEnhancedMail] = useState(() => {
-    const stored = localStorage.getItem('intimix_enhanced_mail')
-    // Default to enhanced (true) unless user explicitly chose legacy (stored === 'false')
-    return stored === 'false' ? false : true
-  })
   const [showWizard, setShowWizard] = useState(!isAdmin && !setupCompleted)
   const [showTour, setShowTour] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -32,17 +27,9 @@ export default function Dashboard() {
 
   const startTour = () => setShowTour(true)
 
-  useEffect(() => {
-    localStorage.setItem('intimix_enhanced_mail', useEnhancedMail.toString())
-  }, [useEnhancedMail])
-
-  useEffect(() => {
-    if (!forceLegacyMailView && useEnhancedMail !== true) {
-      setUseEnhancedMail(true)
-    }
-  }, [forceLegacyMailView, useEnhancedMail])
-
-  const effectiveEnhancedMail = !forceLegacyMailView
+  // Enhanced mail view: admin always has it, users only if admin enabled it for them
+  // forceLegacyMailView global setting can override everything
+  const effectiveEnhancedMail = !forceLegacyMailView && (isAdmin || enhancedMailEnabled)
 
   const views = {
     mail: effectiveEnhancedMail ? <EnhancedMailView onNavigate={setActiveView} /> : <MailView />,

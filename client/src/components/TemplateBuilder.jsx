@@ -11,12 +11,12 @@ import {
 
 // ─── Block Types ─────────────────────────────────────────────
 const BLOCK_TYPES = [
-  { type: 'text', label: 'Szöveg', icon: Type, desc: 'Szövegblokk' },
-  { type: 'image', label: 'Kép', icon: Image, desc: 'Kép URL-ből' },
-  { type: 'button', label: 'Gomb', icon: MousePointerClick, desc: 'CTA gomb' },
-  { type: 'divider', label: 'Elválasztó', icon: Minus, desc: 'Vonal' },
-  { type: 'spacer', label: 'Térköz', icon: MoveVertical, desc: 'Üres hely' },
-  { type: 'columns', label: 'Oszlopok', icon: Columns, desc: '2 oszlop' },
+  { type: 'text', label: 'Szöveg', icon: Type, desc: 'Formázott szövegblokk hozzáadása' },
+  { type: 'image', label: 'Kép', icon: Image, desc: 'Kép feltöltése vagy URL megadása' },
+  { type: 'button', label: 'Gomb', icon: MousePointerClick, desc: 'Kattintható CTA gomb' },
+  { type: 'divider', label: 'Elválasztó', icon: Minus, desc: 'Vízszintes elválasztó vonal' },
+  { type: 'spacer', label: 'Térköz', icon: MoveVertical, desc: 'Üres térköz beszúrása' },
+  { type: 'columns', label: 'Oszlopok', icon: Columns, desc: 'Kétoszlopos elrendezés' },
 ]
 
 let _blockId = 0
@@ -518,21 +518,22 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
   return (
     <div className="space-y-4">
       {/* Mode tabs */}
-      <div className={`flex items-center gap-1 p-1 rounded-xl w-fit overflow-x-auto scrollbar-hide ${isModern ? 'bg-white/5' : 'glass-light'}`}>
+      <div className={`flex items-center gap-1 p-1 rounded-xl w-fit overflow-x-auto scrollbar-hide ${isModern ? 'bg-white/5' : 'glass-light'}`} role="tablist" aria-label="Szerkesztő mód">
         {[
-          { id: 'visual', label: 'Vizuális', icon: Columns },
-          { id: 'html', label: 'HTML', icon: Code },
-          { id: 'plaintext', label: 'Szöveg', icon: FileText },
-          { id: 'preview', label: 'Előnézet', icon: Eye },
+          { id: 'visual', label: 'Vizuális', icon: Columns, tip: 'Blokk alapú vizuális szerkesztő' },
+          { id: 'html', label: 'HTML', icon: Code, tip: 'Közvetlen HTML kód szerkesztés' },
+          { id: 'plaintext', label: 'Szöveg', icon: FileText, tip: 'Egyszerű szöveges sablon' },
+          { id: 'preview', label: 'Előnézet', icon: Eye, tip: 'Végleges sablon előnézet' },
         ].map(tab => (
-          <button key={tab.id} type="button"
+          <button key={tab.id} type="button" role="tab" aria-selected={mode === tab.id}
+            title={tab.tip}
             onClick={() => {
               if (tab.id === 'plaintext') setPlainText(generatePlainText())
               setMode(tab.id)
             }}
-            className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${mode === tab.id ? (isModern ? 'bg-[#2EC4BE]/20 text-[#2EC4BE]' : 'bg-[#1AA19C]/20 text-[#2EC4BE]') : 'text-gray-400 hover:text-gray-200'}`}>
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${mode === tab.id ? (isModern ? 'bg-[#2EC4BE]/20 text-[#2EC4BE]' : 'bg-[#1AA19C]/20 text-[#2EC4BE]') : 'text-gray-400 hover:text-gray-200'}`}>
             <tab.icon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{tab.label}</span>
+            {tab.label}
           </button>
         ))}
       </div>
@@ -543,11 +544,15 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
           {/* Block palette — horizontal scroll on mobile, vertical sidebar on desktop */}
           <div className="lg:col-span-2 space-y-2">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">Blokkok</p>
-            <div className="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide pb-1 lg:pb-0">
+            <div className="flex lg:flex-col gap-2 overflow-x-auto scrollbar-hide pb-1 lg:pb-0" role="toolbar" aria-label="Blokk típusok">
               {BLOCK_TYPES.map(bt => (
                 <button key={bt.type} type="button" onClick={() => addBlock(bt.type)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border border-transparent text-left transition-all group shrink-0 lg:w-full ${isModern ? 'bg-white/5 hover:border-[#2EC4BE]/20 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
-                  <bt.icon className={`w-4 h-4 text-gray-500 transition-colors ${isModern ? 'group-hover:text-[#2EC4BE]' : 'group-hover:text-[#2EC4BE]'}`} />
+                  title={bt.desc}
+                  aria-label={`${bt.label} blokk hozzáadása - ${bt.desc}`}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border border-transparent text-left transition-all group shrink-0 lg:w-full focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'bg-white/5 hover:border-[#2EC4BE]/20 hover:bg-white/10' : 'glass-light hover:border-[#1AA19C]/20'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${isModern ? 'bg-white/5 group-hover:bg-[#2EC4BE]/10' : 'bg-white/5 group-hover:bg-[#1AA19C]/10'}`}>
+                    <bt.icon className={`w-4 h-4 text-gray-500 transition-colors ${isModern ? 'group-hover:text-[#2EC4BE]' : 'group-hover:text-[#2EC4BE]'}`} />
+                  </div>
                   <div>
                     <p className="text-xs text-gray-300 font-medium whitespace-nowrap">{bt.label}</p>
                     <p className="text-[10px] text-gray-600 whitespace-nowrap hidden lg:block">{bt.desc}</p>
@@ -604,9 +609,19 @@ export default function TemplateBuilder({ initialHtml, initialBlocks, onHtmlChan
             <div className={`${isModern ? 'modern-card p-4 min-h-[400px]' : 'glass rounded-xl p-4 min-h-[400px]'}`}>
               {blocks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <Plus className="w-10 h-10 text-gray-600 mb-3" />
-                  <p className="text-sm text-gray-400">Adj hozzá blokkokat a fenti panelből</p>
-                  <p className="text-xs text-gray-600 mt-1">Húzd és ejtsd az átrendezéshez</p>
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                    <Plus className="w-8 h-8 text-gray-600" aria-hidden="true" />
+                  </div>
+                  <p className="text-sm text-gray-400 font-medium">Kezdj el blokkokat hozzáadni</p>
+                  <p className="text-xs text-gray-600 mt-1">Kattints a bal oldali blokk típusokra, majd húzd és ejtsd az átrendezéshez</p>
+                  <div className="flex flex-wrap justify-center gap-2 mt-4">
+                    {BLOCK_TYPES.slice(0, 3).map(bt => (
+                      <button key={bt.type} type="button" onClick={() => addBlock(bt.type)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-gray-400 transition-all focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'bg-white/5 hover:bg-white/10 hover:text-[#2EC4BE]' : 'glass-light hover:text-[#2EC4BE]'}`}>
+                        <bt.icon className="w-3.5 h-3.5" /> {bt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-1">

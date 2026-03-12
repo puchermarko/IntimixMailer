@@ -412,11 +412,65 @@ function processTemplateImages(html, attachments) {
 
 // ─── LOGIN ──────────────────────────────────────────────────
 
-app.post('/api/login', authLimiter, (req, res) => {
-  const { email, password } = req.body;
+// Helper: generate a 6-digit MFA token and send it via email
+async function sendMfaToken(user) {
+  const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
+  const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19); // 3 minutes
+  const id = randomUUID();
+
+  // Invalidate any existing tokens for this user
+  db.prepare("UPDATE mfa_tokens SET used = 1 WHERE user_id = ? AND used = 0").run(user.id);
+
+  // Insert new token
+  db.prepare('INSERT INTO mfa_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)').run(id, user.id, code, expiresAt);
+
+  // Send email with the code using the user's own SMTP or fall back to admin SMTP
+  let transporter = getUserTransporter(user.id);
+  if (!transporter) {
+    // Fall back to admin SMTP settings
+    const adminSettings = getUserSettings('__admin__');
+    if (adminSettings.smtp_host && adminSettings.smtp_user && adminSettings.smtp_pass) {
+      transporter = nodemailer.createTransport({
+        host: adminSettings.smtp_host,
+        port: Number(adminSettings.smtp_port) || 465,
+        secure: (Number(adminSettings.smtp_port) || 465) === 465,
+        auth: { user: adminSettings.smtp_user, pass: adminSettings.smtp_pass },
+        tls: { rejectUnauthorized: false }
+      });
+    }
+  }
+
+  if (!transporter) {
+    console.error('[MFA] No SMTP transporter available for MFA email');
+    throw new Error('Nem sikerült az MFA kódot elküldeni. SMTP nincs konfigurálva.');
+  }
+
+  await transporter.sendMail({
+    from: `"Pultify MFA" <${transporter.options?.auth?.user || 'noreply@pultify.hu'}>`,
+    to: user.email,
+    subject: 'Bejelentkezési kód - Pultify',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #0f1115; color: #ffffff; border-radius: 16px;">
+        <h2 style="color: #2EC4BE; margin-top: 0;">Bejelentkezési kód</h2>
+        <p style="color: #9ca3af; font-size: 14px;">A bejelentkezéshez használd az alábbi kódot:</p>
+        <div style="background: #1e2128; padding: 20px; border-radius: 12px; text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2EC4BE;">${code}</span>
+        </div>
+        <p style="color: #9ca3af; font-size: 12px;">Ez a kód <strong>3 percig</strong> érvényes. Ha nem te kezdeményezted a bejelentkezést, hagyd figyelmen kívül ezt az emailt.</p>
+        <hr style="border: none; border-top: 1px solid #2a2d35; margin: 24px 0;" />
+        <p style="color: #6b7280; font-size: 11px;">Pultify - Biztonságos bejelentkezés</p>
+      </div>
+    `
+  });
+
+  return code;
+}
+
+app.post('/api/login', authLimiter, async (req, res) => {
+  const { email, password, mfa_token } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-  // Admin login (from .env)
+  // Admin login (from .env) — no MFA for admin
   if (email === ADMIN_EMAIL && ADMIN_PASSWORD_HASH && bcrypt.compareSync(password, ADMIN_PASSWORD_HASH)) {
     const token = jwt.sign({ role: 'admin', userId: '__admin__', email }, JWT_SECRET, { expiresIn: '24h' });
     return res.json({ token, email, role: 'admin', name: 'Admin' });
@@ -424,22 +478,54 @@ app.post('/api/login', authLimiter, (req, res) => {
 
   // User login (from DB)
   const user = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(email);
-  if (user && bcrypt.compareSync(password, user.password)) {
-    // Auto-expire trial at login time
-    let subStatus = user.subscription_status || 'none';
-    if (subStatus === 'trial' && user.trial_end) {
-      const now = new Date();
-      const end = new Date(user.trial_end + 'Z');
-      if (now > end) {
-        db.prepare("UPDATE users SET subscription_status = 'expired', updated_at = datetime('now') WHERE id = ?").run(user.id);
-        subStatus = 'expired';
-      }
-    }
-    const token = jwt.sign({ role: 'user', userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
-    return res.json({ token, email: user.email, role: 'user', name: user.name, userId: user.id, subscription_status: subStatus, setup_completed: !!user.setup_completed });
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  return res.status(401).json({ error: 'Invalid credentials' });
+  // Auto-expire trial at login time
+  let subStatus = user.subscription_status || 'none';
+  if (subStatus === 'trial' && user.trial_end) {
+    const now = new Date();
+    const end = new Date(user.trial_end + 'Z');
+    if (now > end) {
+      db.prepare("UPDATE users SET subscription_status = 'expired', updated_at = datetime('now') WHERE id = ?").run(user.id);
+      subStatus = 'expired';
+    }
+  }
+
+  // Check if MFA is enabled for this user
+  if (user.mfa_enabled) {
+    if (!mfa_token) {
+      // First step: credentials correct, send MFA token
+      try {
+        await sendMfaToken(user);
+        return res.json({ mfa_required: true, message: 'MFA kód elküldve az email címedre.' });
+      } catch (err) {
+        console.error('[MFA] Failed to send token:', err.message);
+        return res.status(500).json({ error: err.message || 'Nem sikerült az MFA kódot elküldeni.' });
+      }
+    }
+
+    // Second step: verify MFA token
+    const validToken = db.prepare(
+      "SELECT * FROM mfa_tokens WHERE user_id = ? AND token = ? AND used = 0 AND expires_at > datetime('now') ORDER BY created_at DESC LIMIT 1"
+    ).get(user.id, mfa_token);
+
+    if (!validToken) {
+      return res.status(401).json({ error: 'Érvénytelen vagy lejárt MFA kód.', mfa_invalid: true });
+    }
+
+    // Mark token as used
+    db.prepare('UPDATE mfa_tokens SET used = 1 WHERE id = ?').run(validToken.id);
+  }
+
+  // Issue JWT
+  const token = jwt.sign({ role: 'user', userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+  return res.json({
+    token, email: user.email, role: 'user', name: user.name, userId: user.id,
+    subscription_status: subStatus, setup_completed: !!user.setup_completed,
+    enhanced_mail_enabled: !!user.enhanced_mail_enabled
+  });
 });
 
 // ─── REGISTRATION ────────────────────────────────────────────
@@ -520,6 +606,7 @@ app.get('/api/admin/users', authenticate, adminOnly, (req, res) => {
   const users = db.prepare(`
     SELECT u.id, u.email, u.name, u.active, u.created_at, u.updated_at,
       u.subscription_status, u.subscription_type, u.trial_start, u.trial_end, u.subscription_start, u.subscription_end,
+      u.enhanced_mail_enabled, u.mfa_enabled,
       (SELECT COUNT(*) FROM contacts WHERE user_id = u.id) as contact_count,
       (SELECT COUNT(*) FROM email_log WHERE user_id = u.id) + (SELECT COUNT(*) FROM sent_imap WHERE user_id = u.id) as email_count,
       (SELECT COUNT(*) FROM quotes WHERE user_id = u.id) as quote_count
@@ -628,6 +715,44 @@ app.put('/api/admin/users/:id/subscription', authenticate, adminOnly, (req, res)
 
   const updated = db.prepare('SELECT id, email, name, active, subscription_status, subscription_type, trial_start, trial_end, subscription_start, subscription_end FROM users WHERE id = ?').get(req.params.id);
   res.json(updated);
+});
+
+// Admin: toggle user feature flags (enhanced_mail_enabled, mfa_enabled)
+app.put('/api/admin/users/:id/features', authenticate, adminOnly, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const { enhanced_mail_enabled, mfa_enabled } = req.body;
+  
+  if (enhanced_mail_enabled !== undefined) {
+    db.prepare("UPDATE users SET enhanced_mail_enabled = ?, updated_at = datetime('now') WHERE id = ?").run(enhanced_mail_enabled ? 1 : 0, req.params.id);
+  }
+  if (mfa_enabled !== undefined) {
+    db.prepare("UPDATE users SET mfa_enabled = ?, updated_at = datetime('now') WHERE id = ?").run(mfa_enabled ? 1 : 0, req.params.id);
+  }
+  
+  const updated = db.prepare('SELECT id, email, name, enhanced_mail_enabled, mfa_enabled FROM users WHERE id = ?').get(req.params.id);
+  res.json(updated);
+});
+
+// User: get own feature flags
+app.get('/api/features', authenticate, (req, res) => {
+  if (req.user.role === 'admin') {
+    return res.json({ enhanced_mail_enabled: true, mfa_enabled: false });
+  }
+  const user = db.prepare('SELECT enhanced_mail_enabled, mfa_enabled FROM users WHERE id = ?').get(req.userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({
+    enhanced_mail_enabled: !!user.enhanced_mail_enabled,
+    mfa_enabled: !!user.mfa_enabled
+  });
+});
+
+// User: toggle own MFA setting
+app.put('/api/features/mfa', authenticate, (req, res) => {
+  if (req.user.role === 'admin') return res.status(400).json({ error: 'Admin MFA is not supported via this endpoint' });
+  const { enabled } = req.body;
+  db.prepare("UPDATE users SET mfa_enabled = ?, updated_at = datetime('now') WHERE id = ?").run(enabled ? 1 : 0, req.userId);
+  res.json({ success: true, mfa_enabled: !!enabled });
 });
 
 // User: get own subscription info

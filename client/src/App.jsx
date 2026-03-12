@@ -1,7 +1,7 @@
 // Fő app komponens - autentikáció kontextus és routing itt van
 import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { getBranding, getSiteConfig, getGlobalSettings } from './lib/api'
+import { getBranding, getSiteConfig, getGlobalSettings, getUserFeatures } from './lib/api'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
@@ -34,6 +34,7 @@ function App() {
   const [name, setName] = useState(() => localStorage.getItem('intimix_name'))
   const [subscriptionStatus, setSubscriptionStatus] = useState(() => localStorage.getItem('intimix_sub_status') || 'none')
   const [setupCompleted, setSetupCompleted] = useState(() => localStorage.getItem('intimix_setup_completed') === 'true')
+  const [enhancedMailEnabled, setEnhancedMailEnabled] = useState(() => localStorage.getItem('intimix_enhanced_mail') === 'true')
   const [impersonating, setImpersonating] = useState(() => {
     const t = localStorage.getItem('intimix_token')
     if (!t) return null
@@ -137,21 +138,34 @@ function App() {
     }
   }, [globalModernUI])
 
-  const login = (newToken, userEmail, userRole, userName, subStatus, setupDone) => {
+  const login = (newToken, userEmail, userRole, userName, subStatus, setupDone, enhancedMail) => {
     localStorage.setItem('intimix_token', newToken)
     localStorage.setItem('intimix_email', userEmail)
     localStorage.setItem('intimix_role', userRole || 'user')
     localStorage.setItem('intimix_name', userName || '')
     localStorage.setItem('intimix_sub_status', subStatus || (userRole === 'admin' ? 'active' : 'none'))
     localStorage.setItem('intimix_setup_completed', setupDone === true || setupDone === 'true' || userRole === 'admin' ? 'true' : 'false')
+    const isEnhanced = userRole === 'admin' ? true : !!enhancedMail
+    localStorage.setItem('intimix_enhanced_mail', isEnhanced ? 'true' : 'false')
     setToken(newToken)
     setEmail(userEmail)
     setRole(userRole || 'user')
     setName(userName || '')
     setSubscriptionStatus(subStatus || (userRole === 'admin' ? 'active' : 'none'))
     setSetupCompleted(setupDone === true || setupDone === 'true' || userRole === 'admin')
+    setEnhancedMailEnabled(isEnhanced)
     setImpersonating(null)
   }
+
+  // Fetch user feature flags when token changes (login, impersonation)
+  useEffect(() => {
+    if (!token) return
+    getUserFeatures().then(features => {
+      const enabled = features.enhanced_mail_enabled
+      setEnhancedMailEnabled(enabled)
+      localStorage.setItem('intimix_enhanced_mail', enabled ? 'true' : 'false')
+    }).catch(() => {})
+  }, [token])
 
   const startImpersonation = (newToken, user) => {
     localStorage.setItem('intimix_impersonate_backup', token)
@@ -178,12 +192,14 @@ function App() {
     localStorage.removeItem('intimix_impersonate_backup')
     localStorage.removeItem('intimix_sub_status')
     localStorage.removeItem('intimix_setup_completed')
+    localStorage.removeItem('intimix_enhanced_mail')
     setToken(null)
     setEmail(null)
     setRole(null)
     setName(null)
     setSubscriptionStatus('none')
     setSetupCompleted(false)
+    setEnhancedMailEnabled(false)
     setImpersonating(null)
   }
 
@@ -208,7 +224,7 @@ function App() {
   return (
     <UIContext.Provider value={{ uiMode, toggleUiMode, globalModernUI, forceLegacyMailView, refreshGlobalSettings }}>
       <BrandingContext.Provider value={{ ...branding, refreshBranding }}>
-        <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted }}>
+        <AuthContext.Provider value={{ token, email, role, name, isAdmin, impersonating, login, logout, isAuthenticated, startImpersonation, stopImpersonation, hasSubscription, subscriptionStatus, setSubscriptionStatus, setupCompleted, setSetupCompleted, enhancedMailEnabled, setEnhancedMailEnabled }}>
           <Routes>
           <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login registrationEnabled={siteConfig.registration_enabled} />} />
           <Route path="/register" element={

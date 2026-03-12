@@ -312,4 +312,29 @@ const subscriptionCols = [
 ];
 for (const [col, def] of subscriptionCols) addColumnIfMissing('users', col, def);
 
+// Per-user feature flags
+addColumnIfMissing('users', 'enhanced_mail_enabled', 'INTEGER DEFAULT 0');
+addColumnIfMissing('users', 'mfa_enabled', 'INTEGER DEFAULT 0');
+
+// MFA tokens table for email-based MFA
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mfa_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    token TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_mfa_tokens_user ON mfa_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_mfa_tokens_token ON mfa_tokens(token);
+`);
+
+// Cleanup expired MFA tokens on startup
+try {
+  const deleted = db.prepare("DELETE FROM mfa_tokens WHERE expires_at < datetime('now') OR used = 1").run();
+  if (deleted.changes > 0) console.log(`[MFA] Cleaned up ${deleted.changes} expired/used MFA tokens.`);
+} catch {}
+
 export default db;

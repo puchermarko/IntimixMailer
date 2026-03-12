@@ -520,6 +520,37 @@ export async function updateUserSettingsAdmin(id, settings) {
   return data
 }
 
+// ─── USER FEATURES ──────────────────────────────────────────
+
+export async function updateUserFeatures(id, features) {
+  const res = await fetch(`${API_BASE}/admin/users/${id}/features`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(features)
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to update user features')
+  return data
+}
+
+export async function getUserFeatures() {
+  const res = await fetch(`${API_BASE}/features`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch features')
+  return data
+}
+
+export async function toggleMfa(enabled) {
+  const res = await fetch(`${API_BASE}/features/mfa`, {
+    method: 'PUT',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled })
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to toggle MFA')
+  return data
+}
+
 // ─── SUBSCRIPTION ───────────────────────────────────────────
 
 export async function updateUserSubscription(id, action) {
