@@ -343,7 +343,7 @@ async function refreshMicrosoftToken(refreshToken) {
       client_secret: MICROSOFT_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
-      scope: 'https://outlook.office365.com/SMTP.Send offline_access openid email'
+      scope: 'https://outlook.office365.com/SMTP.Send https://outlook.office365.com/IMAP.AccessAsUser.All offline_access openid email'
     })
   });
   if (!res.ok) {
@@ -443,10 +443,42 @@ async function getUserTransporter(userId) {
   });
 }
 
-// Create IMAP client for a user
-function getUserImapClient(userId) {
+// Create IMAP client for a user (supports OAuth2 XOAUTH2 for Gmail/Outlook)
+async function getUserImapClient(userId) {
   const s = getUserSettings(userId);
-  if (!s.imap_host || !s.imap_user || !s.imap_pass) return null;
+  if (!s.imap_host || !s.imap_user) return null;
+
+  // Detect provider from IMAP host
+  const h = (s.imap_host || '').toLowerCase();
+  let provider = null;
+  if (h.includes('gmail') || h.includes('google') || h === 'imap.gmail.com') provider = 'google';
+  else if (h.includes('outlook') || h.includes('office365') || h.includes('microsoft') || h === 'outlook.office365.com') provider = 'microsoft';
+
+  // Try OAuth2 XOAUTH2 first if provider detected and tokens exist
+  if (provider) {
+    const tokens = getOAuthTokens(userId, provider);
+    if (tokens) {
+      try {
+        const accessToken = await getValidAccessToken(userId, provider);
+        return new ImapFlow({
+          host: provider === 'google' ? 'imap.gmail.com' : 'outlook.office365.com',
+          port: 993,
+          secure: true,
+          auth: {
+            user: tokens.email || s.imap_user,
+            accessToken
+          },
+          tls: { rejectUnauthorized: false },
+          logger: false
+        });
+      } catch (err) {
+        console.error(`[OAuth2] IMAP XOAUTH2 failed for ${provider}, falling back to password:`, err.message);
+      }
+    }
+  }
+
+  // Fallback to standard password auth
+  if (!s.imap_pass) return null;
   return new ImapFlow({
     host: s.imap_host,
     port: Number(s.imap_port) || 993,
@@ -956,7 +988,7 @@ app.get('/api/oauth2/:provider/auth-url', authenticate, (req, res) => {
       client_id: MICROSOFT_CLIENT_ID,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: 'https://outlook.office365.com/SMTP.Send offline_access openid email',
+      scope: 'https://outlook.office365.com/SMTP.Send https://outlook.office365.com/IMAP.AccessAsUser.All offline_access openid email',
       response_mode: 'query',
       state
     }).toString();
@@ -1025,6 +1057,11 @@ app.get('/api/oauth2/google/callback', async (req, res) => {
     setUserSetting(payload.userId, 'smtp_port', '587');
     if (email) setUserSetting(payload.userId, 'smtp_user', email);
 
+    // Auto-set IMAP settings for Gmail
+    setUserSetting(payload.userId, 'imap_host', 'imap.gmail.com');
+    setUserSetting(payload.userId, 'imap_port', '993');
+    if (email) setUserSetting(payload.userId, 'imap_user', email);
+
     console.log(`[OAuth2] Google tokens saved for user ${payload.userId} (${email})`);
     res.redirect('/?oauth_success=google');
   } catch (err) {
@@ -1090,6 +1127,11 @@ app.get('/api/oauth2/microsoft/callback', async (req, res) => {
     setUserSetting(payload.userId, 'smtp_host', 'smtp-mail.outlook.com');
     setUserSetting(payload.userId, 'smtp_port', '587');
     if (email) setUserSetting(payload.userId, 'smtp_user', email);
+
+    // Auto-set IMAP settings for Outlook
+    setUserSetting(payload.userId, 'imap_host', 'outlook.office365.com');
+    setUserSetting(payload.userId, 'imap_port', '993');
+    if (email) setUserSetting(payload.userId, 'imap_user', email);
 
     console.log(`[OAuth2] Microsoft tokens saved for user ${payload.userId} (${email})`);
     res.redirect('/?oauth_success=microsoft');
@@ -1559,7 +1601,7 @@ app.get('/api/sent-imap-attachments/:id/download', (req, res) => {
 
 // Kimenő levelek szinkronizálása IMAP-ról + kapcsolatokhoz rendelés
 app.post('/api/sent/sync', authenticate, requireSubscription, async (req, res) => {
-  const client = getUserImapClient(req.userId);
+  const client = await getUserImapClient(req.userId);
   if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
     await client.connect();
@@ -1829,7 +1871,7 @@ app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, uploa
 
 // Bejövő szinkronizálás - lehúzza az új leveleket IMAP-ról és eltárolja
 app.post('/api/inbox/sync', authenticate, requireSubscription, async (req, res) => {
-  const client = getUserImapClient(req.userId);
+  const client = await getUserImapClient(req.userId);
   if (!client) return res.status(400).json({ error: 'IMAP nincs konfigurálva. Állítsd be a Beállításoknál.' });
   try {
     await client.connect();
