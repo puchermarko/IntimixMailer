@@ -551,6 +551,32 @@ export async function toggleMfa(enabled) {
   return data
 }
 
+// ─── OAUTH2 ─────────────────────────────────────────────────
+
+export async function getOAuth2AuthUrl(provider) {
+  const res = await fetch(`${API_BASE}/oauth2/${provider}/auth-url`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to get OAuth2 URL')
+  return data
+}
+
+export async function getOAuth2Status() {
+  const res = await fetch(`${API_BASE}/oauth2/status`, { headers: getHeaders() })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to get OAuth2 status')
+  return data
+}
+
+export async function disconnectOAuth2(provider) {
+  const res = await fetch(`${API_BASE}/oauth2/${provider}`, {
+    method: 'DELETE',
+    headers: getHeaders()
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to disconnect OAuth2')
+  return data
+}
+
 // ─── SUBSCRIPTION ───────────────────────────────────────────
 
 export async function updateUserSubscription(id, action) {

@@ -337,4 +337,22 @@ try {
   if (deleted.changes > 0) console.log(`[MFA] Cleaned up ${deleted.changes} expired/used MFA tokens.`);
 } catch {}
 
+// OAuth2 tokens table for Gmail/Outlook SMTP authentication
+db.exec(`
+  CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    email TEXT NOT NULL DEFAULT '',
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    scope TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_user_provider ON oauth_tokens(user_id, provider);
+`);
+
 export default db;

@@ -367,6 +367,136 @@ body {
   display: none;
 }
 
+/* ═══ GITHUB-STYLE ANIMATIONS ═══ */
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(46, 196, 190, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 196, 190, 0.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+/* Radial fade mask */
+.radial-mask {
+  mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 60% at 50% 50%, black 30%, transparent 70%);
+}
+
+/* Glow line */
+@keyframes glowLineFlow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.glow-line {
+  position: relative;
+  overflow: hidden;
+}
+.glow-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(46, 196, 190, 0.6), transparent);
+  animation: glowLineFlow 3s ease-in-out infinite;
+}
+
+/* GitHub-style muted glow */
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+}
+.breathe { animation: breathe 4s ease-in-out infinite; }
+.breathe-slow { animation: breathe 6s ease-in-out infinite; }
+.breathe-delay { animation-delay: -2s; }
+
+/* Stagger entrance for login fields */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger-enter > * {
+  opacity: 0;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.stagger-enter > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-enter > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-enter > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-enter > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-enter > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-enter > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-enter > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-enter > *:nth-child(8) { animation-delay: 0.4s; }
+
+/* Code rain effect */
+@keyframes codeRain {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 0.15; }
+  90% { opacity: 0.15; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Globe wireframe rotation */
+@keyframes globeRotate {
+  from { transform: rotateY(0deg); }
+  to { transform: rotateY(360deg); }
+}
+
+/* Bento card shine */
+@keyframes shine {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+.bento-card {
+  position: relative;
+  overflow: hidden;
+}
+.bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(46, 196, 190, 0.04), transparent);
+  animation: shine 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Contribution graph cell animation */
+@keyframes cellPop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Gradient border card */
+.gradient-border {
+  position: relative;
+  background: rgba(15, 17, 21, 0.8);
+  border-radius: 1rem;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(46, 196, 190, 0.2), transparent 40%, transparent 60%, rgba(46, 196, 190, 0.1));
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+}
+
+/* Landing section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(46, 196, 190, 0.15), transparent);
+}
+
 @media (max-width: 640px) {
   .glass {
     backdrop-filter: blur(12px);

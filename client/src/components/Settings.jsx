@@ -1,6 +1,6 @@
 // Beállítások oldal - itt van az SMTP, API kulcsok, meg a doki is
 import { useState, useEffect, useRef } from 'react'
-import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount, getUserFeatures, toggleMfa } from '../lib/api'
+import { testSmtp, getApiKeys, createApiKey, deleteApiKey, toggleApiKey, getEnvConfig, updateEnvConfig, getBranding, updateBranding, uploadLogo, exportBackup, importBackup, cleanupDatabase, getSubscription, getStripePrices, createStripeCheckout, openStripePortal, changePassword, deleteAccount, getUserFeatures, toggleMfa, getOAuth2AuthUrl, getOAuth2Status, disconnectOAuth2 } from '../lib/api'
 import { useBranding, useAuth, useUI } from '../App'
 import toast from 'react-hot-toast'
 import {
@@ -71,6 +71,8 @@ export default function Settings({ onStartTour }) {
   const [showDeletePw, setShowDeletePw] = useState(false)
   const [mfaEnabled, setMfaEnabled] = useState(false)
   const [mfaToggling, setMfaToggling] = useState(false)
+  const [oauthStatus, setOauthStatus] = useState({ google: { connected: false }, microsoft: { connected: false } })
+  const [oauthLoading, setOauthLoading] = useState(null) // 'google' | 'microsoft' | null
 
   const isModern = uiMode === 'modern'
 
@@ -92,6 +94,7 @@ export default function Settings({ onStartTour }) {
   useEffect(() => {
     if (activeTab === 'expert') loadKeys()
     if (activeTab === 'config' || activeTab === 'general' || activeTab === 'branding') loadEnv()
+    if (activeTab === 'config') loadOAuthStatus()
     if (activeTab === 'branding') loadBrand()
     if (activeTab === 'subscription') loadSubscription()
     if (activeTab === 'account') loadMfaStatus()
@@ -110,11 +113,34 @@ export default function Settings({ onStartTour }) {
       const result = await toggleMfa(!mfaEnabled)
       setMfaEnabled(result.mfa_enabled)
       toast.success(result.mfa_enabled ? 'Kétlépcsős hitelesítés bekapcsolva' : 'Kétlépcsős hitelesítés kikapcsolva')
+    } catch (err) { toast.error(err.message) }
+    finally { setMfaToggling(false) }
+  }
+
+  const loadOAuthStatus = async () => {
+    try {
+      const status = await getOAuth2Status()
+      setOauthStatus(status)
+    } catch {}
+  }
+
+  const handleOAuthConnect = async (provider) => {
+    setOauthLoading(provider)
+    try {
+      const { url } = await getOAuth2AuthUrl(provider)
+      window.location.href = url
     } catch (err) {
       toast.error(err.message)
-    } finally {
-      setMfaToggling(false)
+      setOauthLoading(null)
     }
+  }
+
+  const handleOAuthDisconnect = async (provider) => {
+    try {
+      await disconnectOAuth2(provider)
+      setOauthStatus(prev => ({ ...prev, [provider]: { connected: false } }))
+      toast.success(`${provider === 'google' ? 'Google' : 'Microsoft'} fiók leválasztva`)
+    } catch (err) { toast.error(err.message) }
   }
 
   const loadSubscription = async () => {
@@ -775,11 +801,83 @@ export default function Settings({ onStartTour }) {
                 </div>
               </div>
 
+              {/* OAuth2 Quick Connect */}
+              <div className="glass rounded-xl p-6 border border-[#1AA19C]/20">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Shield className="w-5 h-5 text-[#1AA19C]" /></div>
+                  <div>
+                    <h3 className="text-base font-semibold text-white">OAuth2 Gyorscsatlakozás</h3>
+                    <p className="text-xs text-gray-500">Gmail vagy Outlook fiók biztonságos csatlakoztatása jelszó nélkül</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Google */}
+                  <div className={`rounded-xl p-4 ${oauthStatus.google?.connected ? 'bg-green-500/5 border border-green-500/20' : 'glass-light'}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                      <span className="text-sm font-medium text-white">Google / Gmail</span>
+                    </div>
+                    {oauthStatus.google?.connected ? (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                          <span className="text-xs text-green-400 font-medium">Csatlakoztatva</span>
+                        </div>
+                        <p className="text-xs text-gray-400 font-mono mb-3 truncate">{oauthStatus.google.email}</p>
+                        <button onClick={() => handleOAuthDisconnect('google')}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5" /> Leválasztás
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[11px] text-gray-500 mb-3">OAuth2 hitelesítéssel — nincs szükség alkalmazásjelszóra</p>
+                        <button onClick={() => handleOAuthConnect('google')} disabled={oauthLoading === 'google'}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-all w-full justify-center disabled:opacity-50">
+                          {oauthLoading === 'google' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                          Google fiók csatlakoztatása
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Microsoft */}
+                  <div className={`rounded-xl p-4 ${oauthStatus.microsoft?.connected ? 'bg-green-500/5 border border-green-500/20' : 'glass-light'}`}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="13" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="13" width="10" height="10" fill="#00A4EF"/><rect x="13" y="13" width="10" height="10" fill="#FFB900"/></svg>
+                      <span className="text-sm font-medium text-white">Microsoft / Outlook</span>
+                    </div>
+                    {oauthStatus.microsoft?.connected ? (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                          <span className="text-xs text-green-400 font-medium">Csatlakoztatva</span>
+                        </div>
+                        <p className="text-xs text-gray-400 font-mono mb-3 truncate">{oauthStatus.microsoft.email}</p>
+                        <button onClick={() => handleOAuthDisconnect('microsoft')}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1">
+                          <XCircle className="w-3.5 h-3.5" /> Leválasztás
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-[11px] text-gray-500 mb-3">Outlook, Hotmail és Office 365 fiókok támogatása</p>
+                        <button onClick={() => handleOAuthConnect('microsoft')} disabled={oauthLoading === 'microsoft'}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-all w-full justify-center disabled:opacity-50">
+                          {oauthLoading === 'microsoft' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                          Microsoft fiók csatlakoztatása
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-600 mt-3">Az OAuth2 csatlakozás után az SMTP beállítások automatikusan konfigurálódnak. A hagyományos jelszavas SMTP alább továbbra is használható más szolgáltatókhoz.</p>
+              </div>
+
               {/* SMTP */}
               <div className="glass rounded-xl p-6">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-xl bg-[#1AA19C]/10 flex items-center justify-center"><Server className="w-5 h-5 text-[#1AA19C]" /></div>
-                  <div><h3 className="text-base font-semibold text-white">SMTP beállítások</h3><p className="text-xs text-gray-500">Kimenő levelezőszerver</p></div>
+                  <div><h3 className="text-base font-semibold text-white">SMTP beállítások</h3><p className="text-xs text-gray-500">Kimenő levelezőszerver (hagyományos)</p></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs text-gray-400 mb-1">SMTP hoszt</label>

@@ -67,7 +67,11 @@ const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, message: 
 const sendLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100, message: { error: 'Túl sok email küldés. Próbáld újra később.' }, standardHeaders: true, legacyHeaders: false });
 const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, message: { error: 'API rate limit exceeded. Try again later.' }, standardHeaders: true, legacyHeaders: false });
 
-const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY, ENCRYPTION_KEY } = process.env;
+const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD, STRIPE_SECRET_KEY, ENCRYPTION_KEY,
+  GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI,
+  MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_REDIRECT_URI,
+  MFA_SMTP_HOST, MFA_SMTP_PORT, MFA_SMTP_USER, MFA_SMTP_PASS
+} = process.env;
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 const ADMIN_PASSWORD_HASH = ADMIN_PASSWORD ? bcrypt.hashSync(ADMIN_PASSWORD, 10) : null;
 
@@ -277,10 +281,159 @@ function setUserSetting(userId, key, value) {
   db.prepare('INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value').run(userId, key, stored);
 }
 
-// Create SMTP transporter for a user
-function getUserTransporter(userId) {
+// ─── OAUTH2 HELPERS ─────────────────────────────────────────
+
+// Get stored OAuth2 tokens for a user + provider
+function getOAuthTokens(userId, provider) {
+  const row = db.prepare('SELECT * FROM oauth_tokens WHERE user_id = ? AND provider = ?').get(userId, provider);
+  if (!row) return null;
+  return {
+    ...row,
+    access_token: decryptValue(row.access_token),
+    refresh_token: decryptValue(row.refresh_token)
+  };
+}
+
+// Store or update OAuth2 tokens
+function saveOAuthTokens(userId, provider, data) {
+  const id = randomUUID();
+  const expiresAt = new Date(Date.now() + (data.expires_in || 3600) * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  const encAccess = encryptValue(data.access_token);
+  const encRefresh = encryptValue(data.refresh_token);
+
+  db.prepare(`
+    INSERT INTO oauth_tokens (id, user_id, provider, email, access_token, refresh_token, expires_at, scope)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, provider) DO UPDATE SET
+      email = excluded.email,
+      access_token = excluded.access_token,
+      refresh_token = CASE WHEN excluded.refresh_token = '' THEN oauth_tokens.refresh_token ELSE excluded.refresh_token END,
+      expires_at = excluded.expires_at,
+      scope = excluded.scope,
+      updated_at = datetime('now')
+  `).run(id, userId, provider, data.email || '', encAccess, encRefresh, expiresAt, data.scope || '');
+}
+
+// Refresh Google access token
+async function refreshGoogleToken(refreshToken) {
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Google token refresh failed: ${err.error_description || err.error || res.statusText}`);
+  }
+  return res.json();
+}
+
+// Refresh Microsoft access token
+async function refreshMicrosoftToken(refreshToken) {
+  const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: MICROSOFT_CLIENT_ID,
+      client_secret: MICROSOFT_CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+      scope: 'https://outlook.office365.com/SMTP.Send offline_access openid email'
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Microsoft token refresh failed: ${err.error_description || err.error || res.statusText}`);
+  }
+  return res.json();
+}
+
+// Get a valid access token, refreshing if expired
+async function getValidAccessToken(userId, provider) {
+  const tokens = getOAuthTokens(userId, provider);
+  if (!tokens) return null;
+
+  const expiresAt = new Date(tokens.expires_at.replace(' ', 'T') + 'Z');
+  const now = new Date();
+  const bufferMs = 5 * 60 * 1000; // refresh 5 min before expiry
+
+  if (expiresAt.getTime() - bufferMs > now.getTime()) {
+    return tokens.access_token;
+  }
+
+  // Token expired or about to expire — refresh it
+  console.log(`[OAuth2] Refreshing ${provider} token for user ${userId}`);
+  try {
+    let refreshed;
+    if (provider === 'google') {
+      refreshed = await refreshGoogleToken(tokens.refresh_token);
+    } else if (provider === 'microsoft') {
+      refreshed = await refreshMicrosoftToken(tokens.refresh_token);
+    } else {
+      throw new Error(`Unknown OAuth provider: ${provider}`);
+    }
+
+    saveOAuthTokens(userId, provider, {
+      access_token: refreshed.access_token,
+      refresh_token: refreshed.refresh_token || '', // Google doesn't always return a new refresh_token
+      expires_in: refreshed.expires_in,
+      email: tokens.email,
+      scope: refreshed.scope || tokens.scope
+    });
+
+    return refreshed.access_token;
+  } catch (err) {
+    console.error(`[OAuth2] Token refresh failed for ${provider}:`, err.message);
+    throw err;
+  }
+}
+
+// Detect OAuth provider from SMTP host
+function detectOAuthProvider(smtpHost) {
+  if (!smtpHost) return null;
+  const h = smtpHost.toLowerCase();
+  if (h.includes('gmail') || h.includes('google') || h === 'smtp.gmail.com') return 'google';
+  if (h.includes('outlook') || h.includes('office365') || h.includes('microsoft') || h === 'smtp.office365.com' || h === 'smtp-mail.outlook.com') return 'microsoft';
+  return null;
+}
+
+// Create SMTP transporter for a user (supports OAuth2 for Gmail/Outlook)
+async function getUserTransporter(userId) {
   const s = getUserSettings(userId);
-  if (!s.smtp_host || !s.smtp_user || !s.smtp_pass) return null;
+  if (!s.smtp_user) return null;
+
+  const provider = detectOAuthProvider(s.smtp_host);
+
+  // Try OAuth2 first if provider is detected and tokens exist
+  if (provider) {
+    const tokens = getOAuthTokens(userId, provider);
+    if (tokens) {
+      try {
+        const accessToken = await getValidAccessToken(userId, provider);
+        return nodemailer.createTransport({
+          host: provider === 'google' ? 'smtp.gmail.com' : 'smtp-mail.outlook.com',
+          port: 587,
+          secure: false,
+          auth: {
+            type: 'OAuth2',
+            user: tokens.email || s.smtp_user,
+            accessToken
+          },
+          tls: { rejectUnauthorized: false }
+        });
+      } catch (err) {
+        console.error(`[OAuth2] Transporter creation failed, falling back to password auth:`, err.message);
+      }
+    }
+  }
+
+  // Fallback to standard password auth
+  if (!s.smtp_host || !s.smtp_pass) return null;
   return nodemailer.createTransport({
     host: s.smtp_host,
     port: Number(s.smtp_port) || 465,
@@ -413,6 +566,7 @@ function processTemplateImages(html, attachments) {
 // ─── LOGIN ──────────────────────────────────────────────────
 
 // Helper: generate a 6-digit MFA token and send it via email
+// MFA emails are ALWAYS sent from auth@pultify.hu — never from the user's own SMTP
 async function sendMfaToken(user) {
   const code = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit code
   const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19); // 3 minutes
@@ -424,10 +578,23 @@ async function sendMfaToken(user) {
   // Insert new token
   db.prepare('INSERT INTO mfa_tokens (id, user_id, token, expires_at) VALUES (?, ?, ?, ?)').run(id, user.id, code, expiresAt);
 
-  // Send email with the code using the user's own SMTP or fall back to admin SMTP
-  let transporter = getUserTransporter(user.id);
+  // Build dedicated MFA transporter — always auth@pultify.hu
+  let transporter = null;
+
+  // 1. Try dedicated MFA SMTP env vars first
+  if (MFA_SMTP_HOST && MFA_SMTP_USER && MFA_SMTP_PASS) {
+    const port = Number(MFA_SMTP_PORT) || 465;
+    transporter = nodemailer.createTransport({
+      host: MFA_SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: { user: MFA_SMTP_USER, pass: MFA_SMTP_PASS },
+      tls: { rejectUnauthorized: false }
+    });
+  }
+
+  // 2. Fall back to admin SMTP settings (still sends from auth@pultify.hu in the from field)
   if (!transporter) {
-    // Fall back to admin SMTP settings
     const adminSettings = getUserSettings('__admin__');
     if (adminSettings.smtp_host && adminSettings.smtp_user && adminSettings.smtp_pass) {
       transporter = nodemailer.createTransport({
@@ -446,7 +613,7 @@ async function sendMfaToken(user) {
   }
 
   await transporter.sendMail({
-    from: `"Pultify MFA" <${transporter.options?.auth?.user || 'noreply@pultify.hu'}>`,
+    from: '"Pultify" <auth@pultify.hu>',
     to: user.email,
     subject: 'Bejelentkezési kód - Pultify',
     html: `
@@ -753,6 +920,203 @@ app.put('/api/features/mfa', authenticate, (req, res) => {
   const { enabled } = req.body;
   db.prepare("UPDATE users SET mfa_enabled = ?, updated_at = datetime('now') WHERE id = ?").run(enabled ? 1 : 0, req.userId);
   res.json({ success: true, mfa_enabled: !!enabled });
+});
+
+// ─── OAUTH2 ENDPOINTS ───────────────────────────────────────
+
+// Get OAuth2 consent URL for Google or Microsoft
+app.get('/api/oauth2/:provider/auth-url', authenticate, (req, res) => {
+  const { provider } = req.params;
+
+  if (provider === 'google') {
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return res.status(400).json({ error: 'Google OAuth2 nincs konfigurálva a szerveren. Kérd az adminisztrátort a GOOGLE_CLIENT_ID és GOOGLE_CLIENT_SECRET beállítására.' });
+    }
+    const redirectUri = GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/oauth2/google/callback`;
+    const state = jwt.sign({ userId: req.userId, provider: 'google' }, JWT_SECRET, { expiresIn: '10m' });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?` + new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://mail.google.com/ openid email',
+      access_type: 'offline',
+      prompt: 'consent',
+      state
+    }).toString();
+    return res.json({ url });
+  }
+
+  if (provider === 'microsoft') {
+    if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
+      return res.status(400).json({ error: 'Microsoft OAuth2 nincs konfigurálva a szerveren. Kérd az adminisztrátort a MICROSOFT_CLIENT_ID és MICROSOFT_CLIENT_SECRET beállítására.' });
+    }
+    const redirectUri = MICROSOFT_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/oauth2/microsoft/callback`;
+    const state = jwt.sign({ userId: req.userId, provider: 'microsoft' }, JWT_SECRET, { expiresIn: '10m' });
+    const url = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` + new URLSearchParams({
+      client_id: MICROSOFT_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://outlook.office365.com/SMTP.Send offline_access openid email',
+      response_mode: 'query',
+      state
+    }).toString();
+    return res.json({ url });
+  }
+
+  res.status(400).json({ error: 'Ismeretlen OAuth provider. Használj "google" vagy "microsoft" értéket.' });
+});
+
+// Google OAuth2 callback
+app.get('/api/oauth2/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+
+  if (error) {
+    return res.redirect(`/?oauth_error=${encodeURIComponent(error)}`);
+  }
+
+  try {
+    const payload = jwt.verify(state, JWT_SECRET);
+    if (payload.provider !== 'google') throw new Error('Invalid state provider');
+
+    const redirectUri = GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/oauth2/google/callback`;
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code'
+      })
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.json().catch(() => ({}));
+      throw new Error(err.error_description || err.error || 'Token exchange failed');
+    }
+
+    const tokenData = await tokenRes.json();
+
+    // Get user email from Google
+    let email = '';
+    try {
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      });
+      if (userInfoRes.ok) {
+        const userInfo = await userInfoRes.json();
+        email = userInfo.email || '';
+      }
+    } catch {}
+
+    saveOAuthTokens(payload.userId, 'google', {
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || '',
+      expires_in: tokenData.expires_in,
+      email,
+      scope: tokenData.scope
+    });
+
+    // Auto-set SMTP settings for Gmail
+    setUserSetting(payload.userId, 'smtp_host', 'smtp.gmail.com');
+    setUserSetting(payload.userId, 'smtp_port', '587');
+    if (email) setUserSetting(payload.userId, 'smtp_user', email);
+
+    console.log(`[OAuth2] Google tokens saved for user ${payload.userId} (${email})`);
+    res.redirect('/?oauth_success=google');
+  } catch (err) {
+    console.error('[OAuth2] Google callback error:', err.message);
+    res.redirect(`/?oauth_error=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// Microsoft OAuth2 callback
+app.get('/api/oauth2/microsoft/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+
+  if (error) {
+    return res.redirect(`/?oauth_error=${encodeURIComponent(error_description || error)}`);
+  }
+
+  try {
+    const payload = jwt.verify(state, JWT_SECRET);
+    if (payload.provider !== 'microsoft') throw new Error('Invalid state provider');
+
+    const redirectUri = MICROSOFT_REDIRECT_URI || `${req.protocol}://${req.get('host')}/api/oauth2/microsoft/callback`;
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: MICROSOFT_CLIENT_ID,
+        client_secret: MICROSOFT_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+        scope: 'https://outlook.office365.com/SMTP.Send offline_access openid email'
+      })
+    });
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.json().catch(() => ({}));
+      throw new Error(err.error_description || err.error || 'Token exchange failed');
+    }
+
+    const tokenData = await tokenRes.json();
+
+    // Decode id_token to get email
+    let email = '';
+    if (tokenData.id_token) {
+      try {
+        const parts = tokenData.id_token.split('.');
+        const payload2 = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+        email = payload2.email || payload2.preferred_username || '';
+      } catch {}
+    }
+
+    saveOAuthTokens(payload.userId, 'microsoft', {
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token || '',
+      expires_in: tokenData.expires_in,
+      email,
+      scope: tokenData.scope
+    });
+
+    // Auto-set SMTP settings for Outlook
+    setUserSetting(payload.userId, 'smtp_host', 'smtp-mail.outlook.com');
+    setUserSetting(payload.userId, 'smtp_port', '587');
+    if (email) setUserSetting(payload.userId, 'smtp_user', email);
+
+    console.log(`[OAuth2] Microsoft tokens saved for user ${payload.userId} (${email})`);
+    res.redirect('/?oauth_success=microsoft');
+  } catch (err) {
+    console.error('[OAuth2] Microsoft callback error:', err.message);
+    res.redirect(`/?oauth_error=${encodeURIComponent(err.message)}`);
+  }
+});
+
+// Get OAuth2 connection status
+app.get('/api/oauth2/status', authenticate, (req, res) => {
+  const google = getOAuthTokens(req.userId, 'google');
+  const microsoft = getOAuthTokens(req.userId, 'microsoft');
+  res.json({
+    google: google ? { connected: true, email: google.email, expires_at: google.expires_at } : { connected: false },
+    microsoft: microsoft ? { connected: true, email: microsoft.email, expires_at: microsoft.expires_at } : { connected: false }
+  });
+});
+
+// Disconnect OAuth2 provider
+app.delete('/api/oauth2/:provider', authenticate, (req, res) => {
+  const { provider } = req.params;
+  if (!['google', 'microsoft'].includes(provider)) {
+    return res.status(400).json({ error: 'Invalid provider' });
+  }
+  db.prepare('DELETE FROM oauth_tokens WHERE user_id = ? AND provider = ?').run(req.userId, provider);
+  res.json({ success: true, message: `${provider === 'google' ? 'Google' : 'Microsoft'} OAuth2 leválasztva.` });
 });
 
 // User: get own subscription info
@@ -1325,7 +1689,7 @@ app.post('/api/send-email', authenticate, requireSubscription, sendLimiter, uplo
       return res.status(400).json({ error: 'Missing required fields: to, subject, html' });
     }
 
-    const userTransporter = getUserTransporter(req.userId);
+    const userTransporter = await getUserTransporter(req.userId);
     if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
     const userSettings = getUserSettings(req.userId);
     const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
@@ -1391,7 +1755,7 @@ app.post('/api/send-bulk', authenticate, requireSubscription, sendLimiter, uploa
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const userTransporter = getUserTransporter(req.userId);
+    const userTransporter = await getUserTransporter(req.userId);
     if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
     const userSettings = getUserSettings(req.userId);
     const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
@@ -1817,7 +2181,7 @@ app.delete('/api/v1/contacts/:id', apiLimiter, authenticateApiKey, (req, res) =>
 });
 
 // Külső API: email küldés sablonnal vagy nyers HTML-lel
-app.post('/api/v1/send', apiLimiter, authenticateApiKey, (req, res) => {
+app.post('/api/v1/send', apiLimiter, authenticateApiKey, async (req, res) => {
   const { to, subject, html, cc, bcc, template_id, variables } = req.body;
   if (!to || !subject) return res.status(400).json({ error: 'to and subject are required' });
 
@@ -1836,7 +2200,7 @@ app.post('/api/v1/send', apiLimiter, authenticateApiKey, (req, res) => {
 
   if (!emailHtml) return res.status(400).json({ error: 'html body or template_id is required' });
 
-  const userTransporter = getUserTransporter(req.userId);
+  const userTransporter = await getUserTransporter(req.userId);
   if (!userTransporter) return res.status(400).json({ error: 'SMTP not configured for this user' });
   const userSettings = getUserSettings(req.userId);
   const fromName = userSettings.smtp_from_name || userSettings.smtp_user || '';
@@ -2310,7 +2674,7 @@ app.post('/api/quotes/:id/send', authenticate, requireSubscription, async (req, 
       </div>
     `;
 
-    const userTransporter = getUserTransporter(req.userId);
+    const userTransporter = await getUserTransporter(req.userId);
     if (!userTransporter) return res.status(400).json({ error: 'SMTP nincs konfigurálva. Állítsd be a Beállításoknál.' });
 
     const mailOptions = {
@@ -2720,7 +3084,7 @@ app.put('/api/env', authenticate, (req, res) => {
 // SMTP kapcsolat tesztelése - per-user
 app.get('/api/test-smtp', authenticate, async (req, res) => {
   try {
-    const testTransporter = getUserTransporter(req.userId);
+    const testTransporter = await getUserTransporter(req.userId);
     if (!testTransporter) return res.status(400).json({ success: false, error: 'SMTP nincs konfigurálva' });
     await testTransporter.verify();
     res.json({ success: true, message: 'SMTP connection is working' });

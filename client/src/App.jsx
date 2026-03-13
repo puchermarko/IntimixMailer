@@ -2,6 +2,7 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { getBranding, getSiteConfig, getGlobalSettings, getUserFeatures } from './lib/api'
+import toast from 'react-hot-toast'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Landing from './pages/Landing'
@@ -93,6 +94,21 @@ function App() {
       console.error('Failed to refresh global settings:', error)
     }
   }
+
+  // Handle OAuth2 redirect callback params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const oauthSuccess = params.get('oauth_success')
+    const oauthError = params.get('oauth_error')
+    if (oauthSuccess) {
+      const providerName = oauthSuccess === 'google' ? 'Google' : oauthSuccess === 'microsoft' ? 'Microsoft' : oauthSuccess
+      toast.success(`${providerName} fiók sikeresen csatlakoztatva! Az SMTP beállítások automatikusan frissültek.`)
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (oauthError) {
+      toast.error(`OAuth2 hiba: ${oauthError}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
 
   // Fetch global settings and update UI mode if needed
   useEffect(() => {
