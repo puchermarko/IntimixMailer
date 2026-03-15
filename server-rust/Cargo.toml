@@ -1,0 +1,84 @@
+[package]
+name = "pultify-server"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart", "macros"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = { version = "0.4", features = ["full"] }
+tower-http = { version = "0.5", features = ["cors", "fs", "limit"] }
+tokio = { version = "1", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Auth
+jsonwebtoken = "9"
+bcrypt = "0.15"
+
+# Crypto (AES-256-GCM)
+aes-gcm = "0.10"
+rand = "0.8"
+scrypt = { version = "0.11", default-features = false }
+base16ct = { version = "0.2", features = ["alloc"] }
+
+# Email (SMTP)
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }
+# IMAP
+async-imap = "0.9"
+async-native-tls = "0.5"
+# Mail parsing
+mailparse = "0.15"
+
+# HTTP client (OAuth2 token exchange)
+reqwest = { version = "0.12", features = ["json"] }
+
+# PDF generation
+printpdf = "0.7"
+
+# Stripe
+stripe-rust = { version = "0.37", package = "async-stripe", features = ["runtime-tokio-hyper"] }
+
+# UUID
+uuid = { version = "1", features = ["v4"] }
+
+# Environment
+dotenvy = "0.15"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Rate limiting
+governor = "0.6"
+
+# Regex
+regex = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Base64
+base64 = "0.22"
+
+# MIME types
+mime = "0.3"
+mime_guess = "2"
+
+# URL encoding
+urlencoding = "2"
+
+# Async helpers
+futures = "0.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true
