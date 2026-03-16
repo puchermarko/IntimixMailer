@@ -547,6 +547,11 @@ export default function EnhancedMailView({ onNavigate }) {
     } catch (err) {
       // Sync failure is non-fatal — we still load cached emails
       console.warn('Sync failed (will load cached):', err.message)
+      if (err.message.includes('IMAP nincs konfigurálva')) {
+        toast.error('IMAP nincs konfigurálva. Állítsd be a Beállításoknál.')
+      } else {
+        toast.error('Szinkronizálás sikertelen: ' + err.message)
+      }
     } finally {
       setSyncing(false)
     }
