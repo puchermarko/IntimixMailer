@@ -32,8 +32,9 @@ base16ct = { version = "0.2", features = ["alloc"] }
 # Email (SMTP)
 lettre = { version = "0.11", features = ["tokio1-native-tls", "builder"] }
 # IMAP
-async-imap = "0.9"
-async-native-tls = "0.5"
+async-imap = { version = "0.9", default-features = false, features = ["runtime-tokio"] }
+tokio-native-tls = "0.3"
+native-tls = "0.2"
 # Mail parsing
 mailparse = "0.15"
 

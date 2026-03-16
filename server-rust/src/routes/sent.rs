@@ -1,10 +1,16 @@
 use axum::{extract::{Path, Query, State}, Extension, Json};
 use serde::Deserialize;
 use serde_json::{json, Value};
+use uuid::Uuid;
 
 use crate::error::{AppError, Result};
+use crate::helpers::{detect_oauth_provider, find_contact_by_email, get_oauth_tokens, get_user_settings, get_valid_access_token, save_oauth_tokens};
 use crate::middleware::auth::{get_user_id_from_token, AuthUser};
 use crate::state::AppState;
+use crate::routes::inbox::{
+    XOAuth2Authenticator, extract_from_address, extract_from_name, extract_to_addresses,
+    extract_text_body, extract_html_body, extract_attachments,
+};
 
 #[derive(Deserialize)]
 pub struct PaginationQuery {
@@ -104,7 +110,233 @@ pub async fn download_sent_imap_attachment(State(state): State<AppState>, Path(i
     ], data).into_response())
 }
 
-// Sent sync (IMAP) - placeholder
-pub async fn sync_sent(State(_state): State<AppState>, Extension(_auth): Extension<AuthUser>) -> Result<Json<Value>> {
-    Ok(Json(json!({"success": true, "newEmails": 0, "linked": 0, "message": "IMAP sent sync placeholder"})))
+// Full IMAP sent sync
+pub async fn sync_sent(State(state): State<AppState>, Extension(auth): Extension<AuthUser>) -> Result<Json<Value>> {
+    let user_id = auth.effective_user_id.clone();
+
+    // Get IMAP settings and OAuth tokens (drop db lock before async work)
+    let (imap_host, imap_port, imap_user, imap_pass, provider, oauth_tokens) = {
+        let db = state.db.lock().unwrap();
+        let settings = get_user_settings(&db, &state.enc_key, &user_id);
+        let host = settings.get("imap_host").cloned().unwrap_or_default();
+        let port: u16 = settings.get("imap_port").and_then(|s| s.parse().ok()).unwrap_or(993);
+        let user = settings.get("imap_user").cloned().unwrap_or_default();
+        let pass = settings.get("imap_pass").cloned().unwrap_or_default();
+        if host.is_empty() || user.is_empty() {
+            return Err(AppError::bad_request("IMAP nincs konfigurálva. Állítsd be a Beállításoknál."));
+        }
+        let provider = detect_oauth_provider(&host).map(|s| s.to_string());
+        let oauth_tokens = provider.as_deref().and_then(|prov| get_oauth_tokens(&db, &state.enc_key, &user_id, prov));
+        (host, port, user, pass, provider, oauth_tokens)
+    }; // db lock dropped here
+
+    // Get valid OAuth2 access token if needed (async, no db lock held)
+    let final_access_token = if let Some(ref tokens) = oauth_tokens {
+        let prov = provider.as_deref().unwrap_or("");
+        match get_valid_access_token(tokens, &state.config, prov).await {
+            Ok((access_token, save_data)) => {
+                if let Some(data) = save_data {
+                    let db = state.db.lock().unwrap();
+                    save_oauth_tokens(&db, &state.enc_key, &user_id, prov, &data);
+                }
+                Some(access_token)
+            }
+            Err(e) => {
+                tracing::warn!("OAuth2 IMAP token refresh failed for sent sync: {}", e);
+                None
+            }
+        }
+    } else { None };
+
+    let (connect_host, connect_port, auth_user, auth_method) = if final_access_token.is_some() {
+        let prov = provider.as_deref().unwrap_or("");
+        let h = if prov == "google" { "imap.gmail.com".to_string() } else { "outlook.office365.com".to_string() };
+        let email = oauth_tokens.as_ref().map(|t| t.email.clone()).unwrap_or(imap_user.clone());
+        (h, 993u16, email, "oauth2".to_string())
+    } else {
+        if imap_pass.is_empty() {
+            return Err(AppError::bad_request("IMAP nincs konfigurálva. Állítsd be a Beállításoknál."));
+        }
+        (imap_host.clone(), imap_port, imap_user.clone(), "password".to_string())
+    };
+
+    // Connect via TLS
+    let tcp_stream = tokio::net::TcpStream::connect((connect_host.as_str(), connect_port))
+        .await.map_err(|e| AppError::internal(format!("IMAP TCP connection failed: {}", e)))?;
+    let native_tls_connector = native_tls::TlsConnector::builder()
+        .danger_accept_invalid_certs(true)
+        .build().map_err(|e| AppError::internal(format!("TLS builder error: {}", e)))?;
+    let tls_connector = tokio_native_tls::TlsConnector::from(native_tls_connector);
+    let tls_stream = tls_connector.connect(&connect_host, tcp_stream)
+        .await.map_err(|e| AppError::internal(format!("IMAP TLS connection failed: {}", e)))?;
+    let client = async_imap::Client::new(tls_stream);
+
+    let mut session = if auth_method == "oauth2" {
+        let token = final_access_token.as_deref().unwrap_or("");
+        let auth_string = format!("user={}\x01auth=Bearer {}\x01\x01", auth_user, token);
+        let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, auth_string.as_bytes());
+        client.authenticate("XOAUTH2", XOAuth2Authenticator(encoded))
+            .await.map_err(|(e, _)| AppError::internal(format!("IMAP OAuth2 auth failed: {}", e)))?
+    } else {
+        client.login(&auth_user, &imap_pass)
+            .await.map_err(|(e, _)| AppError::internal(format!("IMAP login failed: {}", e)))?
+    };
+
+    // Find Sent folder - try common names and specialUse
+    let sent_folders = ["Sent", "INBOX.Sent", "Sent Messages", "Sent Items", "INBOX.Sent Messages", "[Gmail]/Sent Mail"];
+    use futures::TryStreamExt;
+    let mailboxes: Vec<_> = session.list(Some(""), Some("*")).await
+        .map_err(|e| AppError::internal(format!("IMAP list failed: {}", e)))?
+        .try_collect().await
+        .map_err(|e| AppError::internal(format!("IMAP list stream error: {}", e)))?;
+
+    let mut sent_folder: Option<String> = None;
+    for mb in &mailboxes {
+        let name = mb.name();
+        // Check if this is the Sent special-use folder
+        for attr in mb.attributes() {
+            if format!("{:?}", attr).contains("Sent") {
+                sent_folder = Some(name.to_string());
+                break;
+            }
+        }
+        if sent_folder.is_some() { break; }
+        if sent_folders.contains(&name) {
+            sent_folder = Some(name.to_string());
+            break;
+        }
+    }
+
+    // Fallback: try each name directly
+    if sent_folder.is_none() {
+        for name in &sent_folders {
+            if session.select(name).await.is_ok() {
+                sent_folder = Some(name.to_string());
+                break;
+            }
+        }
+    }
+
+    let sent_folder = sent_folder.ok_or_else(|| AppError::bad_request("Could not find Sent folder on IMAP server"))?;
+
+    session.select(&sent_folder).await
+        .map_err(|e| AppError::internal(format!("Could not select {}: {}", sent_folder, e)))?;
+
+    let max_uid: u32 = {
+        let db = state.db.lock().unwrap();
+        db.query_row("SELECT COALESCE(MAX(uid), 0) FROM sent_imap WHERE user_id = ?1", rusqlite::params![user_id], |r| r.get::<_, i64>(0))
+            .unwrap_or(0) as u32
+    };
+
+    let fetch_range = if max_uid > 0 { format!("{}:*", max_uid + 1) } else { "1:*".to_string() };
+    let messages: Vec<_> = session.uid_fetch(&fetch_range, "(UID BODY.PEEK[] ENVELOPE)").await
+        .map_err(|e| AppError::internal(format!("IMAP sent fetch failed: {}", e)))?
+        .try_collect().await
+        .map_err(|e| AppError::internal(format!("IMAP sent fetch stream error: {}", e)))?;
+
+    let mut new_count = 0i64;
+    let uploads_dir = std::path::Path::new("uploads");
+    std::fs::create_dir_all(uploads_dir).ok();
+
+    for msg in &messages {
+        let uid = msg.uid.unwrap_or(0);
+        if uid == 0 { continue; }
+
+        let exists = {
+            let db = state.db.lock().unwrap();
+            db.query_row("SELECT id FROM sent_imap WHERE uid = ?1 AND user_id = ?2",
+                rusqlite::params![uid as i64, user_id], |r| r.get::<_, String>(0)).is_ok()
+        };
+        if exists { continue; }
+
+        let body = msg.body().unwrap_or(b"");
+        let parsed = match mailparse::parse_mail(body) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        let from_addr = extract_from_address(&parsed).unwrap_or_default();
+        let from_name = extract_from_name(&parsed).unwrap_or_default();
+        let to_addr = extract_to_addresses(&parsed).unwrap_or_default();
+        let subject = parsed.headers.iter()
+            .find(|h| h.get_key().eq_ignore_ascii_case("subject"))
+            .map(|h| h.get_value()).unwrap_or_else(|| "(No subject)".into());
+        let text_body = extract_text_body(&parsed);
+        let html_body = extract_html_body(&parsed);
+        let date = parsed.headers.iter()
+            .find(|h| h.get_key().eq_ignore_ascii_case("date"))
+            .map(|h| h.get_value())
+            .and_then(|d| mailparse::dateparse(&d).ok())
+            .map(|ts| chrono::DateTime::from_timestamp(ts, 0).unwrap_or_default().to_rfc3339())
+            .unwrap_or_else(|| chrono::Utc::now().to_rfc3339());
+        let message_id = parsed.headers.iter()
+            .find(|h| h.get_key().eq_ignore_ascii_case("message-id"))
+            .map(|h| h.get_value()).unwrap_or_default();
+
+        let attachments = extract_attachments(&parsed);
+        let has_attachments = if attachments.is_empty() { 0 } else { 1 };
+
+        // Link to contact by recipient
+        let db = state.db.lock().unwrap();
+        let mut contact_id: Option<String> = None;
+        for addr in to_addr.split(',').map(|a| a.trim()) {
+            if let Some(cid) = find_contact_by_email(&db, addr, &user_id) {
+                contact_id = Some(cid);
+                break;
+            }
+        }
+
+        let sent_id = Uuid::new_v4().to_string();
+        db.execute(
+            "INSERT INTO sent_imap (id, user_id, uid, message_id, from_address, from_name, to_address, subject, text_body, html_body, date, contact_id, has_attachments) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
+            rusqlite::params![sent_id, user_id, uid as i64, message_id, from_addr, from_name, to_addr, subject, text_body, html_body, date, contact_id, has_attachments],
+        ).ok();
+
+        for (filename, mimetype, content) in &attachments {
+            let att_id = Uuid::new_v4().to_string();
+            let ext = std::path::Path::new(filename).extension().and_then(|e| e.to_str()).unwrap_or("");
+            let stored_name = format!("sent_{}.{}", att_id, ext);
+            std::fs::write(uploads_dir.join(&stored_name), content).ok();
+            db.execute(
+                "INSERT INTO sent_imap_attachments (id, sent_id, filename, mimetype, size, stored_path) VALUES (?1,?2,?3,?4,?5,?6)",
+                rusqlite::params![att_id, sent_id, filename, mimetype, content.len() as i64, stored_name],
+            ).ok();
+        }
+
+        new_count += 1;
+    }
+
+    // Retroactively link unlinked sent_imap to contacts
+    let linked = {
+        let db = state.db.lock().unwrap();
+        let mut linked = 0i64;
+        let unlinked: Vec<(String, String)> = db.prepare("SELECT id, to_address FROM sent_imap WHERE contact_id IS NULL AND user_id = ?1")
+            .unwrap().query_map(rusqlite::params![user_id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap().filter_map(|r| r.ok()).collect();
+        for (id, to) in &unlinked {
+            for addr in to.split(',').map(|a| a.trim()) {
+                if let Some(cid) = find_contact_by_email(&db, addr, &user_id) {
+                    db.execute("UPDATE sent_imap SET contact_id = ?1 WHERE id = ?2", rusqlite::params![cid, id]).ok();
+                    linked += 1;
+                    break;
+                }
+            }
+        }
+        // Also link local email_log
+        let unlinked_local: Vec<(String, String)> = db.prepare("SELECT id, recipient_email FROM email_log WHERE contact_id IS NULL AND user_id = ?1")
+            .unwrap().query_map(rusqlite::params![user_id], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap().filter_map(|r| r.ok()).collect();
+        for (id, email) in &unlinked_local {
+            if let Some(cid) = find_contact_by_email(&db, email, &user_id) {
+                db.execute("UPDATE email_log SET contact_id = ?1 WHERE id = ?2", rusqlite::params![cid, id]).ok();
+                db.execute("UPDATE attachments SET contact_id = ?1 WHERE email_log_id = ?2 AND contact_id IS NULL", rusqlite::params![cid, id]).ok();
+                linked += 1;
+            }
+        }
+        linked
+    };
+
+    session.logout().await.ok();
+
+    Ok(Json(json!({"success": true, "newEmails": new_count, "linked": linked})))
 }

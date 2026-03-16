@@ -130,6 +130,73 @@ pub struct OAuthSaveData {
     pub scope: String,
 }
 
+/// Get a valid OAuth2 access token, refreshing if expired.
+/// Takes pre-fetched tokens so the caller can drop the DB lock before calling this async fn.
+/// Returns (access_token, Option<OAuthSaveData>) — if OAuthSaveData is Some, caller should save it.
+pub async fn get_valid_access_token(
+    tokens: &OAuthTokens,
+    config: &crate::config::Config,
+    provider: &str,
+) -> std::result::Result<(String, Option<OAuthSaveData>), String> {
+    // Check if token is still valid (with 5 min buffer)
+    if let Ok(expires_at) = chrono::NaiveDateTime::parse_from_str(&tokens.expires_at, "%Y-%m-%d %H:%M:%S") {
+        let now = chrono::Utc::now().naive_utc();
+        if expires_at > now + chrono::Duration::minutes(5) {
+            return Ok((tokens.access_token.clone(), None));
+        }
+    }
+
+    // Token expired — refresh it
+    let client = reqwest::Client::new();
+    let refreshed: serde_json::Value = if provider == "google" {
+        let gcid = config.google_client_id.as_deref().unwrap_or("");
+        let gcs = config.google_client_secret.as_deref().unwrap_or("");
+        client.post("https://oauth2.googleapis.com/token")
+            .form(&[
+                ("client_id", gcid),
+                ("client_secret", gcs),
+                ("refresh_token", tokens.refresh_token.as_str()),
+                ("grant_type", "refresh_token"),
+            ])
+            .send().await.map_err(|e| e.to_string())?
+            .json().await.map_err(|e| e.to_string())?
+    } else if provider == "microsoft" {
+        let mcid = config.microsoft_client_id.as_deref().unwrap_or("");
+        let mcs = config.microsoft_client_secret.as_deref().unwrap_or("");
+        client.post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
+            .form(&[
+                ("client_id", mcid),
+                ("client_secret", mcs),
+                ("refresh_token", tokens.refresh_token.as_str()),
+                ("grant_type", "refresh_token"),
+                ("scope", "https://outlook.office365.com/SMTP.Send https://outlook.office365.com/IMAP.AccessAsUser.All offline_access openid email"),
+            ])
+            .send().await.map_err(|e| e.to_string())?
+            .json().await.map_err(|e| e.to_string())?
+    } else {
+        return Err(format!("Unknown OAuth provider: {}", provider));
+    };
+
+    if let Some(err) = refreshed.get("error") {
+        return Err(format!("Token refresh failed: {}", err));
+    }
+
+    let new_access = refreshed["access_token"].as_str().unwrap_or("").to_string();
+    let new_refresh = refreshed["refresh_token"].as_str().unwrap_or("").to_string();
+    let expires_in = refreshed["expires_in"].as_i64();
+    let scope = refreshed["scope"].as_str().unwrap_or(&tokens.scope).to_string();
+
+    let save_data = OAuthSaveData {
+        access_token: new_access.clone(),
+        refresh_token: new_refresh,
+        expires_in,
+        email: tokens.email.clone(),
+        scope,
+    };
+
+    Ok((new_access, Some(save_data)))
+}
+
 /// Format money for Hungarian locale
 pub fn format_money(amount: f64, currency: &str) -> String {
     if currency == "HUF" {

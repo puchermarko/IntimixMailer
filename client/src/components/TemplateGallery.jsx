@@ -2,13 +2,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { emailTemplates } from '../lib/templates'
 import { getCustomTemplates, createTemplate, updateTemplate, deleteTemplate } from '../lib/api'
-import { useBranding, useUI } from '../App'
-import { Eye, Code, Copy, Check, Plus, Edit3, Trash2, Save, X, Loader2, Search, Filter, LayoutGrid, List } from 'lucide-react'
+import { useUI } from '../App'
+import { Eye, Code, Copy, Check, Plus, Edit3, Trash2, Save, X, Loader2, Search, Filter, LayoutGrid, List, FolderInput } from 'lucide-react'
 import toast from 'react-hot-toast'
 import TemplateBuilder from './TemplateBuilder'
 
 export default function TemplateGallery() {
-  const { login_domain } = useBranding()
   const { uiMode } = useUI()
   const [customTemplates, setCustomTemplates] = useState([])
   const [previewId, setPreviewId] = useState(null)
@@ -30,11 +29,28 @@ export default function TemplateGallery() {
     getCustomTemplates().then(setCustomTemplates).catch(() => {})
   }, [])
 
-  const showBuiltin = login_domain === 'intimix.hu'
   const allTemplates = [
-    ...(showBuiltin ? emailTemplates.map(t => ({ ...t, _source: 'builtin' })) : []),
+    ...emailTemplates.map(t => ({ ...t, _source: 'builtin' })),
     ...customTemplates.map(t => ({ ...t, _source: 'custom' }))
   ]
+
+  const cloneAsCustom = async (template) => {
+    setSaving(true)
+    try {
+      await createTemplate({
+        name: `${template.name} (egyéni)`,
+        description: template.description || '',
+        category: template.category || 'Custom',
+        subject: template.subject || '',
+        html: template.html || '',
+        blocks_json: template.blocks_json || ''
+      })
+      toast.success(`"${template.name}" klónozva egyéni sablonként`)
+      const updated = await getCustomTemplates()
+      setCustomTemplates(updated)
+    } catch (err) { toast.error(err.message) }
+    finally { setSaving(false) }
+  }
 
   const selectedTemplate = allTemplates.find(t => t.id === previewId && t._source === previewSource)
 
@@ -265,14 +281,20 @@ export default function TemplateGallery() {
                   <span className={`inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full ${template._source === 'custom' ? 'bg-amber-500/10 text-amber-400' : 'bg-[#2EC4BE]/10 text-[#2EC4BE]'}`}>
                     {template.category || 'Custom'}
                   </span>
-                  {template._source === 'custom' && (
-                    <div className="flex items-center gap-1 mt-2">
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(template) }} aria-label={`${template.name} szerkesztése`}
-                        className="p-1 rounded text-gray-500 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 transition-all"><Edit3 className="w-3 h-3" /></button>
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(template.id) }} aria-label={`${template.name} törlése`}
-                        className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 className="w-3 h-3" /></button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 mt-2">
+                    {template._source === 'builtin' && (
+                      <button onClick={(e) => { e.stopPropagation(); cloneAsCustom(template) }} aria-label={`${template.name} klónozása`}
+                        className="p-1 rounded text-gray-500 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 transition-all" title="Klónozás egyéni sablonként"><FolderInput className="w-3 h-3" /></button>
+                    )}
+                    {template._source === 'custom' && (
+                      <>
+                        <button onClick={(e) => { e.stopPropagation(); openEdit(template) }} aria-label={`${template.name} szerkesztése`}
+                          className="p-1 rounded text-gray-500 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10 transition-all"><Edit3 className="w-3 h-3" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(template.id) }} aria-label={`${template.name} törlése`}
+                          className="p-1 rounded text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 className="w-3 h-3" /></button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -299,18 +321,27 @@ export default function TemplateGallery() {
                     {template.description && <p className="text-xs text-gray-500 mt-1 truncate">{template.description}</p>}
                     <p className="text-xs text-gray-600 mt-1 font-mono truncate">{template.subject || '(nincs tárgy)'}</p>
                   </button>
-                  {template._source === 'custom' && (
-                    <div className="flex items-center gap-1 px-3 pb-2">
-                      <button onClick={() => openEdit(template)} aria-label={`${template.name} szerkesztése`}
-                        className={`p-1.5 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'text-gray-400 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}>
-                        <Edit3 className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-1 px-3 pb-2">
+                    {template._source === 'builtin' && (
+                      <button onClick={() => cloneAsCustom(template)} aria-label={`${template.name} klónozása`}
+                        className={`p-1.5 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'text-gray-400 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}
+                        title="Klónozás egyéni sablonként">
+                        <FolderInput className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => handleDelete(template.id)} aria-label={`${template.name} törlése`}
-                        className={`p-1.5 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-400/30 ${isModern ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
+                    )}
+                    {template._source === 'custom' && (
+                      <>
+                        <button onClick={() => openEdit(template)} aria-label={`${template.name} szerkesztése`}
+                          className={`p-1.5 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'text-gray-400 hover:text-[#2EC4BE] hover:bg-[#2EC4BE]/10' : 'text-gray-500 hover:text-[#2EC4BE] hover:bg-[#1AA19C]/10'}`}>
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(template.id)} aria-label={`${template.name} törlése`}
+                          className={`p-1.5 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-400/30 ${isModern ? 'text-gray-400 hover:text-red-400 hover:bg-red-500/10' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'}`}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -337,6 +368,12 @@ export default function TemplateGallery() {
                     {copiedId === selectedTemplate.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     {copiedId === selectedTemplate.id ? 'Másolva!' : 'HTML másolása'}
                   </button>
+                  {selectedTemplate._source === 'builtin' && (
+                    <button onClick={() => cloneAsCustom(selectedTemplate)} aria-label="Sablon klónozása"
+                      className={`flex items-center gap-1.5 text-xs text-[#2EC4BE] hover:text-[#1AA19C] px-3 py-1.5 rounded-lg hover:bg-[#1AA19C]/10 transition-all focus:outline-none focus:ring-2 focus:ring-[#2EC4BE]/30 ${isModern ? 'bg-[#2EC4BE]/10' : ''}`}>
+                      <FolderInput className="w-3.5 h-3.5" /> Klónozás & Szerkesztés
+                    </button>
+                  )}
                   {selectedTemplate._source === 'custom' && (
                     <button onClick={() => openEdit(selectedTemplate)} aria-label="Sablon szerkesztése"
                       className={`flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all focus:outline-none focus:ring-2 focus:ring-amber-400/30 ${isModern ? 'bg-amber-500/10' : ''}`}>
