@@ -185,7 +185,7 @@ async fn main() {
 
     // Admin routes
     let admin_routes = Router::new()
-        .route("/api/admin/settings", get(routes::admin::get_global_settings).put(routes::admin::put_global_settings))
+        .route("/api/admin/global-settings", get(routes::admin::get_global_settings).put(routes::admin::put_global_settings))
         .route("/api/admin/users", get(routes::admin::list_users).post(routes::admin::create_user))
         .route("/api/admin/users/{id}", put(routes::admin::update_user).delete(routes::admin::delete_user))
         .route("/api/admin/users/{id}/impersonate", post(routes::admin::impersonate))
